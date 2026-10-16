@@ -1,0 +1,3 @@
+// Becomes `import { "rebal/eval" }` when do is available.
+
+pkgtype(kind: "executable")
