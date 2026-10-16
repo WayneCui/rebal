@@ -6,6 +6,124 @@ package "rebal/value"
 // Errors
 
 // Types and methods
+pub(all) enum Binding {
+  Unbound
+  Bound(Frame, Int)
+}
+
+pub(all) enum Cell {
+  Unset
+  None
+  Logic(Bool)
+  Integer(Int64)
+  Decimal(Double)
+  Char(Int)
+  Sym(Datatype, Lexeme)
+  Seq(Series, Int)
+  Type(Datatype)
+  Function(Func)
+  Object(Frame)
+  Error(ErrorValue)
+}
+pub fn Cell::datatype(Self) -> Datatype
+pub fn Cell::equal(Self, Self) -> Bool
+pub fn Cell::index(Self) -> Int?
+pub fn Cell::same(Self, Self) -> Bool
+pub fn Cell::series(Self) -> Series?
+pub fn Cell::snapshot(Self) -> Self
+
+pub(all) enum Datatype {
+  Unset
+  None
+  Logic
+  Integer
+  Decimal
+  Char
+  Word
+  SetWord
+  GetWord
+  LitWord
+  Refinement
+  String
+  Binary
+  Block
+  Paren
+  Path
+  SetPath
+  Datatype
+  Function
+  Op
+  Object
+  Error
+} derive(Eq)
+pub fn Datatype::equal(Self, Self) -> Bool
+pub fn Datatype::not_equal(Self, Self) -> Bool
+
+pub struct ErrorValue {
+  id : Int
+  arg1 : String
+  near : String
+}
+pub fn ErrorValue::make(Int, String, String) -> Self
+
+pub struct Frame {
+  slots : Array[Cell]
+  sym_to_slot : Map[Int, Int]
+}
+pub fn Frame::ensure(Self, Int) -> Int
+pub fn Frame::get(Self, Int) -> Cell?
+pub fn Frame::length(Self) -> Int
+pub fn Frame::new() -> Self
+pub fn Frame::set(Self, Int, Cell) -> Unit
+
+pub struct Func {
+  params : Array[Int]
+  body : Series
+  infix : Bool
+}
+pub fn Func::make(Array[Int], Series, Bool) -> Self
+
+pub struct Lexeme {
+  sym : Int
+  spelling : String
+  binding : Binding
+}
+pub fn Lexeme::make(Int, String) -> Self
+pub fn Lexeme::read(Self) -> Cell?
+pub fn Lexeme::snapshot(Self) -> Self
+pub fn Lexeme::spelling(Self) -> String
+pub fn Lexeme::with_binding(Self, Binding) -> Self
+
+type Payload
+
+pub struct Series {
+  datatype : Datatype
+  payload : Payload
+}
+pub fn Series::binary() -> Self
+pub fn Series::block() -> Self
+pub fn Series::byte_at(Self, Int) -> Byte?
+pub fn Series::code(Self, Int) -> Int?
+pub fn Series::copy_from(Self, Int) -> Self
+pub fn Series::datatype(Self) -> Datatype
+pub fn Series::item(Self, Int) -> Cell?
+pub fn Series::length(Self) -> Int
+pub fn Series::paren() -> Self
+pub fn Series::path() -> Self
+pub fn Series::push_byte(Self, Byte) -> Bool
+pub fn Series::push_code(Self, Int) -> Bool
+pub fn Series::push_item(Self, Cell) -> Bool
+pub fn Series::set_item(Self, Int, Cell) -> Bool
+pub fn Series::set_path() -> Self
+pub fn Series::text() -> Self
+
+pub struct Symbols {
+  canon_to_id : Map[String, Int]
+  canon : Array[String]
+}
+pub fn Symbols::canon(Self, Int) -> String
+pub fn Symbols::intern(Self, String) -> Int
+pub fn Symbols::new() -> Self
 
 // Type aliases
 

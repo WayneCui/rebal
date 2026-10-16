@@ -4,9 +4,9 @@ Cell、符号表、Series 缓冲区和 Frame 槽。
 
 ## 不变量
 
-- 复制 cell 会复制 series 的下标，不会复制缓冲区。
+- 下标在 cell 上，缓冲区在 `Series` 上。复制 cell 会复制下标，并继续指向同一条 `Series`。
 - word 的相等比较的是符号编号。符号表用 ASCII 大小写折叠后的规范形做键，cell 另存原始拼写。
-- 绑定写在 word cell 里。修改绑定是整格写回，不在数组元素上改字段。
+- 重新绑定会换掉 series 里的那一格 `Word`。此前复制出去的 word 仍保留原来的绑定。嵌套块在 `copy_from` 之后仍然共享；word 会做成新的一份。
 
 ## 不做
 
