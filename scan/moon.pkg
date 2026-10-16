@@ -1,1 +1,3 @@
-// Transcode. Imports rebal/value once the scanner lands.
+import {
+  "rebal/value",
+}

@@ -1,11 +1,21 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "rebal/scan"
 
+import {
+  "rebal/value",
+}
+
 // Values
+pub fn transcode(String, @value.Symbols) -> Result[@value.Cell, ScanError]
 
 // Errors
 
 // Types and methods
+pub enum ScanError {
+  Missing(String)
+  Invalid(String)
+}
+pub fn ScanError::id(Self) -> String
 
 // Type aliases
 
