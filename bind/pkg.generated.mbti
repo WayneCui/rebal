@@ -1,7 +1,12 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "rebal/bind"
 
+import {
+  "rebal/value",
+}
+
 // Values
+pub fn bind(@value.Cell, @value.Frame) -> @value.Cell
 
 // Errors
 

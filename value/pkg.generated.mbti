@@ -71,6 +71,7 @@ pub struct Frame {
   sym_to_slot : Map[Int, Int]
 }
 pub fn Frame::ensure(Self, Int) -> Int
+pub fn Frame::find(Self, Int) -> Int?
 pub fn Frame::get(Self, Int) -> Cell?
 pub fn Frame::length(Self) -> Int
 pub fn Frame::new() -> Self
@@ -92,6 +93,7 @@ pub fn Lexeme::make(Int, String) -> Self
 pub fn Lexeme::read(Self) -> Cell?
 pub fn Lexeme::snapshot(Self) -> Self
 pub fn Lexeme::spelling(Self) -> String
+pub fn Lexeme::sym(Self) -> Int
 pub fn Lexeme::with_binding(Self, Binding) -> Self
 
 type Payload

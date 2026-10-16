@@ -10,6 +10,12 @@ pub fn Frame::new() -> Frame {
 }
 
 ///|
+/// Returns the existing slot for `sym`, without creating one.
+pub fn Frame::find(self : Frame, sym : Int) -> Int? {
+  self.sym_to_slot.get(sym)
+}
+
+///|
 /// Returns the slot index for `sym`, appending an unset slot on first use.
 pub fn Frame::ensure(self : Frame, sym : Int) -> Int {
   match self.sym_to_slot.get(sym) {

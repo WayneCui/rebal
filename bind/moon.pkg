@@ -1,1 +1,3 @@
-// Bind_Block. Imports rebal/value once binding lands.
+import {
+  "rebal/value",
+}

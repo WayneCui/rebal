@@ -23,6 +23,11 @@ pub fn Lexeme::spelling(self : Lexeme) -> String {
 }
 
 ///|
+pub fn Lexeme::sym(self : Lexeme) -> Int {
+  self.sym
+}
+
+///|
 pub fn Lexeme::with_binding(self : Lexeme, binding : Binding) -> Lexeme {
   { sym: self.sym, spelling: self.spelling, binding, }
 }
