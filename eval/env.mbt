@@ -38,6 +38,21 @@ let native_insert : Int = 10
 let native_remove : Int = 11
 
 ///|
+let native_func : Int = 12
+
+///|
+let native_does : Int = 13
+
+///|
+let native_make : Int = 14
+
+///|
+let native_reduce : Int = 15
+
+///|
+let native_do : Int = 16
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -54,6 +69,12 @@ pub fn Env::new() -> Env {
   define_native(env, "copy", 1, false, native_copy)
   define_native(env, "insert", 2, false, native_insert)
   define_native(env, "remove", 1, false, native_remove)
+  define_native(env, "func", 2, false, native_func)
+  define_native(env, "does", 1, false, native_does)
+  define_native(env, "make", 2, false, native_make)
+  define_native(env, "reduce", 1, false, native_reduce)
+  define_native(env, "do", 1, false, native_do)
+  install(env, "object!", @value.Type(@value.Object))
   env
 }
 

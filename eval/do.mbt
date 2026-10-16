@@ -99,7 +99,7 @@ fn do_next_at(
             if right.1 <= cursor {
               raise EvalError::Cannot("eval")
             }
-            value = apply(func, [value, right.0])
+            value = apply(env, func, [value, right.0])
             cursor = right.1
           }
         None => running = false
@@ -135,6 +135,28 @@ fn eval_atom(
         ),
         index + 1,
       )
+    Some(@value.Function(func)) =>
+      if func.is_infix() {
+        raise EvalError::OpArg("op")
+      } else {
+        call(env, series, index + 1, func)
+      }
+    Some(@value.Seq(nested, nested_index)) if is_set_path(nested) => {
+      if index + 1 >= series.length() {
+        raise EvalError::MissingArg("path")
+      }
+      let (value, next) = do_next_at(env, series, index + 1)
+      path_set(env, nested, nested_index, value) |> ignore
+      (value, next)
+    }
+    Some(@value.Seq(nested, nested_index)) if nested.datatype() == @value.Path => {
+      let value = path_get(env, nested, nested_index)
+      match value {
+        @value.Function(func) if !func.is_infix() =>
+          call(env, series, index + 1, func)
+        _ => (value, index + 1)
+      }
+    }
     Some(@value.Sym(@value.Word, lexeme)) => {
       let value = fetch(env, series, index, @value.Word, lexeme)
       match value {
@@ -174,15 +196,18 @@ fn call(
     args.push(arg)
     cursor = next
   }
-  (apply(func, args), cursor)
+  (apply(env, func, args), cursor)
 }
 
 ///|
 fn apply(
+  env : Env,
   func : @value.Func,
   args : Array[@value.Cell],
 ) -> @value.Cell raise EvalError {
-  if func.code() == native_add {
+  if func.code() == 0 {
+    call_user(env, func, args)
+  } else if func.code() == native_add {
     from_action(@action.add(args[0], args[1]))
   } else if func.code() == native_subtract {
     from_action(@action.subtract(args[0], args[1]))
@@ -204,6 +229,16 @@ fn apply(
     from_action(@action.insert(args[0], args[1]))
   } else if func.code() == native_remove {
     from_action(@action.remove(args[0]))
+  } else if func.code() == native_func {
+    build_func(args[0], args[1])
+  } else if func.code() == native_does {
+    build_func(@value.Seq(@value.Series::block(), 0), args[0])
+  } else if func.code() == native_make {
+    make_value(env, args[0], args[1])
+  } else if func.code() == native_reduce {
+    reduce_block(env, args[0])
+  } else if func.code() == native_do {
+    perform_do(env, args[0])
   } else {
     raise EvalError::Cannot("function")
   }

@@ -5,6 +5,7 @@ pub(all) suberror EvalError {
   OpArg(String)
   Cannot(String)
   BadSource(String)
+  InvalidPath(String)
 }
 
 ///|
@@ -15,5 +16,6 @@ pub fn EvalError::id(self : EvalError) -> String {
     OpArg(_) => "no-op-arg"
     Cannot(_) => "cannot"
     BadSource(_) => "bad-source"
+    InvalidPath(_) => "invalid-path"
   }
 }
