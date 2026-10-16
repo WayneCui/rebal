@@ -81,14 +81,20 @@ pub struct Func {
   params : Array[Int]
   body : Series
   infix : Bool
+  code : Int
 }
+pub fn Func::arity(Self) -> Int
+pub fn Func::code(Self) -> Int
+pub fn Func::is_infix(Self) -> Bool
 pub fn Func::make(Array[Int], Series, Bool) -> Self
+pub fn Func::native(Int, Bool, Int) -> Self
 
 pub struct Lexeme {
   sym : Int
   spelling : String
   binding : Binding
 }
+pub fn Lexeme::binding(Self) -> Binding
 pub fn Lexeme::make(Int, String) -> Self
 pub fn Lexeme::read(Self) -> Cell?
 pub fn Lexeme::snapshot(Self) -> Self

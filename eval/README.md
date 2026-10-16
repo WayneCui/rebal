@@ -1,6 +1,6 @@
 # eval
 
-`Do_Next`、`do`、`do/next`、中缀、`func`、`make object!`、路径和 `reduce`。
+`Do_Next`、`do`、`do/next`、中缀。`func`、`make object!`、路径和 `reduce` 还没接上。
 
 ## 不变量
 
@@ -8,4 +8,4 @@
 
 ## 不做
 
-端口、脚本文件和 parse。
+端口、脚本文件、parse、函数体和对象。

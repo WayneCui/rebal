@@ -1,11 +1,35 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "rebal/eval"
 
+import {
+  "rebal/value",
+}
+
 // Values
+pub fn do_next(Env, @value.Cell) -> (@value.Cell, @value.Cell) raise EvalError
+
+pub fn eval(Env, @value.Cell) -> @value.Cell raise EvalError
+
+pub fn load(Env, String) -> @value.Cell raise EvalError
+
+pub fn run(Env, String) -> @value.Cell raise EvalError
 
 // Errors
+pub(all) suberror EvalError {
+  NoValue(String)
+  MissingArg(String)
+  OpArg(String)
+  Cannot(String)
+  BadSource(String)
+}
+pub fn EvalError::id(Self) -> String
 
 // Types and methods
+pub struct Env {
+  symbols : @value.Symbols
+  user : @value.Frame
+}
+pub fn Env::new() -> Self
 
 // Type aliases
 

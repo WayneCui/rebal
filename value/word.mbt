@@ -28,6 +28,11 @@ pub fn Lexeme::sym(self : Lexeme) -> Int {
 }
 
 ///|
+pub fn Lexeme::binding(self : Lexeme) -> Binding {
+  self.binding
+}
+
+///|
 pub fn Lexeme::with_binding(self : Lexeme, binding : Binding) -> Lexeme {
   { sym: self.sym, spelling: self.spelling, binding, }
 }
