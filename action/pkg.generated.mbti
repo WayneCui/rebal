@@ -1,11 +1,40 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "rebal/action"
 
+import {
+  "rebal/value",
+}
+
 // Values
+pub fn add(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn append(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn copy(@value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn find(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn first(@value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn insert(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn length(@value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn multiply(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn pick(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn remove(@value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn subtract(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
 // Errors
 
 // Types and methods
+pub enum ActionError {
+  Cannot(String)
+}
+pub fn ActionError::id(Self) -> String
 
 // Type aliases
 
