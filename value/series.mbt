@@ -85,6 +85,33 @@ pub fn Series::set_item(self : Series, index : Int, cell : Cell) -> Bool {
 }
 
 ///|
+pub fn Series::insert_item(self : Series, index : Int, cell : Cell) -> Bool {
+  match self.payload {
+    Items(xs) =>
+      if index >= 0 && index <= xs.length() {
+        xs.insert(index, cell)
+        true
+      } else {
+        false
+      }
+    Text(_) | Bytes(_) => false
+  }
+}
+
+///|
+pub fn Series::remove_item(self : Series, index : Int) -> Cell? {
+  match self.payload {
+    Items(xs) =>
+      if index >= 0 && index < xs.length() {
+        Some(xs.remove(index))
+      } else {
+        None
+      }
+    Text(_) | Bytes(_) => None
+  }
+}
+
+///|
 pub fn Series::push_item(self : Series, cell : Cell) -> Bool {
   match self.payload {
     Items(xs) => {
@@ -104,6 +131,33 @@ pub fn Series::code(self : Series, index : Int) -> Int? {
 }
 
 ///|
+pub fn Series::insert_code(self : Series, index : Int, code : Int) -> Bool {
+  match self.payload {
+    Text(xs) =>
+      if index >= 0 && index <= xs.length() {
+        xs.insert(index, code)
+        true
+      } else {
+        false
+      }
+    Items(_) | Bytes(_) => false
+  }
+}
+
+///|
+pub fn Series::remove_code(self : Series, index : Int) -> Int? {
+  match self.payload {
+    Text(xs) =>
+      if index >= 0 && index < xs.length() {
+        Some(xs.remove(index))
+      } else {
+        None
+      }
+    Items(_) | Bytes(_) => None
+  }
+}
+
+///|
 pub fn Series::push_code(self : Series, code : Int) -> Bool {
   match self.payload {
     Text(xs) => {
@@ -118,6 +172,33 @@ pub fn Series::push_code(self : Series, code : Int) -> Bool {
 pub fn Series::byte_at(self : Series, index : Int) -> Byte? {
   match self.payload {
     Bytes(xs) => xs.get(index)
+    Items(_) | Text(_) => None
+  }
+}
+
+///|
+pub fn Series::insert_byte(self : Series, index : Int, byte : Byte) -> Bool {
+  match self.payload {
+    Bytes(xs) =>
+      if index >= 0 && index <= xs.length() {
+        xs.insert(index, byte)
+        true
+      } else {
+        false
+      }
+    Items(_) | Text(_) => false
+  }
+}
+
+///|
+pub fn Series::remove_byte(self : Series, index : Int) -> Byte? {
+  match self.payload {
+    Bytes(xs) =>
+      if index >= 0 && index < xs.length() {
+        Some(xs.remove(index))
+      } else {
+        None
+      }
     Items(_) | Text(_) => None
   }
 }

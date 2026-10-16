@@ -1,7 +1,40 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "rebal/series"
 
+import {
+  "rebal/value",
+}
+
 // Values
+pub fn append(@value.Cell, @value.Cell) -> @value.Cell?
+
+pub fn at(@value.Cell, Int) -> @value.Cell?
+
+pub fn copy(@value.Cell) -> @value.Cell?
+
+pub fn find(@value.Cell, @value.Cell) -> @value.Cell
+
+pub fn head(@value.Cell) -> @value.Cell?
+
+pub fn index(@value.Cell) -> Int?
+
+pub fn insert(@value.Cell, @value.Cell) -> @value.Cell?
+
+pub fn is_tail(@value.Cell) -> Bool?
+
+pub fn length(@value.Cell) -> Int?
+
+pub fn next(@value.Cell) -> @value.Cell?
+
+pub fn pick(@value.Cell, Int) -> @value.Cell
+
+pub fn poke(@value.Cell, Int, @value.Cell) -> @value.Cell?
+
+pub fn remove(@value.Cell) -> @value.Cell?
+
+pub fn skip(@value.Cell, Int) -> @value.Cell?
+
+pub fn tail(@value.Cell) -> @value.Cell?
 
 // Errors
 

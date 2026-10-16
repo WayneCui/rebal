@@ -106,6 +106,9 @@ pub fn Series::byte_at(Self, Int) -> Byte?
 pub fn Series::code(Self, Int) -> Int?
 pub fn Series::copy_from(Self, Int) -> Self
 pub fn Series::datatype(Self) -> Datatype
+pub fn Series::insert_byte(Self, Int, Byte) -> Bool
+pub fn Series::insert_code(Self, Int, Int) -> Bool
+pub fn Series::insert_item(Self, Int, Cell) -> Bool
 pub fn Series::item(Self, Int) -> Cell?
 pub fn Series::length(Self) -> Int
 pub fn Series::paren() -> Self
@@ -113,6 +116,9 @@ pub fn Series::path() -> Self
 pub fn Series::push_byte(Self, Byte) -> Bool
 pub fn Series::push_code(Self, Int) -> Bool
 pub fn Series::push_item(Self, Cell) -> Bool
+pub fn Series::remove_byte(Self, Int) -> Byte?
+pub fn Series::remove_code(Self, Int) -> Int?
+pub fn Series::remove_item(Self, Int) -> Cell?
 pub fn Series::set_item(Self, Int, Cell) -> Bool
 pub fn Series::set_path() -> Self
 pub fn Series::text() -> Self
