@@ -1,38 +1,43 @@
 ///|
-/// Turns a string or a binary into base-64 text. Only base 64 is accepted.
+/// Turns a string or a binary into base-64 or base-16 text.
 fn perform_enbase(
   value : @value.Cell,
   base : @value.Cell,
 ) -> @value.Cell raise EvalError {
-  if !is_base64(base) {
-    raise EvalError::Cannot("enbase")
+  let bytes = payload_bytes(value, "enbase")
+  match coding_base(base) {
+    Some(64) => text_series(encode_base64(bytes))
+    Some(16) => text_series(encode_base16(bytes))
+    _ => raise EvalError::Cannot("enbase")
   }
-  text_series(encode_base64(payload_bytes(value, "enbase")))
 }
 
 ///|
-/// Turns base-64 text back into a binary. Spaces and line breaks are skipped.
+/// Turns base-64 or base-16 text back into a binary. Spaces and line breaks are skipped.
 fn perform_debase(
   value : @value.Cell,
   base : @value.Cell,
 ) -> @value.Cell raise EvalError {
-  if !is_base64(base) {
-    raise EvalError::Cannot("debase")
-  }
-  match value {
+  let text = match value {
     @value.Seq(series, index) if @value.text_series(series.datatype()) =>
-      binary_cell(decode_base64(text_from(series, index)))
+      text_from(series, index)
     @value.Seq(series, index) if series.datatype() == @value.Binary =>
-      binary_cell(decode_base64(latin_text(bytes_from(series, index))))
+      latin_text(bytes_from(series, index))
+    _ => raise EvalError::Cannot("debase")
+  }
+  match coding_base(base) {
+    Some(64) => binary_cell(decode_base64(text))
+    Some(16) => binary_cell(decode_base16(text))
     _ => raise EvalError::Cannot("debase")
   }
 }
 
 ///|
-fn is_base64(base : @value.Cell) -> Bool {
+fn coding_base(base : @value.Cell) -> Int? {
   match base {
-    @value.Integer(n) => n == 64L
-    _ => false
+    @value.Integer(64L) => Some(64)
+    @value.Integer(16L) => Some(16)
+    _ => None
   }
 }
 
@@ -204,6 +209,64 @@ fn decode_base64(text : String) -> Array[Int] raise EvalError {
 ///|
 fn is_b64_space(char : Char) -> Bool {
   char == ' ' || char == '\t' || char == '\n' || char == '\r'
+}
+
+///|
+fn encode_base16(bytes : Array[Int]) -> String {
+  let buf = StringBuilder()
+  for byte in bytes {
+    buf.write_char(hex_digit(byte / 16))
+    buf.write_char(hex_digit(byte % 16))
+  }
+  buf.to_string()
+}
+
+///|
+fn hex_digit(n : Int) -> Char {
+  if n < 10 {
+    ('0'.to_int() + n).to_char().unwrap()
+  } else {
+    ('A'.to_int() + n - 10).to_char().unwrap()
+  }
+}
+
+///|
+fn decode_base16(text : String) -> Array[Int] raise EvalError {
+  let digits : Array[Int] = []
+  for char in text {
+    if is_b64_space(char) {
+      ()
+    } else {
+      match hex_value(char) {
+        Some(value) => digits.push(value)
+        None => raise EvalError::Cannot("debase")
+      }
+    }
+  }
+  if digits.length() % 2 != 0 {
+    raise EvalError::Cannot("debase")
+  }
+  let bytes : Array[Int] = []
+  let mut index = 0
+  while index < digits.length() {
+    bytes.push(digits[index] * 16 + digits[index + 1])
+    index = index + 2
+  }
+  bytes
+}
+
+///|
+fn hex_value(char : Char) -> Int? {
+  let code = char.to_int()
+  if char >= '0' && char <= '9' {
+    Some(code - '0'.to_int())
+  } else if char >= 'A' && char <= 'F' {
+    Some(code - 'A'.to_int() + 10)
+  } else if char >= 'a' && char <= 'f' {
+    Some(code - 'a'.to_int() + 10)
+  } else {
+    None
+  }
 }
 
 ///|

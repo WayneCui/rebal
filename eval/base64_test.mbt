@@ -31,10 +31,37 @@ test "enbase and debase round-trip base 64" {
   }
   assert_true(bad)
   let other = try {
-    @eval.run(env, "enbase {f} 16") |> ignore
+    @eval.run(env, "enbase {f} 2") |> ignore
     false
   } catch {
     error => error.id() == "cannot"
   }
   assert_true(other)
+}
+
+///|
+test "enbase and debase round-trip base 16" {
+  let env = @eval.Env::new()
+  assert_true(@eval.run(env, "(enbase {f} 16) = {66}") is @value.Logic(true))
+  assert_true(
+    @eval.run(env, "(enbase {foobar} 16) = {666F6F626172}")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(enbase #{00FF} 16) = {00FF}") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(debase {666F6F626172} 16) = #{666F6F626172}")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(debase {66 6f} 16) = #{666F}") is @value.Logic(true),
+  )
+  let odd = try {
+    @eval.run(env, "debase {666} 16") |> ignore
+    false
+  } catch {
+    error => error.id() == "cannot"
+  }
+  assert_true(odd)
 }
