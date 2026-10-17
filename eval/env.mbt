@@ -284,6 +284,9 @@ let native_change : Int = 92
 let native_trim : Int = 93
 
 ///|
+let native_select : Int = 94
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -382,6 +385,7 @@ pub fn Env::new() -> Env {
   define_native(env, "swap", 2, false, native_swap)
   define_native(env, "change", 2, false, native_change)
   define_native(env, "trim", 1, false, native_trim)
+  define_native(env, "select", 2, false, native_select)
   install(env, "unset!", @value.Type(@value.Unset))
   install(env, "none!", @value.Type(@value.None))
   install(env, "logic!", @value.Type(@value.Logic))

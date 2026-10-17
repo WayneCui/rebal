@@ -207,12 +207,19 @@ fn call(
   func : @value.Func,
   active : Array[Int],
 ) -> (@value.Cell, Int) raise EvalError {
-  if func.code() != 0 && active.length() > 0 {
+  if func.code() != 0 && active.length() > 0 && func.code() != native_find {
     raise EvalError::Cannot("func")
   }
   let args : Array[@value.Cell] = []
   let mut cursor = index
-  for _ in 0..<taken_count(func, active) {
+  let count = if func.code() == native_find && named(env, active, "part") {
+    func.arity() + 1
+  } else if func.code() == 0 {
+    taken_count(func, active)
+  } else {
+    func.arity()
+  }
+  for _ in 0..<count {
     if cursor >= series.length() {
       raise EvalError::MissingArg("argument")
     }
@@ -220,11 +227,25 @@ fn call(
     args.push(arg)
     cursor = next
   }
-  if func.code() == 0 {
+  if func.code() == native_find {
+    (perform_find(env, args, active), cursor)
+  } else if func.code() == 0 {
     (call_user(env, func, args, active), cursor)
   } else {
     (apply(env, func, args), cursor)
   }
+}
+
+///|
+fn named(env : Env, active : Array[Int], spelling : String) -> Bool {
+  let sym = env.symbols.intern(spelling)
+  let mut found = false
+  for active_sym in active {
+    if active_sym == sym {
+      found = true
+    }
+  }
+  found
 }
 
 ///|
@@ -440,6 +461,8 @@ fn apply(
     from_action(@action.change(args[0], args[1]))
   } else if func.code() == native_trim {
     from_action(@action.trim(args[0]))
+  } else if func.code() == native_select {
+    from_action(@action.select(args[0], args[1]))
   } else {
     raise EvalError::Cannot("function")
   }

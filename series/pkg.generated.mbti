@@ -18,6 +18,8 @@ pub fn copy(@value.Cell) -> @value.Cell?
 
 pub fn find(@value.Cell, @value.Cell) -> @value.Cell
 
+pub fn find_with(@value.Cell, @value.Cell, Bool, Bool, Bool, Bool, Bool, Int?) -> @value.Cell
+
 pub fn head(@value.Cell) -> @value.Cell?
 
 pub fn index(@value.Cell) -> Int?
@@ -37,6 +39,8 @@ pub fn poke(@value.Cell, Int, @value.Cell) -> @value.Cell?
 pub fn remove(@value.Cell) -> @value.Cell?
 
 pub fn reverse(@value.Cell) -> @value.Cell?
+
+pub fn select(@value.Cell, @value.Cell) -> @value.Cell
 
 pub fn skip(@value.Cell, Int) -> @value.Cell?
 

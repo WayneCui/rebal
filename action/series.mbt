@@ -29,10 +29,48 @@ pub fn find(
   series : @value.Cell,
   value : @value.Cell,
 ) -> Result[@value.Cell, ActionError] {
-  if is_series(series) {
-    Ok(@series.find(series, value))
-  } else {
-    Err(Cannot("find"))
+  seek(series, value, false, false, false, false, false, None)
+}
+
+///|
+pub fn seek(
+  series : @value.Cell,
+  value : @value.Cell,
+  last : Bool,
+  reverse : Bool,
+  match_only : Bool,
+  tail : Bool,
+  only : Bool,
+  part : Int?,
+) -> Result[@value.Cell, ActionError] {
+  match series {
+    @value.None => Ok(@value.None)
+    _ =>
+      if is_series(series) {
+        Ok(
+          @series.find_with(
+            series, value, last, reverse, match_only, tail, only, part,
+          ),
+        )
+      } else {
+        Err(Cannot("find"))
+      }
+  }
+}
+
+///|
+pub fn select(
+  series : @value.Cell,
+  value : @value.Cell,
+) -> Result[@value.Cell, ActionError] {
+  match series {
+    @value.None => Ok(@value.None)
+    _ =>
+      if is_series(series) {
+        Ok(@series.select(series, value))
+      } else {
+        Err(Cannot("select"))
+      }
   }
 }
 

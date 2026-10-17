@@ -94,6 +94,10 @@ pub fn reverse(@value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn round(@value.Cell) -> Result[@value.Cell, ActionError]
 
+pub fn seek(@value.Cell, @value.Cell, Bool, Bool, Bool, Bool, Bool, Int?) -> Result[@value.Cell, ActionError]
+
+pub fn select(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
+
 pub fn shift(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn shift_left(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
