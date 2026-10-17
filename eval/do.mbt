@@ -320,6 +320,10 @@ fn apply(
     perform_suffix(args[0])
   } else if func.code() == native_split_path {
     perform_split_path(args[0])
+  } else if func.code() == native_what_dir {
+    perform_what_dir()
+  } else if func.code() == native_change_dir {
+    perform_change_dir(args[0])
   } else if func.code() == native_copy {
     from_action(@action.copy(args[0]))
   } else if func.code() == native_insert {

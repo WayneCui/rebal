@@ -335,6 +335,52 @@ int32_t rebal_make_dir(moonbit_string_t path, int32_t path_len) {
   return failed ? 1 : 0;
 }
 
+static int32_t rebal_cwd_status = 0;
+
+int32_t rebal_cwd_code(void) { return rebal_cwd_status; }
+
+moonbit_string_t rebal_current_dir(void) {
+  rebal_cwd_status = 0;
+  char *buf = getcwd(NULL, 0);
+  if (buf == NULL) {
+    rebal_cwd_status = 1;
+    return moonbit_make_string(0, 0);
+  }
+  size_t len = strlen(buf);
+  int add = (len == 0 || buf[len - 1] != '/') ? 1 : 0;
+  unsigned char *full = (unsigned char *)malloc(len + (size_t)add);
+  if (full == NULL) {
+    free(buf);
+    rebal_cwd_status = 1;
+    return moonbit_make_string(0, 0);
+  }
+  memcpy(full, buf, len);
+  if (add) {
+    full[len] = '/';
+  }
+  free(buf);
+  int32_t units = rebal_utf8_units(full, len + (size_t)add);
+  if (units < 0) {
+    free(full);
+    rebal_cwd_status = 2;
+    return moonbit_make_string(0, 0);
+  }
+  moonbit_string_t text = moonbit_make_string(units, 0);
+  rebal_fill_utf16(text, full, len + (size_t)add);
+  free(full);
+  return text;
+}
+
+int32_t rebal_change_dir(moonbit_string_t path, int32_t path_len) {
+  char *cpath = rebal_to_utf8(path, path_len);
+  if (cpath == NULL) {
+    return 1;
+  }
+  int failed = chdir(cpath) != 0;
+  free(cpath);
+  return failed ? 1 : 0;
+}
+
 static int32_t rebal_call_result = 0;
 
 int32_t rebal_call_code(void) { return rebal_call_result; }

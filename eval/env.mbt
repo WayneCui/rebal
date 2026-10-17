@@ -416,6 +416,12 @@ let native_suffix_q : Int = 136
 let native_split_path : Int = 137
 
 ///|
+let native_what_dir : Int = 138
+
+///|
+let native_change_dir : Int = 139
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -432,6 +438,8 @@ pub fn Env::new() -> Env {
   define_native(env, "last", 1, false, native_last)
   define_native(env, "suffix?", 1, false, native_suffix_q)
   define_native(env, "split-path", 1, false, native_split_path)
+  define_native(env, "what-dir", 0, false, native_what_dir)
+  define_native(env, "change-dir", 1, false, native_change_dir)
   define_native(env, "copy", 1, false, native_copy)
   define_native(env, "insert", 2, false, native_insert)
   define_native(env, "remove", 1, false, native_remove)
