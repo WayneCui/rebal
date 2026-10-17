@@ -48,6 +48,8 @@ fn perform_load(env : Env, source : @value.Cell) -> @value.Cell raise EvalError 
     }
   } else if key_file(source) {
     decode_ssh_key(env, text_series(read_file(loaded_path(source))))
+  } else if ppk_file(source) {
+    decode_ppk(env, text_series(read_file(loaded_path(source))))
   } else {
     singular(drop_header(load(env, source_text(source))))
   }
@@ -70,13 +72,23 @@ fn pkix_file(source : @value.Cell) -> Bool raise EvalError {
 }
 
 ///|
+/// %.ppk is a PuTTY key, as in codec-ppk.reb.
+fn ppk_file(source : @value.Cell) -> Bool raise EvalError {
+  suffix_is(source, ".ppk")
+}
+
+///|
 /// %.key is an SSH key, as in codec-ssh-key.reb.
 fn key_file(source : @value.Cell) -> Bool raise EvalError {
+  suffix_is(source, ".key")
+}
+
+///|
+fn suffix_is(source : @value.Cell, suffix : String) -> Bool raise EvalError {
   match source {
     @value.Seq(series, _) if series.datatype() == @value.File =>
       match perform_suffix(source) {
-        @value.Seq(suffix, index) =>
-          text_from(suffix, index).to_lower() == ".key"
+        @value.Seq(named, index) => text_from(named, index).to_lower() == suffix
         _ => false
       }
     _ => false
