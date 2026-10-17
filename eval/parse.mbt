@@ -117,10 +117,23 @@ fn match_seq(
           when_true(env, input, pos, rules, cursor, end)
         } else if is_word(Some(rule), "into") {
           enter(env, input, pos, rules, cursor, end)
+        } else if is_word(Some(rule), "opt") {
+          counted_at(env, input, pos, rules, cursor + 1, end, 0L, 1L)
+        } else if is_word(Some(rule), "not") {
+          reject(env, input, pos, rules, cursor, end)
+        } else if is_word(Some(rule), "ahead") || is_word(Some(rule), "and") {
+          look_ahead(env, input, pos, rules, cursor, end)
+        } else if is_word(Some(rule), "quote") {
+          quoted(env, input, pos, rules, cursor, end)
         } else {
-          match match_one(env, input, pos, rule) {
-            Some(next) => match_seq(env, input, next, rules, cursor + 1, end)
-            None => None
+          match rule {
+            @value.Integer(n) => counted(env, input, pos, rules, cursor, end, n)
+            _ =>
+              match match_one(env, input, pos, rule) {
+                Some(next) =>
+                  match_seq(env, input, next, rules, cursor + 1, end)
+                None => None
+              }
           }
         }
       None => None
@@ -178,6 +191,255 @@ fn repeat_rule(
     index = index - 1
   }
   found
+}
+
+///|
+/// `n rule` repeats `rule` exactly `n` times. `min max rule` repeats it between the two counts.
+fn counted(
+  env : Env,
+  input : @value.Series,
+  pos : Int,
+  rules : @value.Series,
+  cursor : Int,
+  end : Int,
+  n : Int64,
+) -> Int? raise EvalError {
+  if n < 0L {
+    raise EvalError::Cannot("parse")
+  }
+  let least = n
+  let mut most = n
+  let mut rule_at = cursor + 1
+  if rule_at < end {
+    match rules.item(rule_at) {
+      Some(@value.Integer(m)) => {
+        most = m
+        rule_at = rule_at + 1
+      }
+      _ => ()
+    }
+  }
+  if most < least {
+    raise EvalError::Cannot("parse")
+  }
+  counted_at(env, input, pos, rules, rule_at, end, least, most)
+}
+
+///|
+fn counted_at(
+  env : Env,
+  input : @value.Series,
+  pos : Int,
+  rules : @value.Series,
+  rule_at : Int,
+  end : Int,
+  least : Int64,
+  most : Int64,
+) -> Int? raise EvalError {
+  if rule_at >= end {
+    raise EvalError::Cannot("parse")
+  }
+  let width = rule_width(rules, rule_at, end)
+  let stops : Array[Int] = [pos]
+  let mut current = pos
+  let mut times = 0L
+  let mut running = true
+  while running && times < most {
+    match one_step(env, input, current, rules, rule_at, rule_at + width) {
+      Some((next, _)) => {
+        stops.push(next)
+        times = times + 1L
+        if next == current {
+          running = false
+        } else {
+          current = next
+        }
+      }
+      None => running = false
+    }
+  }
+  if times < least {
+    None
+  } else {
+    let mut index = stops.length() - 1
+    let mut found : Int? = None
+    while found is None && index >= 0 && index.to_int64() >= least {
+      found = match_seq(env, input, stops[index], rules, rule_at + width, end)
+      index = index - 1
+    }
+    found
+  }
+}
+
+///|
+fn reject(
+  env : Env,
+  input : @value.Series,
+  pos : Int,
+  rules : @value.Series,
+  cursor : Int,
+  end : Int,
+) -> Int? raise EvalError {
+  let rule_at = cursor + 1
+  if rule_at >= end {
+    raise EvalError::Cannot("parse")
+  }
+  let width = rule_width(rules, rule_at, end)
+  match one_step(env, input, pos, rules, rule_at, rule_at + width) {
+    Some(_) => None
+    None => match_seq(env, input, pos, rules, rule_at + width, end)
+  }
+}
+
+///|
+fn look_ahead(
+  env : Env,
+  input : @value.Series,
+  pos : Int,
+  rules : @value.Series,
+  cursor : Int,
+  end : Int,
+) -> Int? raise EvalError {
+  let rule_at = cursor + 1
+  if rule_at >= end {
+    raise EvalError::Cannot("parse")
+  }
+  let width = rule_width(rules, rule_at, end)
+  match one_step(env, input, pos, rules, rule_at, rule_at + width) {
+    Some(_) => match_seq(env, input, pos, rules, rule_at + width, end)
+    None => None
+  }
+}
+
+///|
+fn quoted(
+  env : Env,
+  input : @value.Series,
+  pos : Int,
+  rules : @value.Series,
+  cursor : Int,
+  end : Int,
+) -> Int? raise EvalError {
+  match one_step(env, input, pos, rules, cursor, end) {
+    Some((next, next_cursor)) =>
+      match_seq(env, input, next, rules, next_cursor, end)
+    None => None
+  }
+}
+
+///|
+fn one_step(
+  env : Env,
+  input : @value.Series,
+  pos : Int,
+  rules : @value.Series,
+  cursor : Int,
+  limit : Int,
+) -> (Int, Int)? raise EvalError {
+  if cursor >= limit {
+    raise EvalError::Cannot("parse")
+  }
+  match rules.item(cursor) {
+    Some(rule) =>
+      if is_word(Some(rule), "skip") {
+        if pos >= input.length() {
+          None
+        } else {
+          Some((pos + 1, cursor + 1))
+        }
+      } else if is_word(Some(rule), "end") {
+        if pos == input.length() {
+          Some((pos, cursor + 1))
+        } else {
+          None
+        }
+      } else if is_word(Some(rule), "fail") {
+        None
+      } else if is_word(Some(rule), "quote") {
+        match rules.item(cursor + 1) {
+          Some(value) =>
+            match quote_at(input, pos, value) {
+              Some(next) => Some((next, cursor + 2))
+              None => None
+            }
+          None => raise EvalError::Cannot("parse")
+        }
+      } else if is_word(Some(rule), "to") || is_word(Some(rule), "thru") {
+        match rules.item(cursor + 1) {
+          Some(target) =>
+            match
+              advance_to(env, input, pos, target, is_word(Some(rule), "thru")) {
+              Some(next) => Some((next, cursor + 2))
+              None => None
+            }
+          None => raise EvalError::Cannot("parse")
+        }
+      } else if is_command(rule) {
+        raise EvalError::Cannot("parse")
+      } else {
+        match match_one(env, input, pos, rule) {
+          Some(next) => Some((next, cursor + 1))
+          None => None
+        }
+      }
+    None => raise EvalError::Cannot("parse")
+  }
+}
+
+///|
+fn rule_width(
+  rules : @value.Series,
+  cursor : Int,
+  limit : Int,
+) -> Int raise EvalError {
+  match rules.item(cursor) {
+    Some(rule) =>
+      if is_word(Some(rule), "quote") ||
+        is_word(Some(rule), "to") ||
+        is_word(Some(rule), "thru") {
+        if cursor + 1 >= limit {
+          raise EvalError::Cannot("parse")
+        }
+        2
+      } else {
+        1
+      }
+    None => raise EvalError::Cannot("parse")
+  }
+}
+
+///|
+fn quote_at(input : @value.Series, pos : Int, value : @value.Cell) -> Int? {
+  if input.datatype() == @value.String {
+    match value {
+      @value.Char(code) =>
+        if input.code(pos) == Some(code) {
+          Some(pos + 1)
+        } else {
+          None
+        }
+      @value.Seq(source, source_index) if source.datatype() == @value.String =>
+        match_text(input, pos, source, source_index)
+      _ => None
+    }
+  } else {
+    match_value(input, pos, value)
+  }
+}
+
+///|
+fn is_command(cell : @value.Cell) -> Bool {
+  is_word(Some(cell), "some") ||
+  is_word(Some(cell), "any") ||
+  is_word(Some(cell), "copy") ||
+  is_word(Some(cell), "set") ||
+  is_word(Some(cell), "into") ||
+  is_word(Some(cell), "break") ||
+  is_word(Some(cell), "if") ||
+  is_word(Some(cell), "opt") ||
+  is_word(Some(cell), "not") ||
+  is_word(Some(cell), "ahead") ||
+  is_word(Some(cell), "and")
 }
 
 ///|
@@ -468,6 +730,11 @@ fn bad_target(spelling : String) -> Bool {
   spelling == "break" ||
   spelling == "fail" ||
   spelling == "if" ||
+  spelling == "opt" ||
+  spelling == "not" ||
+  spelling == "ahead" ||
+  spelling == "and" ||
+  spelling == "quote" ||
   spelling == "|"
 }
 

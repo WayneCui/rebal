@@ -30,7 +30,8 @@ test "parse literals, alternatives, some, any, end, and a bitset" {
     @eval.run(env, "(parse {b} [some {a}]) = false") is @value.Logic(true),
   )
   assert_true(
-    @eval.run(env, "(parse [1 2 3] [1 2]) = true") is @value.Logic(true),
+    @eval.run(env, "(parse [1 2 3] [quote 1 quote 2]) = true")
+    is @value.Logic(true),
   )
   assert_true(
     @eval.run(env, "(parse {b} reduce [make bitset! {abc}]) = true")
@@ -128,11 +129,12 @@ test "parse copy, set, and a saved input position" {
 test "parse into a nested series, and break out of some" {
   let env = @eval.Env::new()
   assert_true(
-    @eval.run(env, "(parse [[1 2] 3] [into [1 2] 3]) = true")
+    @eval.run(env, "(parse [[1 2] 3] [into [quote 1 quote 2] quote 3]) = true")
     is @value.Logic(true),
   )
   assert_true(
-    @eval.run(env, "(parse [[1 2]] [into [1]]) = false") is @value.Logic(true),
+    @eval.run(env, "(parse [[1 2]] [into [quote 1]]) = false")
+    is @value.Logic(true),
   )
   assert_true(
     @eval.run(env, "(parse [{ab}] [into [{ab}]]) = true") is @value.Logic(true),
@@ -175,4 +177,66 @@ test "parse fail and if" {
     error => error.id() == "cannot"
   }
   assert_true(missing)
+}
+
+///|
+test "parse repetition, opt, not, ahead, and quote" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(env, "(parse {aaa} [3 #\"a\" end]) = true") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse {aa} [3 #\"a\"]) = false") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse {aaa} [1 3 #\"a\" end]) = true")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse {a} [2 3 #\"a\"]) = false") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse {aaaa} [1 3 #\"a\" #\"a\" end]) = true")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse {a} [0 #\"b\" #\"a\" end]) = true")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse {ab} [opt #\"a\" #\"b\" end]) = true")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse {b} [opt #\"a\" #\"b\" end]) = true")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse {a} [opt #\"a\" #\"a\"]) = true")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse {ab} [not #\"b\" #\"a\"]) = true")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse {ab} [not #\"a\"]) = false") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse {ab} [ahead #\"a\" {ab} end]) = true")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse {ab} [ahead #\"b\"]) = false") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse [a] [quote a]) = true") is @value.Logic(true),
+  )
+  let bare = try {
+    @eval.run(env, "parse {a} [3]") |> ignore
+    false
+  } catch {
+    error => error.id() == "cannot"
+  }
+  assert_true(bare)
 }
