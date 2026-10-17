@@ -173,6 +173,23 @@ test "crypt opens from a spec object" {
 }
 
 ///|
+test "crypt camellia-256-ecb matches RFC 3713" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "port: open crypt://camellia-256-ecb\nmodify port 'key #{0123456789ABCDEFFEDCBA987654321000112233445566778899AABBCCDDEEFF}\ncipher: read write port #{0123456789ABCDEFFEDCBA9876543210}\nmodify port 'direction 'decrypt\nplain: read write port cipher\n(reduce [cipher plain]) = reduce [#{9ACC237DFF16D76C20EF7C919E3A7509} #{0123456789ABCDEFFEDCBA9876543210}]",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "port: open crypt://camellia-256-ecb\nmodify port 'key #{000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F}\n(read write port #{00112233445566778899AABBCCDDEEFF}) = #{2EDF1F3418D53B88841FC8985FB1ECF2}",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "crypt camellia-192-ecb matches RFC 3713" {
   let env = @eval.Env::new()
   assert_true(

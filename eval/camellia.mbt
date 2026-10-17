@@ -262,12 +262,12 @@ fn store64(out : Array[Int], value : UInt64) -> Unit {
 }
 
 ///|
-/// 192-bit keys use the rightmost 64 bits and their complement as KR.
+/// 192-bit keys complement the last 64 bits. 256-bit keys use the last 128 bits.
 fn camellia192_subkeys(key : Array[Int]) -> Array[UInt64] {
   let kl_high = load64(key, 0)
   let kl_low = load64(key, 8)
   let kr_high = load64(key, 16)
-  let kr_low = kr_high.lnot()
+  let kr_low = if key.length() == 32 { load64(key, 24) } else { kr_high.lnot() }
   let (ka_high, ka_low) = camellia_ka(kl_high, kl_low, kr_high, kr_low)
   let (kb_high, kb_low) = camellia_kb(ka_high, ka_low, kr_high, kr_low)
   let keys : Array[UInt64] = []
