@@ -10,6 +10,13 @@ priv struct CryptSlot {
   mut camellia : Bool
   mut cam_enc : Array[UInt64]
   mut cam_dec : Array[UInt64]
+  mut chacha : Bool
+  mut chacha_key : Array[Int]
+  mut chacha_nonce : Array[Int]
+  mut chacha_base : UInt64
+  mut chacha_counter : UInt64
+  mut chacha_off : Int
+  mut chacha_stream : Array[Int]
   mut iv_ready : Bool
   mut iv : Array[Int]
   mut rounds : Array[Int]
@@ -65,6 +72,7 @@ fn crypt_open(env : Env, port : @value.Cell) -> @value.Cell raise EvalError {
               kind.0,
               kind.1,
               kind.2,
+              kind.3,
             )
             value.set_handle(handle)
             errdefer (if !value.is_open() {
@@ -192,6 +200,10 @@ fn crypt_set_direction(
       }
     _ => raise EvalError::Cannot("modify")
   }
+  if slot.chacha {
+    chacha_rewind(slot)
+    slot.pending = []
+  }
 }
 
 ///|
@@ -206,10 +218,12 @@ fn crypt_set_algorithm(
           slot.key_len = kind.0
           slot.cbc = kind.1
           slot.camellia = kind.2
+          slot.chacha = kind.3
           slot.key_ready = false
           slot.rounds = []
           slot.cam_enc = []
           slot.cam_dec = []
+          chacha_blank(slot)
           slot.pending = []
         }
         None => raise EvalError::Cannot("modify")
@@ -219,32 +233,34 @@ fn crypt_set_algorithm(
 }
 
 ///|
-/// Key length, CBC chaining, then whether the block cipher is Camellia.
-fn cipher_kind(name : String) -> (Int, Bool, Bool)? {
+/// Key length, CBC, Camellia, then ChaCha20.
+fn cipher_kind(name : String) -> (Int, Bool, Bool, Bool)? {
   if name == "aes-128-ecb" {
-    Some((16, false, false))
+    Some((16, false, false, false))
   } else if name == "aes-192-ecb" {
-    Some((24, false, false))
+    Some((24, false, false, false))
   } else if name == "aes-256-ecb" {
-    Some((32, false, false))
+    Some((32, false, false, false))
   } else if name == "aes-128-cbc" {
-    Some((16, true, false))
+    Some((16, true, false, false))
   } else if name == "aes-192-cbc" {
-    Some((24, true, false))
+    Some((24, true, false, false))
   } else if name == "aes-256-cbc" {
-    Some((32, true, false))
+    Some((32, true, false, false))
   } else if name == "camellia-128-ecb" {
-    Some((16, false, true))
+    Some((16, false, true, false))
   } else if name == "camellia-128-cbc" {
-    Some((16, true, true))
+    Some((16, true, true, false))
   } else if name == "camellia-192-ecb" {
-    Some((24, false, true))
+    Some((24, false, true, false))
   } else if name == "camellia-192-cbc" {
-    Some((24, true, true))
+    Some((24, true, true, false))
   } else if name == "camellia-256-ecb" {
-    Some((32, false, true))
+    Some((32, false, true, false))
   } else if name == "camellia-256-cbc" {
-    Some((32, true, true))
+    Some((32, true, true, false))
+  } else if name == "chacha20" {
+    Some((32, false, false, true))
   } else {
     None
   }
@@ -254,20 +270,28 @@ fn cipher_kind(name : String) -> (Int, Bool, Bool)? {
 /// ECB ignores the vector. CBC keeps a 16-byte vector and updates it per block.
 fn crypt_set_iv(slot : CryptSlot, value : @value.Cell) -> Unit raise EvalError {
   match value {
-    @value.None =>
+    @value.None => {
       if slot.cbc {
         slot.iv = []
         slot.iv_ready = false
       }
-    @value.Seq(series, index) if series.datatype() == @value.Binary =>
+      if slot.chacha {
+        chacha_clear(slot)
+      }
+    }
+    @value.Seq(series, index) if series.datatype() == @value.Binary => {
+      let bytes = bytes_from(series, index)
       if slot.cbc {
-        let bytes = bytes_from(series, index)
         if bytes.length() != 16 {
           raise EvalError::Cannot("modify")
         }
         slot.iv = bytes
         slot.iv_ready = true
       }
+      if slot.chacha && bytes.length() > 0 {
+        chacha_set_iv(slot, bytes)
+      }
+    }
     _ => raise EvalError::Cannot("modify")
   }
 }
@@ -317,6 +341,10 @@ fn crypt_absorb(slot : CryptSlot, bytes : Array[Int]) -> Unit raise EvalError {
   if !slot.key_ready {
     raise EvalError::Cannot("write")
   }
+  if slot.chacha {
+    chacha_absorb(slot, bytes)
+    return
+  }
   for byte in bytes {
     slot.pending.push(byte)
     if slot.pending.length() == 16 {
@@ -331,7 +359,10 @@ fn crypt_absorb(slot : CryptSlot, bytes : Array[Int]) -> Unit raise EvalError {
 
 ///|
 fn install_key(slot : CryptSlot, key : Array[Int]) -> Unit raise EvalError {
-  if slot.camellia && slot.key_len == 16 {
+  if slot.chacha {
+    slot.chacha_key = key
+    chacha_rewind(slot)
+  } else if slot.camellia && slot.key_len == 16 {
     slot.cam_enc = camellia128_subkeys(key)
     slot.cam_dec = camellia128_decrypt_keys(slot.cam_enc)
   } else if slot.camellia {
@@ -365,7 +396,9 @@ fn crypt_block(slot : CryptSlot) -> Array[Int] raise EvalError {
 
 ///|
 fn raw_block(slot : CryptSlot, block : Array[Int]) -> Array[Int] {
-  if slot.camellia && slot.key_len == 16 {
+  if slot.chacha {
+    chacha_apply(slot, block)
+  } else if slot.camellia && slot.key_len == 16 {
     let keys = if slot.encrypting { slot.cam_enc } else { slot.cam_dec }
     camellia128_crypt(keys, block)
   } else if slot.camellia {
@@ -379,11 +412,136 @@ fn raw_block(slot : CryptSlot, block : Array[Int]) -> Array[Int] {
 }
 
 ///|
+/// A short write stays buffered. Once 16 bytes are in hand, the rest of that
+/// write is encrypted, including a tail shorter than 16.
+fn chacha_absorb(slot : CryptSlot, bytes : Array[Int]) -> Unit {
+  if slot.pending.length() == 0 && bytes.length() >= 16 {
+    chacha_emit(slot, chacha_apply(slot, bytes))
+    return
+  }
+  let mut index = 0
+  while index < bytes.length() && slot.pending.length() < 16 {
+    slot.pending.push(bytes[index])
+    index = index + 1
+  }
+  if slot.pending.length() < 16 {
+    return
+  }
+  chacha_emit(slot, chacha_apply(slot, slot.pending))
+  slot.pending = []
+  let rest = bytes.length() - index
+  if rest >= 16 {
+    let tail : Array[Int] = []
+    while index < bytes.length() {
+      tail.push(bytes[index])
+      index = index + 1
+    }
+    chacha_emit(slot, chacha_apply(slot, tail))
+  } else {
+    while index < bytes.length() {
+      slot.pending.push(bytes[index])
+      index = index + 1
+    }
+  }
+}
+
+///|
+fn chacha_apply(slot : CryptSlot, data : Array[Int]) -> Array[Int] {
+  let out : Array[Int] = []
+  for byte in data {
+    if slot.chacha_off == 0 {
+      slot.chacha_stream = chacha20_block(
+        slot.chacha_key,
+        slot.chacha_counter,
+        slot.chacha_nonce,
+      )
+    }
+    out.push(byte ^ slot.chacha_stream[slot.chacha_off])
+    slot.chacha_off = slot.chacha_off + 1
+    if slot.chacha_off == 64 {
+      slot.chacha_off = 0
+      slot.chacha_counter = slot.chacha_counter + 1UL
+    }
+  }
+  out
+}
+
+///|
+fn chacha_emit(slot : CryptSlot, bytes : Array[Int]) -> Unit {
+  for byte in bytes {
+    slot.output.push(byte)
+  }
+}
+
+///|
+fn chacha_set_iv(slot : CryptSlot, bytes : Array[Int]) -> Unit {
+  let padded : Array[Int] = []
+  let mut index = 0
+  while index < 16 {
+    padded.push(0)
+    index = index + 1
+  }
+  let count = if bytes.length() > 16 { 16 } else { bytes.length() }
+  index = 0
+  while index < count {
+    padded[index] = bytes[index]
+    index = index + 1
+  }
+  let nonce : Array[Int] = []
+  index = 0
+  while index < 12 {
+    nonce.push(padded[index])
+    index = index + 1
+  }
+  slot.chacha_nonce = nonce
+  slot.chacha_base = be32(padded, 12)
+  chacha_rewind(slot)
+  slot.pending = []
+}
+
+///|
+fn chacha_clear(slot : CryptSlot) -> Unit {
+  slot.chacha_nonce = zero_nonce()
+  slot.chacha_base = 0UL
+  chacha_rewind(slot)
+  slot.pending = []
+}
+
+///|
+fn chacha_rewind(slot : CryptSlot) -> Unit {
+  slot.chacha_off = 0
+  slot.chacha_counter = slot.chacha_base
+  slot.chacha_stream = []
+}
+
+///|
+fn chacha_blank(slot : CryptSlot) -> Unit {
+  slot.chacha_key = []
+  slot.chacha_nonce = zero_nonce()
+  slot.chacha_base = 0UL
+  slot.chacha_counter = 0UL
+  slot.chacha_off = 0
+  slot.chacha_stream = []
+}
+
+///|
+fn zero_nonce() -> Array[Int] {
+  let nonce : Array[Int] = []
+  let mut index = 0
+  while index < 12 {
+    nonce.push(0)
+    index = index + 1
+  }
+  nonce
+}
+
+///|
 fn crypt_alloc(
   decrypting : Bool,
   key_len : Int,
   cbc : Bool,
   camellia : Bool,
+  chacha : Bool,
 ) -> Int {
   let mut index = 0
   let mut found = -1
@@ -394,10 +552,10 @@ fn crypt_alloc(
     index = index + 1
   }
   if found >= 0 {
-    crypt_reset(crypts.slots[found], decrypting, key_len, cbc, camellia)
+    crypt_reset(crypts.slots[found], decrypting, key_len, cbc, camellia, chacha)
     found
   } else {
-    let slot = crypt_fresh(decrypting, key_len, cbc, camellia)
+    let slot = crypt_fresh(decrypting, key_len, cbc, camellia, chacha)
     crypts.slots.push(slot)
     crypts.slots.length() - 1
   }
@@ -409,6 +567,7 @@ fn crypt_fresh(
   key_len : Int,
   cbc : Bool,
   camellia : Bool,
+  chacha : Bool,
 ) -> CryptSlot {
   {
     live: true,
@@ -419,6 +578,13 @@ fn crypt_fresh(
     camellia,
     cam_enc: [],
     cam_dec: [],
+    chacha,
+    chacha_key: [],
+    chacha_nonce: zero_nonce(),
+    chacha_base: 0UL,
+    chacha_counter: 0UL,
+    chacha_off: 0,
+    chacha_stream: [],
     iv_ready: false,
     iv: [],
     rounds: [],
@@ -434,6 +600,7 @@ fn crypt_reset(
   key_len : Int,
   cbc : Bool,
   camellia : Bool,
+  chacha : Bool,
 ) -> Unit {
   slot.live = true
   slot.encrypting = !decrypting
@@ -443,6 +610,8 @@ fn crypt_reset(
   slot.camellia = camellia
   slot.cam_enc = []
   slot.cam_dec = []
+  slot.chacha = chacha
+  chacha_blank(slot)
   slot.iv_ready = false
   slot.iv = []
   slot.rounds = []
@@ -597,16 +766,20 @@ fn crypt_use_key(slot : CryptSlot, value : @value.Cell) -> Unit raise EvalError 
 ///|
 fn crypt_use_iv(slot : CryptSlot, value : @value.Cell) -> Unit raise EvalError {
   match value {
-    @value.None => ()
-    @value.Seq(series, index) if series.datatype() == @value.Binary =>
+    @value.None => if slot.chacha { chacha_clear(slot) }
+    @value.Seq(series, index) if series.datatype() == @value.Binary => {
+      let bytes = bytes_from(series, index)
       if slot.cbc {
-        let bytes = bytes_from(series, index)
         if bytes.length() != 16 {
           raise EvalError::Cannot("open")
         }
         slot.iv = bytes
         slot.iv_ready = true
       }
+      if slot.chacha && bytes.length() > 0 {
+        chacha_set_iv(slot, bytes)
+      }
+    }
     _ => raise EvalError::Cannot("open")
   }
 }

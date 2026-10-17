@@ -257,6 +257,71 @@ test "crypt camellia-128-ecb matches RFC 3713" {
 }
 
 ///|
+test "crypt chacha20 matches the RFC 7539 block" {
+  let env = @eval.Env::new()
+  let zeros = "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+  assert_true(
+    @eval.run(
+      env,
+      "port: open crypt:CHACHA20\nmodify port 'key #{0000000000000000000000000000000000000000000000000000000000000000}\nmodify port 'init-vector #{000000000000000000000000}\n(read write port #{" +
+      zeros +
+      "}) = #{76B8E0ADA0F13D90405D6AE55386BD28BDD219B8A08DED1AA836EFCC8B770DC7DA41597C5157488D7724E03FB8D84A376A43B8F41518A11CC387B669B2EE6586}",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env,
+      "port: open crypt://chacha20\nmodify port 'key #{0000000000000000000000000000000000000000000000000000000000000000}\nmodify port 'init-vector #{00000000000000000000000200000000}\n(read write port #{" +
+      zeros +
+      "}) = #{C2C64D378CD536374AE204B9EF933FCD1A8B2288B3DFA49672AB765B54EE27C78A970E0E955C14F3A88E741B97C286F75F8FC299E8148362FA198A39531BED6D}",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "port: open crypt://chacha20\nmodify port 'key #{1c9240a5eb55d38af333888604f6b5f0473917c1402b80099dca5cbc207075c0}\nmodify port 'init-vector #{0000000000000000000000020000002A}\nplain: #{2754776173206272696c6c69672c20616e642074686520736c6974687920746f7665730a446964206779726520616e642067696d626c6520696e2074686520776162653a0a416c6c206d696d737920776572652074686520626f726f676f7665732c0a416e6420746865206d6f6d65207261746873206f757467726162652e}\ncipher: read write port plain\nout: open crypt://chacha20#decrypt\nmodify out 'key #{1c9240a5eb55d38af333888604f6b5f0473917c1402b80099dca5cbc207075c0}\nmodify out 'init-vector #{0000000000000000000000020000002A}\nback: read write out cipher\n(reduce [cipher back]) = reduce [#{62e6347f95ed87a45ffae7426f27a1df5fb69110044c0d73118effa95b01e5cf166d3df2d721caf9b21e5fb14c616871fd84c54f9d65b283196c7fe4f60553ebf39c6402c42234e32a356b3e764312a61a5532055716ead6962568f87d3f3f7704c6a8d1bcd1bf4d50d6154b6da731b187b58dfd728afa36757a797ac188d1} plain]",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
+test "crypt chacha20 encrypts a short tail in the same write" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "port: open crypt://chacha20\nmodify port 'key #{000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f}\nmodify port 'init-vector #{000000000000004a0000000000000001}\nplain: #{4C616469657320616E642047656E746C656D656E206F662074686520636C617373206F66202739393A204966204920636F756C64206F6666657220796F75206F6E6C79206F6E652074697020666F7220746865206675747572652C2073756E73637265656E20776F756C642062652069742E}\ncipher: read write port plain\nout: open crypt://CHACHA20#decrypt\nmodify out 'key #{000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f}\nmodify out 'init-vector #{000000000000004a0000000000000001}\nback: read write out cipher\n(reduce [cipher back]) = reduce [#{6e2e359a2568f98041ba0728dd0d6981e97e7aec1d4360c20a27afccfd9fae0bf91b65c5524733ab8f593dabcd62b3571639d624e65152ab8f530c359f0861d807ca0dbf500d6a6156a38e088a22b65e52bc514d16ccf806818ce91ab77937365af90bbf74a35be6b40b8eedf2785e42874d} plain]",
+    )
+    is @value.Logic(true),
+  )
+  let zeros10 = "00000000000000000000"
+  let zeros54 = "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+  assert_true(
+    @eval.run(
+      env,
+      "port: open crypt://chacha20\nmodify port 'key #{0000000000000000000000000000000000000000000000000000000000000000}\nmodify port 'init-vector #{000000000000000000000000}\nwrite port #{" +
+      zeros10 +
+      "}\nheld: read port\nwrite port #{" +
+      zeros54 +
+      "}\n(reduce [held read port]) = reduce [none #{76B8E0ADA0F13D90405D6AE55386BD28BDD219B8A08DED1AA836EFCC8B770DC7DA41597C5157488D7724E03FB8D84A376A43B8F41518A11CC387B669B2EE6586}]",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env,
+      "port: open crypt://chacha20\nmodify port 'key #{0000000000000000000000000000000000000000000000000000000000000000}\nmodify port 'init-vector #{000000000000000000000000}\nwrite port #{" +
+      zeros10 +
+      "}\nwrite port #{" +
+      zeros10 +
+      "}\n(read port) = #{76B8E0ADA0F13D90405D6AE55386BD28}",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "crypt rejects a cipher that is not wired yet" {
   let env = @eval.Env::new()
   let missing = try {
