@@ -1,5 +1,5 @@
 ///|
-/// Turns a string or a binary into base-85, base-64, base-16, or base-2 text.
+/// Turns a string or a binary into base-85, base-64, base-36, base-16, or base-2 text.
 /// `/part` limits how many characters or bytes are encoded.
 fn perform_enbase(
   env : Env,
@@ -11,6 +11,7 @@ fn perform_enbase(
   match coding_base(args[1]) {
     Some(85) => text_series(encode_base85(bytes))
     Some(64) => text_series(encode_base64(bytes, url))
+    Some(36) => text_series(encode_base36(bytes))
     Some(16) => text_series(encode_base16(bytes))
     Some(2) => text_series(encode_base2(bytes))
     _ => raise EvalError::Cannot("enbase")
@@ -18,7 +19,7 @@ fn perform_enbase(
 }
 
 ///|
-/// Turns base-85, base-64, base-16, or base-2 text back into a binary.
+/// Turns base-85, base-64, base-36, base-16, or base-2 text back into a binary.
 /// Spaces and line breaks are skipped. `/part` limits the input.
 fn perform_debase(
   env : Env,
@@ -30,6 +31,7 @@ fn perform_debase(
   match coding_base(args[1]) {
     Some(85) => binary_cell(decode_base85(text))
     Some(64) => binary_cell(decode_base64(text))
+    Some(36) => binary_cell(decode_base36(text))
     Some(16) => binary_cell(decode_base16(text))
     Some(2) => binary_cell(decode_base2(text))
     _ => raise EvalError::Cannot("debase")
@@ -69,6 +71,7 @@ fn coding_base(base : @value.Cell) -> Int? {
   match base {
     @value.Integer(85L) => Some(85)
     @value.Integer(64L) => Some(64)
+    @value.Integer(36L) => Some(36)
     @value.Integer(16L) => Some(16)
     @value.Integer(2L) => Some(2)
     _ => None
@@ -147,6 +150,109 @@ fn binary_cell(bytes : Array[Int]) -> @value.Cell {
     series.push_byte(byte.to_byte()) |> ignore
   }
   @value.Seq(series, 0)
+}
+
+///|
+/// Base 36 reads the bytes as one big-endian integer of at most eight bytes.
+fn encode_base36(bytes : Array[Int]) -> String raise EvalError {
+  if bytes.length() > 8 {
+    raise EvalError::Cannot("enbase")
+  }
+  if bytes.length() == 0 {
+    return ""
+  }
+  let mut value = 0UL
+  for byte in bytes {
+    value = (value << 8) | byte.to_uint64()
+  }
+  let powers = base36_powers()
+  let buf = StringBuilder()
+  let mut started = false
+  let mut rest = value
+  for place in 0..<13 {
+    let power = powers[12 - place]
+    let digit = rest / power
+    rest = rest - power * digit
+    if started || digit != 0UL || place == 12 {
+      started = true
+      buf.write_char(base36_char(digit.to_int()))
+    }
+  }
+  buf.to_string()
+}
+
+///|
+fn decode_base36(text : String) -> Array[Int] raise EvalError {
+  if text.length() > 13 {
+    raise EvalError::Cannot("debase")
+  }
+  if text.length() == 0 {
+    return []
+  }
+  let powers = base36_powers()
+  let mut value = 0UL
+  let mut index = 0
+  while index < text.length() {
+    let digit = base36_digit(text[index].to_int())
+    let power = powers[text.length() - index - 1]
+    value = base36_add(value, digit, power)
+    index = index + 1
+  }
+  let out : Array[Int] = []
+  let mut shift = 56
+  while shift >= 0 {
+    out.push(((value >> shift) & 0xFFUL).to_int())
+    shift = shift - 8
+  }
+  out
+}
+
+///|
+fn base36_add(
+  value : UInt64,
+  digit : Int,
+  power : UInt64,
+) -> UInt64 raise EvalError {
+  let wide = digit.to_uint64()
+  if wide != 0UL && power != 0UL && wide > 0xFFFFFFFFFFFFFFFFUL / power {
+    raise EvalError::Cannot("debase")
+  }
+  let add = wide * power
+  if value > 0xFFFFFFFFFFFFFFFFUL - add {
+    raise EvalError::Cannot("debase")
+  }
+  value + add
+}
+
+///|
+fn base36_char(digit : Int) -> Char {
+  if digit < 10 {
+    ('0'.to_int() + digit).to_char().unwrap()
+  } else {
+    ('A'.to_int() + digit - 10).to_char().unwrap()
+  }
+}
+
+///|
+fn base36_digit(code : Int) -> Int raise EvalError {
+  if code >= '0'.to_int() && code <= '9'.to_int() {
+    code - '0'.to_int()
+  } else if code >= 'A'.to_int() && code <= 'Z'.to_int() {
+    code - 'A'.to_int() + 10
+  } else if code >= 'a'.to_int() && code <= 'z'.to_int() {
+    code - 'a'.to_int() + 10
+  } else {
+    raise EvalError::Cannot("debase")
+  }
+}
+
+///|
+fn base36_powers() -> Array[UInt64] {
+  [
+    1UL, 36UL, 1296UL, 46656UL, 1679616UL, 60466176UL, 2176782336UL, 78364164096UL,
+    2821109907456UL, 101559956668416UL, 3656158440062976UL, 131621703842267136UL,
+    4738381338321616896UL,
+  ]
 }
 
 ///|

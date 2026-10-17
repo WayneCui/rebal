@@ -31,7 +31,7 @@ test "enbase and debase round-trip base 64" {
   }
   assert_true(bad)
   let other = try {
-    @eval.run(env, "enbase {f} 36") |> ignore
+    @eval.run(env, "enbase {f} 58") |> ignore
     false
   } catch {
     error => error.id() == "cannot"
@@ -202,6 +202,65 @@ test "enbase and debase round-trip ascii85" {
   assert_true(mark)
   let wide = try {
     @eval.run(env, "debase {s8W-\"} 85") |> ignore
+    false
+  } catch {
+    error => error.id() == "cannot"
+  }
+  assert_true(wide)
+}
+
+///|
+test "enbase and debase round-trip base 36" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(env, "(enbase debase {} 36 36) = {}") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(enbase debase {000} 36 36) = {0}") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(enbase debase {001} 36 36) = {1}") is @value.Logic(true),
+  )
+  assert_true(@eval.run(env, "(enbase #{00} 36) = {0}") is @value.Logic(true))
+  assert_true(@eval.run(env, "(enbase #{24} 36) = {10}") is @value.Logic(true))
+  assert_true(@eval.run(env, "(enbase #{40} 36) = {1S}") is @value.Logic(true))
+  assert_true(
+    @eval.run(env, "(enbase #{0400} 36) = {SG}") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(enbase #{01301D87} 36) = {BV6H3}") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(enbase #{6DDAFBAD} 36) = {UHBC8D}") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(enbase #{36D7259C2F370F4A} 36) = {U0TPLAQIV70Q}")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(enbase #{FFFFFFFFFFFFFFFF} 36) = {3W5E11264SGSF}")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(debase {bv6h3} 36) = #{0000000001301D87}")
+    is @value.Logic(true),
+  )
+  let long = try {
+    @eval.run(env, "debase {00000000000000} 36") |> ignore
+    false
+  } catch {
+    error => error.id() == "cannot"
+  }
+  assert_true(long)
+  let mark = try {
+    @eval.run(env, "debase {0.0} 36") |> ignore
+    false
+  } catch {
+    error => error.id() == "cannot"
+  }
+  assert_true(mark)
+  let wide = try {
+    @eval.run(env, "enbase #{000000000000000000} 36") |> ignore
     false
   } catch {
     error => error.id() == "cannot"
