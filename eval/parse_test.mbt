@@ -37,3 +37,55 @@ test "parse literals, alternatives, some, any, end, and a bitset" {
     is @value.Logic(true),
   )
 }
+
+///|
+test "parse to and thru a target, including an absolute index" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(env, "(parse {ba} [to #\"a\" skip end]) = true")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse {ba} [to #\"a\" {ba}]) = false")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse {abcd} [to 2 {bcd}]) = true") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse {abcd} [thru 2 {cd}]) = true") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse {abcd} [thru 4 end]) = true") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse {abcd} [{ab} to 1 {abcd}]) = true")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse {xxab} [thru {ab} end]) = true")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse {xxab} [to [{zz} | {ab}] {ab}]) = true")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse [1 2 a] [thru word! end]) = true")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "a: make bitset! {a} (parse {ba} [to a skip end]) = true")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse {abc} [to {z}]) = false") is @value.Logic(true),
+  )
+  let bad = try {
+    @eval.run(env, "parse {foo} [thru some {0}]") |> ignore
+    false
+  } catch {
+    error => error.id() == "cannot"
+  }
+  assert_true(bad)
+}
