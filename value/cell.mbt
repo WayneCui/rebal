@@ -22,6 +22,7 @@ pub(all) enum Cell {
   Map(MapValue)
   Module(ModuleValue)
   Port(PortValue)
+  Handle(RsaKey)
 }
 
 ///|
@@ -56,6 +57,7 @@ pub fn Cell::datatype(self : Cell) -> Datatype {
     Map(_) => Map
     Module(_) => Module
     Port(_) => Port
+    Handle(_) => Handle
   }
 }
 

@@ -51,6 +51,7 @@ pub(all) enum Cell {
   Map(MapValue)
   Module(ModuleValue)
   Port(PortValue)
+  Handle(RsaKey)
 }
 pub fn Cell::datatype(Self) -> Datatype
 pub fn Cell::equal(Self, Self) -> Bool
@@ -98,6 +99,7 @@ pub(all) enum Datatype {
   Module
   Closure
   Port
+  Handle
 } derive(Eq)
 pub fn Datatype::equal(Self, Self) -> Bool
 pub fn Datatype::not_equal(Self, Self) -> Bool
@@ -215,6 +217,13 @@ pub fn PortValue::is_open(Self) -> Bool
 pub fn PortValue::make(Frame, Frame, String) -> Self
 pub fn PortValue::set_handle(Self, Int) -> Unit
 pub fn PortValue::set_opened(Self, Bool) -> Unit
+
+pub struct RsaKey {
+  n : Array[Int]
+  e : Array[Int]
+}
+pub fn RsaKey::new(Array[Int], Array[Int]) -> Self?
+pub fn RsaKey::same(Self, Self) -> Bool
 
 pub struct Series {
   datatype : Datatype

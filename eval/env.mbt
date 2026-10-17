@@ -667,6 +667,7 @@ pub fn Env::new() -> Env {
   install(env, "op!", @value.Type(@value.Op))
   install(env, "object!", @value.Type(@value.Object))
   install(env, "port!", @value.Type(@value.Port))
+  install(env, "handle!", @value.Type(@value.Handle))
   install(env, "module!", @value.Type(@value.Module))
   install(env, "error!", @value.Type(@value.Error))
   install(env, "sys", @value.Object(@value.Frame::new()))

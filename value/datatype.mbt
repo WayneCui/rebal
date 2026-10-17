@@ -38,6 +38,7 @@ pub(all) enum Datatype {
   Module
   Closure
   Port
+  Handle
 } derive(Eq)
 
 ///|
