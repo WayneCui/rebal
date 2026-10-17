@@ -18,6 +18,11 @@ pub(all) enum Datatype {
   LitWord
   Refinement
   String
+  File
+  Email
+  Url
+  Tag
+  Issue
   Binary
   Block
   Paren

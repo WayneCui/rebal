@@ -502,6 +502,7 @@ fn Lexer::hash(self : Lexer) -> Result[@value.Cell, ScanError] {
     Some('"') => self.char_literal()
     Some('{') => self.binary(16)
     Some(char) if is_digit(char) => self.based_binary()
+    Some(char) if is_word_char(char) => self.issue()
     _ => Err(Invalid("hash"))
   }
 }

@@ -74,6 +74,11 @@ pub(all) enum Datatype {
   LitWord
   Refinement
   String
+  File
+  Email
+  Url
+  Tag
+  Issue
   Binary
   Block
   Paren
@@ -204,6 +209,7 @@ pub fn Series::set_code(Self, Int, Int) -> Bool
 pub fn Series::set_item(Self, Int, Cell) -> Bool
 pub fn Series::set_path() -> Self
 pub fn Series::text() -> Self
+pub fn Series::text_of(Datatype) -> Self
 
 pub struct Symbols {
   canon_to_id : Map[String, Int]

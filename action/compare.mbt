@@ -94,6 +94,8 @@ fn series_equal(
     false
   } else if left.datatype() == @value.String {
     text_cmp(left, left_index, right, right_index, true) == 0
+  } else if is_marked_text(left) {
+    text_cmp(left, left_index, right, right_index, false) == 0
   } else if left.datatype() == @value.Binary {
     byte_cmp(left, left_index, right, right_index) == 0
   } else if is_items(left) {
@@ -144,7 +146,7 @@ fn series_order(
 ) -> Result[Int, ActionError] {
   if left.datatype() != right.datatype() {
     Err(Cannot("compare"))
-  } else if left.datatype() == @value.String {
+  } else if left.datatype() == @value.String || is_marked_text(left) {
     Ok(text_cmp(left, left_index, right, right_index, false))
   } else if left.datatype() == @value.Binary {
     Ok(byte_cmp(left, left_index, right, right_index))
@@ -153,6 +155,15 @@ fn series_order(
   } else {
     Err(Cannot("compare"))
   }
+}
+
+///|
+fn is_marked_text(series : @value.Series) -> Bool {
+  series.datatype() == @value.File ||
+  series.datatype() == @value.Email ||
+  series.datatype() == @value.Url ||
+  series.datatype() == @value.Tag ||
+  series.datatype() == @value.Issue
 }
 
 ///|

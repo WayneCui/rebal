@@ -124,6 +124,10 @@ fn write_series(
 ) -> Unit {
   match series.datatype() {
     @value.String => write_text(buf, series, index, molded)
+    @value.File => write_file(buf, series, index, molded)
+    @value.Email | @value.Url => write_codes(buf, series, index)
+    @value.Tag => write_wrapped(buf, series, index, molded, "<", ">")
+    @value.Issue => write_wrapped(buf, series, index, molded, "#", "")
     @value.Binary => write_binary(buf, series, index, molded)
     @value.Block =>
       if molded {
@@ -200,6 +204,95 @@ fn write_text(
   if molded {
     buf.write_char('"')
   }
+}
+
+///|
+fn write_codes(
+  buf : StringBuilder,
+  series : @value.Series,
+  index : Int,
+) -> Unit {
+  let mut cursor = if index < 0 { 0 } else { index }
+  while cursor < series.length() {
+    match series.code(cursor) {
+      Some(code) => write_raw(buf, code)
+      None => ()
+    }
+    cursor = cursor + 1
+  }
+}
+
+///|
+fn write_wrapped(
+  buf : StringBuilder,
+  series : @value.Series,
+  index : Int,
+  molded : Bool,
+  prefix : String,
+  suffix : String,
+) -> Unit {
+  if molded {
+    buf.write_string(prefix)
+  }
+  write_codes(buf, series, index)
+  if molded {
+    buf.write_string(suffix)
+  }
+}
+
+///|
+fn write_file(
+  buf : StringBuilder,
+  series : @value.Series,
+  index : Int,
+  molded : Bool,
+) -> Unit {
+  if !molded {
+    write_codes(buf, series, index)
+  } else {
+    let start = if index < 0 { 0 } else { index }
+    if start >= series.length() {
+      buf.write_string("%\"\"")
+    } else {
+      buf.write_char('%')
+      let mut cursor = start
+      while cursor < series.length() {
+        match series.code(cursor) {
+          Some(code) =>
+            if plain_file_code(code) {
+              write_raw(buf, code)
+            } else {
+              buf.write_char('%')
+              buf.write_char(hex_char(code / 16))
+              buf.write_char(hex_char(code % 16))
+            }
+          None => ()
+        }
+        cursor = cursor + 1
+      }
+    }
+  }
+}
+
+///|
+fn plain_file_code(code : Int) -> Bool {
+  (code >= 'A'.to_int() && code <= 'Z'.to_int()) ||
+  (code >= 'a'.to_int() && code <= 'z'.to_int()) ||
+  (code >= '0'.to_int() && code <= '9'.to_int()) ||
+  code == '/'.to_int() ||
+  code == '.'.to_int() ||
+  code == '-'.to_int() ||
+  code == '_'.to_int() ||
+  code == '~'.to_int() ||
+  code == '+'.to_int()
+}
+
+///|
+fn hex_char(n : Int) -> Char {
+  let digits = [
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F',
+  ]
+  digits[n % 16]
 }
 
 ///|
@@ -549,6 +642,11 @@ pub fn type_name(datatype : @value.Datatype) -> String {
     @value.LitWord => "lit-word!"
     @value.Refinement => "refinement!"
     @value.String => "string!"
+    @value.File => "file!"
+    @value.Email => "email!"
+    @value.Url => "url!"
+    @value.Tag => "tag!"
+    @value.Issue => "issue!"
     @value.Binary => "binary!"
     @value.Block => "block!"
     @value.Paren => "paren!"

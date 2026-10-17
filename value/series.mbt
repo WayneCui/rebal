@@ -38,6 +38,11 @@ pub fn Series::text() -> Series {
 }
 
 ///|
+pub fn Series::text_of(datatype : Datatype) -> Series {
+  Series::make(datatype, Text([]))
+}
+
+///|
 pub fn Series::binary() -> Series {
   Series::make(Binary, Bytes([]))
 }

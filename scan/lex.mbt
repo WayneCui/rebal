@@ -82,6 +82,8 @@ fn Lexer::value(self : Lexer) -> Result[@value.Cell, ScanError] {
     Some('"') => self.string()
     Some('{') => self.braced()
     Some('#') => self.hash()
+    Some('%') => self.file()
+    Some('<') if self.looks_like_tag() => self.tag()
     Some('$') => self.money(1.0)
     Some('-') if self.signed_money() => self.signed_money_value(-1.0)
     Some('+') if self.signed_money() => self.signed_money_value(1.0)
@@ -250,7 +252,14 @@ fn Lexer::refinement(self : Lexer) -> Result[@value.Cell, ScanError] {
 
 ///|
 fn Lexer::word(self : Lexer) -> Result[@value.Cell, ScanError] {
-  self.plain_word(@value.Word)
+  let start = self.pos
+  match self.any_string() {
+    Some(datatype) => self.take_text(datatype, start)
+    None => {
+      self.pos = start
+      self.plain_word(@value.Word)
+    }
+  }
 }
 
 ///|
