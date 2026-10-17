@@ -294,6 +294,8 @@ fn cipher_kind(name : String) -> (Int, Bool, Bool, Bool, Bool, Bool)? {
     Some((32, false, false, false, true, false))
   } else if name == "aes-128-ccm" {
     Some((16, false, false, false, false, true))
+  } else if name == "aes-256-ccm" {
+    Some((32, false, false, false, false, true))
   } else {
     None
   }

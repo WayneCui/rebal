@@ -362,6 +362,17 @@ test "crypt aes-128-ccm appends the tag on write" {
 }
 
 ///|
+test "crypt aes-256-ccm encrypts without a tag" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "port: open crypt://aes-256-ccm\nmodify port 'key #{26511fb51fcfa75cb4b44da75a6e5a0eb8d9c8f3b906f886df3ba3e6da3a1389}\nmodify port 'iv #{72a60f345a1978fb40f28a2fa4}\nplain: #{30d56ff2a25b83fee791110fcaea48e41db7c7f098a81000}\ncipher: take write port plain\nmodify port 'direction 'decrypt\nback: take write port cipher\n(reduce [cipher back]) = reduce [#{55f068c0bbba8b598013dd1841fd740fda2902322148ab5e} plain]",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "crypt rejects a cipher that is not wired yet" {
   let env = @eval.Env::new()
   let missing = try {
