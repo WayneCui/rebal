@@ -125,6 +125,15 @@ let native_case : Int = 39
 let native_switch : Int = 40
 
 ///|
+let native_lesser_or_equal : Int = 41
+
+///|
+let native_greater_or_equal : Int = 42
+
+///|
+let native_strict_equal : Int = 43
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -170,6 +179,9 @@ pub fn Env::new() -> Env {
   define_native(env, "all", 1, false, native_all)
   define_native(env, "case", 1, false, native_case)
   define_native(env, "switch", 2, false, native_switch)
+  define_native(env, "<=", 2, true, native_lesser_or_equal)
+  define_native(env, ">=", 2, true, native_greater_or_equal)
+  define_native(env, "==", 2, true, native_strict_equal)
   install(env, "unset!", @value.Type(@value.Unset))
   install(env, "none!", @value.Type(@value.None))
   install(env, "logic!", @value.Type(@value.Logic))

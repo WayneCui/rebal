@@ -32,6 +32,34 @@ pub fn greater(
 }
 
 ///|
+pub fn lesser_or_equal(
+  left : @value.Cell,
+  right : @value.Cell,
+) -> Result[Bool, ActionError] {
+  match greater(left, right) {
+    Ok(flag) => Ok(!flag)
+    Err(error) => Err(error)
+  }
+}
+
+///|
+pub fn greater_or_equal(
+  left : @value.Cell,
+  right : @value.Cell,
+) -> Result[Bool, ActionError] {
+  match lesser(left, right) {
+    Ok(flag) => Ok(!flag)
+    Err(error) => Err(error)
+  }
+}
+
+///|
+/// Same datatype and same payload. Numbers do not coerce. Text keeps its case.
+pub fn strict_equal(left : @value.Cell, right : @value.Cell) -> Bool {
+  left.equal(right)
+}
+
+///|
 fn equal_at(left : @value.Cell, right : @value.Cell, depth : Int) -> Bool {
   if depth > max_compare_depth {
     false

@@ -293,6 +293,12 @@ fn apply(
     perform_case(env, args[0])
   } else if func.code() == native_switch {
     perform_switch(env, args[0], args[1])
+  } else if func.code() == native_lesser_or_equal {
+    logic_order(@action.lesser_or_equal(args[0], args[1]))
+  } else if func.code() == native_greater_or_equal {
+    logic_order(@action.greater_or_equal(args[0], args[1]))
+  } else if func.code() == native_strict_equal {
+    @value.Logic(@action.strict_equal(args[0], args[1]))
   } else {
     raise EvalError::Cannot("function")
   }

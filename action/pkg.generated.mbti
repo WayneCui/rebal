@@ -22,11 +22,15 @@ pub fn form(@value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn greater(@value.Cell, @value.Cell) -> Result[Bool, ActionError]
 
+pub fn greater_or_equal(@value.Cell, @value.Cell) -> Result[Bool, ActionError]
+
 pub fn insert(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn length(@value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn lesser(@value.Cell, @value.Cell) -> Result[Bool, ActionError]
+
+pub fn lesser_or_equal(@value.Cell, @value.Cell) -> Result[Bool, ActionError]
 
 pub fn logic_and(@value.Cell, @value.Cell) -> @value.Cell
 
@@ -41,6 +45,8 @@ pub fn multiply(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 pub fn pick(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn remove(@value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn strict_equal(@value.Cell, @value.Cell) -> Bool
 
 pub fn subtract(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 

@@ -46,4 +46,10 @@ test "numbers chars and strings compare with coercion" {
     Ok(flag) => assert_true(flag)
     Err(_) => fail("greater")
   }
+  match @action.lesser_or_equal(@value.Integer(1L), @value.Decimal(1.0)) {
+    Ok(flag) => assert_true(flag)
+    Err(_) => fail("<=")
+  }
+  assert_true(!@action.strict_equal(@value.Integer(1L), @value.Decimal(1.0)))
+  assert_true(!@action.strict_equal(text_cell("A"), text_cell("a")))
 }
