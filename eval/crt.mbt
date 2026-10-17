@@ -124,7 +124,130 @@ fn fill_tbs(
     Some(key) => put_cert(env, frame, "public-key", key)
     None => return None
   }
+  read_certificate_tail(env, frame, items)
   Some(algorithm)
+}
+
+///|
+/// Optional issuer and subject ids, then the extension wrapper.
+fn read_certificate_tail(
+  env : Env,
+  frame : @value.Frame,
+  items : Array[@value.Cell],
+) -> Unit raise EvalError {
+  let mut index = 14
+  let mut ids = 0
+  while index + 1 < items.length() {
+    if word_is(env, items[index], "bit_string") {
+      if ids == 0 {
+        put_cert(env, frame, "issuer-id", items[index + 1])
+      } else if ids == 1 {
+        put_cert(env, frame, "subject-id", items[index + 1])
+      }
+      ids = ids + 1
+    } else if word_is(env, items[index], "cs3") {
+      put_cert(env, frame, "extensions", read_extensions(env, items[index + 1]))
+    }
+    index = index + 2
+  }
+}
+
+///|
+fn read_extensions(
+  env : Env,
+  body : @value.Cell,
+) -> @value.Cell raise EvalError {
+  let block = @value.Series::block()
+  match block_items(body) {
+    Some(items) =>
+      if items.length() >= 2 && word_is(env, items[0], "sequence") {
+        append_extensions(env, block, items[1])
+      }
+    None => ()
+  }
+  @value.Seq(block, 0)
+}
+
+///|
+fn append_extensions(
+  env : Env,
+  block : @value.Series,
+  body : @value.Cell,
+) -> Unit raise EvalError {
+  match block_items(body) {
+    Some(items) => {
+      let mut index = 0
+      while index + 1 < items.length() {
+        if word_is(env, items[index], "sequence") {
+          append_extension(env, block, items[index + 1])
+        }
+        index = index + 2
+      }
+    }
+    None => ()
+  }
+}
+
+///|
+fn append_extension(
+  env : Env,
+  block : @value.Series,
+  body : @value.Cell,
+) -> Unit raise EvalError {
+  match block_items(body) {
+    Some(items) =>
+      if items.length() >= 2 && word_is(env, items[0], "object_identifier") {
+        let name = decode_oid(env, items[1])
+        let mut cursor = 2
+        let mut critical = false
+        if cursor + 1 < items.length() &&
+          word_is(env, items[cursor], "boolean") &&
+          critical_flag(items[cursor + 1]) {
+          critical = true
+          cursor = cursor + 2
+        }
+        if cursor + 1 < items.length() &&
+          word_is(env, items[cursor], "octet_string") {
+          block.push_item(name) |> ignore
+          let value = list_block([
+            @value.Logic(critical),
+            extension_value(env, items[cursor + 1]),
+          ])
+          block.push_item(value) |> ignore
+        }
+      }
+    None => ()
+  }
+}
+
+///|
+fn critical_flag(cell : @value.Cell) -> Bool {
+  match binary_of(cell) {
+    Some(bytes) => bytes.length() == 1 && bytes[0] == 0xFF
+    None => false
+  }
+}
+
+///|
+/// An octet that opens with SEQUENCE is decoded. The name is not rewritten:
+/// the codec's `extKeyUsage` arm does not match `extendedKeyUsage`.
+fn extension_value(
+  env : Env,
+  cell : @value.Cell,
+) -> @value.Cell raise EvalError {
+  match binary_of(cell) {
+    Some(bytes) =>
+      if bytes.length() > 0 && bytes[0] == 0x30 {
+        let decoded = decode_der(env, cell)
+        match decoded {
+          @value.None => cell
+          _ => decoded
+        }
+      } else {
+        cell
+      }
+    None => cell
+  }
 }
 
 ///|

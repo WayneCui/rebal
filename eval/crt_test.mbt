@@ -13,3 +13,16 @@ test "decode crt reads the Atlantis certificate fields" {
     is @value.Logic(true),
   )
 }
+
+///|
+test "decode crt keeps certificate extensions as named values" {
+  // codec-crt.reb Extensions. extKeyUsage does not match extendedKeyUsage,
+  // so the octet stays a decoded sequence.
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "cert: decode 'crt {-----BEGIN CERTIFICATE-----\nMIIBmTCCAUegAwIBAgIBKjAJBgUrDgMCHQUAMBMxETAPBgNVBAMTCEF0bGFudGlz\nMB4XDTEyMDcwOTAzMTAzOFoXDTEzMDcwOTAzMTAzN1owEzERMA8GA1UEAxMIQXRs\nYW50aXMwXDANBgkqhkiG9w0BAQEFAANLADBIAkEAu+BXo+miabDIHHx+yquqzqNh\nRyn/XtkJIIHVcYtHvIX+S1x5ErgMoHehycpoxbErZmVR4GCq1S2diNmRFZCRtQID\nAQABo4GJMIGGMAwGA1UdEwEB/wQCMAAwIAYDVR0EAQH/BBYwFDAOMAwGCisGAQQB\ngjcCARUDAgeAMB0GA1UdJQQWMBQGCCsGAQUFBwMCBggrBgEFBQcDAzA1BgNVHQEE\nLjAsgBA0jOnSSuIHYmnVryHAdywMoRUwEzERMA8GA1UEAxMIQXRsYW50aXOCASow\nCQYFKw4DAh0FAANBAKi6HRBaNEL5R0n56nvfclQNaXiDT174uf+lojzA4lhVInc0\nILwpnZ1izL4MlI9eCSHhVQBHEp2uQdXJB+d5Byg=\n-----END CERTIFICATE-----}\n(reduce [pick cert/extensions 1 pick cert/extensions 3 pick cert/extensions 5 pick cert/extensions 7 cert/extensions/basicConstraints pick cert/extensions/keyUsageRestriction 1 pick cert/extensions/extendedKeyUsage 1 pick (pick (pick cert/extensions/extendedKeyUsage 2) 2) 2]) = reduce ['basicConstraints 'keyUsageRestriction 'extendedKeyUsage 'authorityKeyIdentifier reduce [true [sequence []]] true false #{2B06010505070302}]",
+    )
+    is @value.Logic(true),
+  )
+}
