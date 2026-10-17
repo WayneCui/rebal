@@ -18,3 +18,19 @@ test "checksum crc32 matches the signed 32-bit residue" {
   }
   assert_true(other)
 }
+
+///|
+test "checksum adler32 matches the zlib residue" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(env, "(checksum {} 'adler32) = 1") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(checksum {Wikipedia} 'adler32) = 300286872")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(checksum #{57696B697065646961} 'adler32) = 300286872")
+    is @value.Logic(true),
+  )
+}
