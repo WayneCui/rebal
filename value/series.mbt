@@ -224,6 +224,21 @@ pub fn Series::remove_byte(self : Series, index : Int) -> Byte? {
 }
 
 ///|
+pub fn Series::set_byte(self : Series, index : Int, byte : Byte) -> Bool {
+  match self.payload {
+    Bytes(xs) =>
+      match xs.get(index) {
+        Some(_) => {
+          xs[index] = byte
+          true
+        }
+        None => false
+      }
+    Items(_) | Text(_) => false
+  }
+}
+
+///|
 pub fn Series::push_byte(self : Series, byte : Byte) -> Bool {
   match self.payload {
     Bytes(xs) => {

@@ -602,6 +602,10 @@ fn apply(
     perform_checksum(env, args[0], args[1])
   } else if func.code() == native_decompress {
     perform_decompress(env, args[0], args[1])
+  } else if func.code() == native_encloak {
+    perform_encloak(args[0], args[1])
+  } else if func.code() == native_decloak {
+    perform_decloak(args[0], args[1])
   } else {
     raise EvalError::Cannot("function")
   }
