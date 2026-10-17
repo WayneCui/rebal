@@ -305,6 +305,30 @@ let native_exclude : Int = 99
 let native_unique : Int = 100
 
 ///|
+let native_lowercase : Int = 101
+
+///|
+let native_uppercase : Int = 102
+
+///|
+let native_deline : Int = 103
+
+///|
+let native_enline : Int = 104
+
+///|
+let native_detab : Int = 105
+
+///|
+let native_entab : Int = 106
+
+///|
+let native_dehex : Int = 107
+
+///|
+let native_enhex : Int = 108
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -410,6 +434,14 @@ pub fn Env::new() -> Env {
   define_native(env, "difference", 2, false, native_difference)
   define_native(env, "exclude", 2, false, native_exclude)
   define_native(env, "unique", 1, false, native_unique)
+  define_native(env, "lowercase", 1, false, native_lowercase)
+  define_native(env, "uppercase", 1, false, native_uppercase)
+  define_native(env, "deline", 1, false, native_deline)
+  define_native(env, "enline", 1, false, native_enline)
+  define_native(env, "detab", 1, false, native_detab)
+  define_native(env, "entab", 1, false, native_entab)
+  define_native(env, "dehex", 1, false, native_dehex)
+  define_native(env, "enhex", 1, false, native_enhex)
   install(env, "unset!", @value.Type(@value.Unset))
   install(env, "none!", @value.Type(@value.None))
   install(env, "logic!", @value.Type(@value.Logic))

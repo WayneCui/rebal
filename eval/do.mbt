@@ -478,6 +478,22 @@ fn apply(
     from_action(@action.exclude(args[0], args[1]))
   } else if func.code() == native_unique {
     from_action(@action.unique(args[0]))
+  } else if func.code() == native_lowercase {
+    from_action(@action.lowercase(args[0]))
+  } else if func.code() == native_uppercase {
+    from_action(@action.uppercase(args[0]))
+  } else if func.code() == native_deline {
+    from_action(@action.deline(args[0]))
+  } else if func.code() == native_enline {
+    from_action(@action.enline(args[0]))
+  } else if func.code() == native_detab {
+    from_action(@action.detab(args[0]))
+  } else if func.code() == native_entab {
+    from_action(@action.entab(args[0]))
+  } else if func.code() == native_dehex {
+    from_action(@action.dehex(args[0]))
+  } else if func.code() == native_enhex {
+    from_action(@action.enhex(args[0]))
   } else {
     raise EvalError::Cannot("function")
   }

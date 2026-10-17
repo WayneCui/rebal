@@ -1,0 +1,255 @@
+///|
+pub fn lowercase(cell : @value.Cell) -> @value.Cell? {
+  change_case(cell, false)
+}
+
+///|
+pub fn uppercase(cell : @value.Cell) -> @value.Cell? {
+  change_case(cell, true)
+}
+
+///|
+pub fn deline(cell : @value.Cell) -> @value.Cell? {
+  map_text(cell, fn(codes) {
+    let next : Array[Int] = []
+    let mut cursor = 0
+    while cursor < codes.length() {
+      let code = codes[cursor]
+      if code == '\r'.to_int() {
+        next.push('\n'.to_int())
+        if cursor + 1 < codes.length() && codes[cursor + 1] == '\n'.to_int() {
+          cursor = cursor + 2
+        } else {
+          cursor = cursor + 1
+        }
+      } else {
+        next.push(code)
+        cursor = cursor + 1
+      }
+    }
+    next
+  })
+}
+
+///|
+pub fn enline(cell : @value.Cell) -> @value.Cell? {
+  map_text(cell, fn(codes) {
+    let next : Array[Int] = []
+    let mut cursor = 0
+    while cursor < codes.length() {
+      let code = codes[cursor]
+      if code == '\r'.to_int() &&
+        cursor + 1 < codes.length() &&
+        codes[cursor + 1] == '\n'.to_int() {
+        next.push('\r'.to_int())
+        next.push('\n'.to_int())
+        cursor = cursor + 2
+      } else if code == '\n'.to_int() {
+        next.push('\r'.to_int())
+        next.push('\n'.to_int())
+        cursor = cursor + 1
+      } else {
+        next.push(code)
+        cursor = cursor + 1
+      }
+    }
+    next
+  })
+}
+
+///|
+pub fn detab(cell : @value.Cell) -> @value.Cell? {
+  map_text(cell, fn(codes) {
+    let next : Array[Int] = []
+    let mut column = 0
+    for code in codes {
+      if code == '\t'.to_int() {
+        let mut spaces = 4 - column % 4
+        if spaces == 0 {
+          spaces = 4
+        }
+        for _ in 0..<spaces {
+          next.push(' '.to_int())
+        }
+        column = column + spaces
+      } else {
+        next.push(code)
+        if code == '\n'.to_int() {
+          column = 0
+        } else {
+          column = column + 1
+        }
+      }
+    }
+    next
+  })
+}
+
+///|
+pub fn entab(cell : @value.Cell) -> @value.Cell? {
+  map_text(cell, fn(codes) {
+    let next : Array[Int] = []
+    let mut spaces = 0
+    for code in codes {
+      if code == ' '.to_int() {
+        spaces = spaces + 1
+      } else {
+        write_spaces(next, spaces)
+        spaces = 0
+        next.push(code)
+      }
+    }
+    write_spaces(next, spaces)
+    next
+  })
+}
+
+///|
+pub fn dehex(cell : @value.Cell) -> @value.Cell? {
+  map_text(cell, fn(codes) {
+    let next : Array[Int] = []
+    let mut cursor = 0
+    while cursor < codes.length() {
+      if codes[cursor] == '%'.to_int() && cursor + 2 < codes.length() {
+        match (hex_value(codes[cursor + 1]), hex_value(codes[cursor + 2])) {
+          (Some(high), Some(low)) => {
+            next.push(high * 16 + low)
+            cursor = cursor + 3
+          }
+          _ => {
+            next.push(codes[cursor])
+            cursor = cursor + 1
+          }
+        }
+      } else {
+        next.push(codes[cursor])
+        cursor = cursor + 1
+      }
+    }
+    next
+  })
+}
+
+///|
+pub fn enhex(cell : @value.Cell) -> @value.Cell? {
+  map_text(cell, fn(codes) {
+    let next : Array[Int] = []
+    for code in codes {
+      if plain_code(code) {
+        next.push(code)
+      } else {
+        next.push('%'.to_int())
+        next.push(hex_digit_code(code / 16))
+        next.push(hex_digit_code(code % 16))
+      }
+    }
+    next
+  })
+}
+
+///|
+fn change_case(cell : @value.Cell, upper : Bool) -> @value.Cell? {
+  match cell {
+    @value.Char(code) =>
+      Some(@value.Char(if upper { upper_code(code) } else { lower_code(code) }))
+    _ =>
+      map_text(cell, fn(codes) {
+        let next : Array[Int] = []
+        for code in codes {
+          next.push(if upper { upper_code(code) } else { lower_code(code) })
+        }
+        next
+      })
+  }
+}
+
+///|
+fn map_text(
+  cell : @value.Cell,
+  produce : (Array[Int]) -> Array[Int],
+) -> @value.Cell? {
+  match view(cell) {
+    Some((series, index)) if series.datatype() == @value.String => {
+      let codes : Array[Int] = []
+      for cursor in index..<series.length() {
+        match series.code(cursor) {
+          Some(code) => codes.push(code)
+          None => ()
+        }
+      }
+      let next = produce(codes)
+      while series.length() > index {
+        series.remove_code(index) |> ignore
+      }
+      for code in next {
+        series.push_code(code) |> ignore
+      }
+      Some(cell)
+    }
+    _ => None
+  }
+}
+
+///|
+fn write_spaces(next : Array[Int], count : Int) -> Unit {
+  let mut spaces = count
+  while spaces >= 4 {
+    next.push('\t'.to_int())
+    spaces = spaces - 4
+  }
+  while spaces > 0 {
+    next.push(' '.to_int())
+    spaces = spaces - 1
+  }
+}
+
+///|
+fn lower_code(code : Int) -> Int {
+  if code >= 'A'.to_int() && code <= 'Z'.to_int() {
+    code + ('a'.to_int() - 'A'.to_int())
+  } else {
+    code
+  }
+}
+
+///|
+fn upper_code(code : Int) -> Int {
+  if code >= 'a'.to_int() && code <= 'z'.to_int() {
+    code - ('a'.to_int() - 'A'.to_int())
+  } else {
+    code
+  }
+}
+
+///|
+fn plain_code(code : Int) -> Bool {
+  (code >= '0'.to_int() && code <= '9'.to_int()) ||
+  (code >= 'A'.to_int() && code <= 'Z'.to_int()) ||
+  (code >= 'a'.to_int() && code <= 'z'.to_int()) ||
+  code == '-'.to_int() ||
+  code == '_'.to_int() ||
+  code == '.'.to_int() ||
+  code == '~'.to_int()
+}
+
+///|
+fn hex_value(code : Int) -> Int? {
+  if code >= '0'.to_int() && code <= '9'.to_int() {
+    Some(code - '0'.to_int())
+  } else if code >= 'A'.to_int() && code <= 'F'.to_int() {
+    Some(code - 'A'.to_int() + 10)
+  } else if code >= 'a'.to_int() && code <= 'f'.to_int() {
+    Some(code - 'a'.to_int() + 10)
+  } else {
+    None
+  }
+}
+
+///|
+fn hex_digit_code(value : Int) -> Int {
+  if value < 10 {
+    '0'.to_int() + value
+  } else {
+    'A'.to_int() + value - 10
+  }
+}

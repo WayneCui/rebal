@@ -16,6 +16,18 @@ pub fn clear(@value.Cell) -> @value.Cell?
 
 pub fn copy(@value.Cell) -> @value.Cell?
 
+pub fn dehex(@value.Cell) -> @value.Cell?
+
+pub fn deline(@value.Cell) -> @value.Cell?
+
+pub fn detab(@value.Cell) -> @value.Cell?
+
+pub fn enhex(@value.Cell) -> @value.Cell?
+
+pub fn enline(@value.Cell) -> @value.Cell?
+
+pub fn entab(@value.Cell) -> @value.Cell?
+
 pub fn find(@value.Cell, @value.Cell) -> @value.Cell
 
 pub fn find_with(@value.Cell, @value.Cell, Bool, Bool, Bool, Bool, Bool, Int?) -> @value.Cell
@@ -29,6 +41,8 @@ pub fn insert(@value.Cell, @value.Cell) -> @value.Cell?
 pub fn is_tail(@value.Cell) -> Bool?
 
 pub fn length(@value.Cell) -> Int?
+
+pub fn lowercase(@value.Cell) -> @value.Cell?
 
 pub fn next(@value.Cell) -> @value.Cell?
 
@@ -51,6 +65,8 @@ pub fn tail(@value.Cell) -> @value.Cell?
 pub fn take(@value.Cell) -> @value.Cell?
 
 pub fn trim(@value.Cell) -> @value.Cell?
+
+pub fn uppercase(@value.Cell) -> @value.Cell?
 
 // Errors
 

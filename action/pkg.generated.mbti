@@ -24,9 +24,21 @@ pub fn complement(@value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn copy(@value.Cell) -> Result[@value.Cell, ActionError]
 
+pub fn dehex(@value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn deline(@value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn detab(@value.Cell) -> Result[@value.Cell, ActionError]
+
 pub fn difference(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn divide(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn enhex(@value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn enline(@value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn entab(@value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn equal(@value.Cell, @value.Cell) -> Bool
 
@@ -65,6 +77,8 @@ pub fn logic_and(@value.Cell, @value.Cell) -> @value.Cell
 pub fn logic_not(@value.Cell) -> @value.Cell
 
 pub fn logic_or(@value.Cell, @value.Cell) -> @value.Cell
+
+pub fn lowercase(@value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn maximum(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
@@ -131,6 +145,8 @@ pub fn trim(@value.Cell) -> Result[@value.Cell, ActionError]
 pub fn union(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn unique(@value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn uppercase(@value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn zero_q(@value.Cell) -> Result[@value.Cell, ActionError]
 

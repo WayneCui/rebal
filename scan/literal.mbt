@@ -549,6 +549,7 @@ fn Lexer::caret(self : Lexer) -> Result[Int, ScanError] {
     Some(char) if char >= 'a' && char <= 'z' =>
       Ok(char.to_int() - 'a'.to_int() + 1)
     Some('/') => Ok('\n'.to_int())
+    Some('-') => Ok('\t'.to_int())
     Some('"') => Ok('"'.to_int())
     Some('^') => Ok('^'.to_int())
     Some('}') => Ok('}'.to_int())
