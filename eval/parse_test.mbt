@@ -240,3 +240,53 @@ test "parse repetition, opt, not, ahead, and quote" {
   }
   assert_true(bare)
 }
+
+///|
+test "parse change, remove, and insert" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(env, "s: {abc} parse s [change {ab} {XY}] s = {XYc}")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "s: {abc} parse s [#\"a\" change #\"b\" {XX} #\"c\"] s = {aXXc}",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "s: {abc} parse s [remove #\"a\" #\"b\" end] s = {bc}")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "s: {bc} parse s [insert #\"a\" {bc} end] s = {abc}")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "b: [1 2] parse b [change quote 1 9] b = [9 2]")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "b: [a b] parse b [change [quote a quote b] [z p]] b = [z p]",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "b: [a b] parse b [change [quote a quote b] only [z p]] b = [[z p]]",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "b: [1 2] parse b [remove quote 1] b = [2]")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "b: [1] parse b [insert 0] b = [0 1]") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "b: [1] parse b [change quote 1 (1 + 1)] b = [2]")
+    is @value.Logic(true),
+  )
+}

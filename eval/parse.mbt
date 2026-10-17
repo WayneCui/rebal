@@ -117,6 +117,12 @@ fn match_seq(
           when_true(env, input, pos, rules, cursor, end)
         } else if is_word(Some(rule), "into") {
           enter(env, input, pos, rules, cursor, end)
+        } else if is_word(Some(rule), "remove") {
+          cut_rule(env, input, pos, rules, cursor, end)
+        } else if is_word(Some(rule), "change") {
+          change_rule(env, input, pos, rules, cursor, end)
+        } else if is_word(Some(rule), "insert") {
+          insert_rule(env, input, pos, rules, cursor, end)
         } else if is_word(Some(rule), "opt") {
           counted_at(env, input, pos, rules, cursor + 1, end, 0L, 1L)
         } else if is_word(Some(rule), "not") {
@@ -428,6 +434,201 @@ fn quote_at(input : @value.Series, pos : Int, value : @value.Cell) -> Int? {
 }
 
 ///|
+fn cut_rule(
+  env : Env,
+  input : @value.Series,
+  pos : Int,
+  rules : @value.Series,
+  cursor : Int,
+  end : Int,
+) -> Int? raise EvalError {
+  let rule_at = cursor + 1
+  if rule_at >= end {
+    raise EvalError::Cannot("parse")
+  }
+  let width = rule_width(rules, rule_at, end)
+  match one_step(env, input, pos, rules, rule_at, rule_at + width) {
+    Some((next, _)) => {
+      delete_span(input, pos, next)
+      match_seq(env, input, pos, rules, rule_at + width, end)
+    }
+    None => None
+  }
+}
+
+///|
+fn change_rule(
+  env : Env,
+  input : @value.Series,
+  pos : Int,
+  rules : @value.Series,
+  cursor : Int,
+  end : Int,
+) -> Int? raise EvalError {
+  let rule_at = cursor + 1
+  if rule_at >= end {
+    raise EvalError::Cannot("parse")
+  }
+  let width = rule_width(rules, rule_at, end)
+  match one_step(env, input, pos, rules, rule_at, rule_at + width) {
+    Some((next, _)) => {
+      let (value, only, after) = replacement(env, rules, rule_at + width, end)
+      let placed = replace_span(input, pos, next, value, only)
+      match_seq(env, input, placed, rules, after, end)
+    }
+    None => None
+  }
+}
+
+///|
+fn insert_rule(
+  env : Env,
+  input : @value.Series,
+  pos : Int,
+  rules : @value.Series,
+  cursor : Int,
+  end : Int,
+) -> Int? raise EvalError {
+  let (value, only, after) = replacement(env, rules, cursor + 1, end)
+  let placed = replace_span(input, pos, pos, value, only)
+  match_seq(env, input, placed, rules, after, end)
+}
+
+///|
+fn replacement(
+  env : Env,
+  rules : @value.Series,
+  cursor : Int,
+  end : Int,
+) -> (@value.Cell, Bool, Int) raise EvalError {
+  if cursor >= end {
+    raise EvalError::Cannot("parse")
+  }
+  let mut at = cursor
+  let mut only = false
+  match rules.item(at) {
+    Some(item) =>
+      if is_word(Some(item), "only") {
+        only = true
+        at = at + 1
+      }
+    None => ()
+  }
+  match rules.item(at) {
+    Some(@value.Seq(body, body_index)) if body.datatype() == @value.Paren =>
+      (do_series(env, body, body_index), only, at + 1)
+    Some(@value.Sym(kind, lexeme)) if kind == @value.Word =>
+      match quiet(env, lexeme) {
+        Some(value) =>
+          match value {
+            @value.Unset => raise EvalError::NoValue(lexeme.spelling())
+            _ => (value, only, at + 1)
+          }
+        None => raise EvalError::NoValue(lexeme.spelling())
+      }
+    Some(value) => (value, only, at + 1)
+    None => raise EvalError::Cannot("parse")
+  }
+}
+
+///|
+fn replace_span(
+  input : @value.Series,
+  begin : Int,
+  end : Int,
+  value : @value.Cell,
+  only : Bool,
+) -> Int raise EvalError {
+  delete_span(input, begin, end)
+  if input.datatype() == @value.String {
+    insert_text(input, begin, value)
+  } else {
+    insert_items(input, begin, value, only)
+  }
+}
+
+///|
+fn delete_span(input : @value.Series, begin : Int, end : Int) -> Unit {
+  let mut index = if end > begin { end } else { begin }
+  if input.datatype() == @value.String {
+    while index > begin {
+      index = index - 1
+      input.remove_code(index) |> ignore
+    }
+  } else {
+    while index > begin {
+      index = index - 1
+      input.remove_item(index) |> ignore
+    }
+  }
+}
+
+///|
+fn insert_text(
+  input : @value.Series,
+  begin : Int,
+  value : @value.Cell,
+) -> Int raise EvalError {
+  let codes = match value {
+    @value.Char(code) => [code]
+    @value.Seq(source, source_index) if source.datatype() == @value.String => {
+      let found : Array[Int] = []
+      for index in source_index..<source.length() {
+        match source.code(index) {
+          Some(code) => found.push(code)
+          None => ()
+        }
+      }
+      found
+    }
+    _ => raise EvalError::Cannot("parse")
+  }
+  let mut at = begin
+  for code in codes {
+    input.insert_code(at, code) |> ignore
+    at = at + 1
+  }
+  at
+}
+
+///|
+fn insert_items(
+  input : @value.Series,
+  begin : Int,
+  value : @value.Cell,
+  only : Bool,
+) -> Int {
+  let items = match value {
+    @value.Seq(source, source_index) if !only &&
+      (source.datatype() == @value.Block || source.datatype() == @value.Paren) => {
+      let found : Array[@value.Cell] = []
+      for index in source_index..<source.length() {
+        match source.item(index) {
+          Some(item) => found.push(as_word_value(item))
+          None => ()
+        }
+      }
+      found
+    }
+    _ => [as_word_value(value)]
+  }
+  let mut at = begin
+  for item in items {
+    input.insert_item(at, item.snapshot()) |> ignore
+    at = at + 1
+  }
+  at
+}
+
+///|
+fn as_word_value(value : @value.Cell) -> @value.Cell {
+  match value {
+    @value.Sym(@value.LitWord, lexeme) => @value.Sym(@value.Word, lexeme)
+    _ => value
+  }
+}
+
+///|
 fn is_command(cell : @value.Cell) -> Bool {
   is_word(Some(cell), "some") ||
   is_word(Some(cell), "any") ||
@@ -439,7 +640,10 @@ fn is_command(cell : @value.Cell) -> Bool {
   is_word(Some(cell), "opt") ||
   is_word(Some(cell), "not") ||
   is_word(Some(cell), "ahead") ||
-  is_word(Some(cell), "and")
+  is_word(Some(cell), "and") ||
+  is_word(Some(cell), "remove") ||
+  is_word(Some(cell), "change") ||
+  is_word(Some(cell), "insert")
 }
 
 ///|
@@ -735,6 +939,9 @@ fn bad_target(spelling : String) -> Bool {
   spelling == "ahead" ||
   spelling == "and" ||
   spelling == "quote" ||
+  spelling == "remove" ||
+  spelling == "change" ||
+  spelling == "insert" ||
   spelling == "|"
 }
 
