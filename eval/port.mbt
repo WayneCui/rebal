@@ -141,6 +141,8 @@ fn run_scheme(
     system_actor(env, action, port, extra)
   } else if name == "console" {
     console_actor(env, action, port, extra)
+  } else if name == "dir" {
+    dir_actor(env, action, port, extra)
   } else {
     let _ = (env, action, port, extra)
     raise EvalError::Cannot("port")

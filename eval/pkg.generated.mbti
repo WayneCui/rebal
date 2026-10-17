@@ -14,6 +14,8 @@ pub fn eval(Env, @value.Cell) -> @value.Cell raise EvalError
 
 pub fn load(Env, String) -> @value.Cell raise EvalError
 
+pub fn make_dir(String) -> Unit raise EvalError
+
 pub fn push_console(String) -> Unit
 
 pub fn run(Env, String) -> @value.Cell raise EvalError

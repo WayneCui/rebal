@@ -1,7 +1,11 @@
+#include <dirent.h>
+#include <errno.h>
 #include <moonbit.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
 
 static int32_t rebal_status = 0;
 
@@ -230,4 +234,96 @@ int32_t rebal_write_stdout(moonbit_string_t text, int32_t text_len) {
   }
   free(body);
   return fflush(stdout) == 0 ? 0 : 1;
+}
+
+static void rebal_append(char **out, size_t *len, size_t *cap, const char *text) {
+  size_t add = strlen(text);
+  while (*len + add + 1 > *cap) {
+    *cap = *cap == 0 ? 64 : *cap * 2;
+    char *grown = (char *)realloc(*out, *cap);
+    if (grown == NULL) {
+      return;
+    }
+    *out = grown;
+  }
+  memcpy(*out + *len, text, add);
+  *len += add;
+  (*out)[*len] = 0;
+}
+
+moonbit_string_t rebal_list_dir(moonbit_string_t path, int32_t path_len) {
+  rebal_status = 0;
+  char *cpath = rebal_to_utf8(path, path_len);
+  if (cpath == NULL) {
+    rebal_status = 2;
+    return moonbit_make_string(0, 0);
+  }
+  DIR *dir = opendir(cpath);
+  if (dir == NULL) {
+    free(cpath);
+    rebal_status = 1;
+    return moonbit_make_string(0, 0);
+  }
+  size_t cap = 64;
+  size_t len = 0;
+  char *out = (char *)malloc(cap);
+  if (out == NULL) {
+    closedir(dir);
+    free(cpath);
+    rebal_status = 2;
+    return moonbit_make_string(0, 0);
+  }
+  out[0] = 0;
+  struct dirent *entry;
+  while ((entry = readdir(dir)) != NULL) {
+    if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+      continue;
+    }
+    size_t path_n = strlen(cpath);
+    size_t name_n = strlen(entry->d_name);
+    int slash = path_n > 0 && cpath[path_n - 1] == '/';
+    char *full = (char *)malloc(path_n + name_n + 2);
+    if (full == NULL) {
+      continue;
+    }
+    memcpy(full, cpath, path_n);
+    if (!slash) {
+      full[path_n] = '/';
+      memcpy(full + path_n + 1, entry->d_name, name_n + 1);
+    } else {
+      memcpy(full + path_n, entry->d_name, name_n + 1);
+    }
+    struct stat info;
+    int is_dir = stat(full, &info) == 0 && S_ISDIR(info.st_mode);
+    free(full);
+    if (len > 0) {
+      rebal_append(&out, &len, &cap, "\n");
+    }
+    rebal_append(&out, &len, &cap, entry->d_name);
+    if (is_dir) {
+      rebal_append(&out, &len, &cap, "/");
+    }
+  }
+  closedir(dir);
+  free(cpath);
+  int32_t units = rebal_utf8_units((unsigned char *)out, len);
+  if (units < 0) {
+    free(out);
+    rebal_status = 2;
+    return moonbit_make_string(0, 0);
+  }
+  moonbit_string_t text = moonbit_make_string(units, 0);
+  rebal_fill_utf16(text, (unsigned char *)out, len);
+  free(out);
+  return text;
+}
+
+int32_t rebal_make_dir(moonbit_string_t path, int32_t path_len) {
+  char *cpath = rebal_to_utf8(path, path_len);
+  if (cpath == NULL) {
+    return 1;
+  }
+  int failed = mkdir(cpath, 0755) != 0 && errno != EEXIST;
+  free(cpath);
+  return failed ? 1 : 0;
 }
