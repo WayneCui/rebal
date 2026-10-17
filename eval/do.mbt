@@ -350,6 +350,8 @@ fn apply(
     perform_loop(env, args[0], args[1])
   } else if func.code() == native_break {
     raise EvalError::Broken
+  } else if func.code() == native_quit {
+    raise EvalError::Quit
   } else if func.code() == native_foreach {
     perform_foreach(env, args[0], args[1], args[2])
   } else if func.code() == native_continue {

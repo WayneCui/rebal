@@ -545,10 +545,11 @@ fn Lexer::caret(self : Lexer) -> Result[Int, ScanError] {
         _ => Err(Missing(")"))
       }
     }
-    Some(char) if char >= 'A' && char <= 'Z' =>
-      Ok(char.to_int() - 'A'.to_int() + 1)
+    Some(char) if char >= '@' && char <= '_' => Ok(char.to_int() - '@'.to_int())
     Some(char) if char >= 'a' && char <= 'z' =>
       Ok(char.to_int() - 'a'.to_int() + 1)
+    Some('~') => Ok(127)
+    Some('!') => Ok(30)
     Some('/') => Ok('\n'.to_int())
     Some('-') => Ok('\t'.to_int())
     Some('"') => Ok('"'.to_int())

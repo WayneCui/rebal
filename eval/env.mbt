@@ -383,6 +383,9 @@ let native_wait : Int = 125
 let native_browse : Int = 126
 
 ///|
+let native_quit : Int = 127
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -467,8 +470,8 @@ pub fn Env::new() -> Env {
   define_native(env, "negative?", 1, false, native_negative)
   define_native(env, "positive?", 1, false, native_positive)
   define_native(env, "zero?", 1, false, native_zero)
-  define_native(env, "min", 2, false, native_min)
-  define_native(env, "max", 2, false, native_max)
+  define_native(env, "minimum", 2, false, native_min)
+  define_native(env, "maximum", 2, false, native_max)
   define_native(env, "round", 1, false, native_round)
   define_native(env, "random", 1, false, native_random)
   define_native(env, "complement", 1, false, native_complement)
@@ -514,6 +517,7 @@ pub fn Env::new() -> Env {
   define_native(env, "now", 0, false, native_now)
   define_native(env, "wait", 1, false, native_wait)
   define_native(env, "browse", 1, false, native_browse)
+  define_native(env, "quit", 0, false, native_quit)
   install(env, "unset!", @value.Type(@value.Unset))
   install(env, "none!", @value.Type(@value.None))
   install(env, "logic!", @value.Type(@value.Logic))
@@ -553,6 +557,7 @@ pub fn Env::new() -> Env {
   install(env, "module!", @value.Type(@value.Module))
   install(env, "error!", @value.Type(@value.Error))
   install(env, "sys", @value.Object(@value.Frame::new()))
+  boot_constants(env)
   env
 }
 

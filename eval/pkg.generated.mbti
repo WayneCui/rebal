@@ -51,6 +51,7 @@ pub(all) suberror EvalError {
   Thrown(String, @value.Cell)
   NoThrow(String)
   Stopped(Int)
+  Quit
 }
 pub fn EvalError::id(Self) -> String
 pub fn EvalError::to_cell(Self) -> @value.Cell

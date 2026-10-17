@@ -324,6 +324,7 @@ fn perform_try(env : Env, cell : @value.Cell) -> @value.Cell raise EvalError {
         EvalError::Continued => raise EvalError::Continued
         EvalError::Thrown(name, value) => raise EvalError::Thrown(name, value)
         EvalError::Stopped(pos) => raise EvalError::Stopped(pos)
+        EvalError::Quit => raise EvalError::Quit
         error => error.to_cell()
       }
     _ => cell
