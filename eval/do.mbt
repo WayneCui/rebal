@@ -212,7 +212,8 @@ fn call(
     func.code() != native_find &&
     func.code() != native_sort &&
     func.code() != native_call &&
-    func.code() != native_now {
+    func.code() != native_now &&
+    func.code() != native_clean_path {
     raise EvalError::Cannot("func")
   }
   let args : Array[@value.Cell] = []
@@ -254,6 +255,8 @@ fn call(
     (perform_call(env, args, active), cursor)
   } else if func.code() == native_now {
     (perform_now(env, active), cursor)
+  } else if func.code() == native_clean_path {
+    (perform_clean_path(env, args[0], active), cursor)
   } else if func.code() == 0 {
     (call_user(env, func, args, active), cursor)
   } else {
@@ -326,8 +329,6 @@ fn apply(
     perform_change_dir(args[0])
   } else if func.code() == native_make_dir {
     perform_make_dir(env, args[0])
-  } else if func.code() == native_clean_path {
-    perform_clean_path(env, args[0])
   } else if func.code() == native_copy {
     from_action(@action.copy(args[0]))
   } else if func.code() == native_insert {

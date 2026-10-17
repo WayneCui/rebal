@@ -1,22 +1,43 @@
 ///|
 /// Resolves `.`, `..`, and repeated slashes. A relative file is based on
-/// the current directory. `/only` and `/dir` stay out.
+/// the current directory unless `/only` is set. `/dir` keeps a trailing slash.
 fn perform_clean_path(
   env : Env,
   path : @value.Cell,
+  active : Array[Int],
 ) -> @value.Cell raise EvalError {
-  let _ = env
+  let mut only = false
+  let mut as_dir = false
+  for sym in active {
+    let name = env.symbols.canon(sym)
+    if name == "only" {
+      only = true
+    } else if name == "dir" {
+      as_dir = true
+    } else {
+      raise EvalError::Cannot("clean-path")
+    }
+  }
   match path {
     @value.Seq(series, index) if @value.text_series(series.datatype()) => {
       let text = text_from(series, index)
-      let absolute = if series.datatype() == @value.File {
+      let absolute = if series.datatype() == @value.File && !only {
         rooted_file(text)
       } else {
         text
       }
-      series_text(series.datatype(), collapse_text(absolute))
+      series_text(series.datatype(), force_dir(collapse_text(absolute), as_dir))
     }
     _ => raise EvalError::Cannot("clean-path")
+  }
+}
+
+///|
+fn force_dir(text : String, as_dir : Bool) -> String {
+  if as_dir && (text.length() == 0 || text[text.length() - 1] != '/') {
+    text + "/"
+  } else {
+    text
   }
 }
 

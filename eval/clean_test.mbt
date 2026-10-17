@@ -28,4 +28,20 @@ test "clean-path resolves dots and bases a relative file on what-dir" {
     )
     is @value.Logic(true),
   )
+  assert_true(
+    @eval.run(env, "(clean-path/only %a/../b) = %b") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(clean-path/dir %/a/b) = %/a/b/") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(clean-path/only/dir %a/../c) = %c/") is @value.Logic(true),
+  )
+  let bad = try {
+    @eval.run(env, "clean-path/foo %/a") |> ignore
+    false
+  } catch {
+    error => error.id() == "cannot"
+  }
+  assert_true(bad)
 }
