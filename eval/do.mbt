@@ -300,6 +300,8 @@ fn call(
     (perform_encloak(env, args[0], args[1], active), cursor)
   } else if func.code() == native_decloak {
     (perform_decloak(env, args[0], args[1], active), cursor)
+  } else if func.code() == native_modify {
+    (perform_modify(env, args[0], args[1], args[2]), cursor)
   } else if func.code() == native_enhex {
     (perform_enhex(env, args, active), cursor)
   } else if func.code() == native_dehex {

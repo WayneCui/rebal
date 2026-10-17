@@ -461,6 +461,9 @@ let native_encloak : Int = 151
 let native_decloak : Int = 152
 
 ///|
+let native_modify : Int = 153
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -492,6 +495,7 @@ pub fn Env::new() -> Env {
   define_native(env, "decompress", 2, false, native_decompress)
   define_native(env, "encloak", 2, false, native_encloak)
   define_native(env, "decloak", 2, false, native_decloak)
+  define_native(env, "modify", 3, false, native_modify)
   define_native(env, "copy", 1, false, native_copy)
   define_native(env, "insert", 2, false, native_insert)
   define_native(env, "remove", 1, false, native_remove)
