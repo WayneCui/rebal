@@ -11,7 +11,7 @@ test "checksum crc32 matches the signed 32-bit residue" {
     is @value.Logic(true),
   )
   let other = try {
-    @eval.run(env, "checksum {a} 'sha512") |> ignore
+    @eval.run(env, "checksum {a} 'sha384") |> ignore
     false
   } catch {
     error => error.id() == "cannot"
@@ -106,4 +106,29 @@ test "checksum sha256 is the 32-byte digest" {
     )
     is @value.Logic(true),
   )
+}
+
+///|
+test "checksum sha512 is the 64-byte digest" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "(checksum {} 'sha512) = #{CF83E1357EEFB8BDF1542850D66D8007D620E4050B5715DC83F4A921D36CE9CE47D0D13C5D85F2B0FF8318D2877EEC2F63B931BD47417A81A538327AF927DA3E}",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "(checksum {abc} 'sha512) = #{DDAF35A193617ABACC417349AE20413112E6FA4E89A97EA20A9EEEE64B55D39A2192992A274FC1A836BA3C23A3FEEBBD454D4423643CE80E2A9AC94FA54CA49F}",
+    )
+    is @value.Logic(true),
+  )
+  let mut sample = "a"
+  for _ in 0..<199 {
+    sample = sample + "a"
+  }
+  let source = "(checksum {" +
+    sample +
+    "} 'sha512) = #{4B11459C33F52A22EE8236782714C150A3B2C60994E9ACEE17FE68947A3E6789F31E7668394592DA7BEF827CDDCA88C4E6F86E4DF7ED1AE6CBA71F3E98FAEE9F}"
+  assert_true(@eval.run(env, source) is @value.Logic(true))
 }
