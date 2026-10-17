@@ -119,6 +119,12 @@ let native_any : Int = 37
 let native_all : Int = 38
 
 ///|
+let native_case : Int = 39
+
+///|
+let native_switch : Int = 40
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -162,6 +168,8 @@ pub fn Env::new() -> Env {
   define_native(env, "or", 2, true, native_or)
   define_native(env, "any", 1, false, native_any)
   define_native(env, "all", 1, false, native_all)
+  define_native(env, "case", 1, false, native_case)
+  define_native(env, "switch", 2, false, native_switch)
   install(env, "unset!", @value.Type(@value.Unset))
   install(env, "none!", @value.Type(@value.None))
   install(env, "logic!", @value.Type(@value.Logic))

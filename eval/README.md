@@ -1,6 +1,6 @@
 # eval
 
-`Do_Next`、`do`、`do/next`、中缀、`func` / `does`、`make object!`、路径、`reduce`、`mold` / `form`、`type?`、`try`、`if` / `either`、`return`、`while` / `until` / `loop`、`break` / `continue`、`foreach`、`not` / `and` / `or` 和 `any` / `all`。
+`Do_Next`、`do`、`do/next`、中缀、`func` / `does`、`make object!`、路径、`reduce`、`mold` / `form`、`type?`、`try`、`if` / `either`、`return`、`while` / `until` / `loop`、`break` / `continue`、`foreach`、`not` / `and` / `or` 和 `any` / `all`、`case` 和 `switch`。
 
 ## 不变量
 

@@ -289,6 +289,10 @@ fn apply(
     perform_any(env, args[0])
   } else if func.code() == native_all {
     perform_all(env, args[0])
+  } else if func.code() == native_case {
+    perform_case(env, args[0])
+  } else if func.code() == native_switch {
+    perform_switch(env, args[0], args[1])
   } else {
     raise EvalError::Cannot("function")
   }
