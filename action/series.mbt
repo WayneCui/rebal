@@ -108,3 +108,82 @@ fn fit_int(cell : @value.Cell) -> Int? {
     _ => None
   }
 }
+
+///|
+pub fn next(series : @value.Cell) -> Result[@value.Cell, ActionError] {
+  changed(series, "next", fn(cell) { @series.next(cell) })
+}
+
+///|
+pub fn back(series : @value.Cell) -> Result[@value.Cell, ActionError] {
+  changed(series, "back", fn(cell) { @series.skip(cell, -1) })
+}
+
+///|
+pub fn head(series : @value.Cell) -> Result[@value.Cell, ActionError] {
+  changed(series, "head", fn(cell) { @series.head(cell) })
+}
+
+///|
+pub fn tail(series : @value.Cell) -> Result[@value.Cell, ActionError] {
+  changed(series, "tail", fn(cell) { @series.tail(cell) })
+}
+
+///|
+pub fn skip(
+  series : @value.Cell,
+  offset : @value.Cell,
+) -> Result[@value.Cell, ActionError] {
+  match fit_int(offset) {
+    Some(n) => changed(series, "skip", fn(cell) { @series.skip(cell, n) })
+    None => Err(Cannot("skip"))
+  }
+}
+
+///|
+pub fn at(
+  series : @value.Cell,
+  index : @value.Cell,
+) -> Result[@value.Cell, ActionError] {
+  match fit_int(index) {
+    Some(n) => changed(series, "at", fn(cell) { @series.at(cell, n) })
+    None => Err(Cannot("at"))
+  }
+}
+
+///|
+pub fn index(series : @value.Cell) -> Result[@value.Cell, ActionError] {
+  match @series.index(series) {
+    Some(n) => Ok(@value.Integer(n.to_int64()))
+    None => Err(Cannot("index?"))
+  }
+}
+
+///|
+pub fn head_q(series : @value.Cell) -> Result[@value.Cell, ActionError] {
+  match @series.index(series) {
+    Some(n) => Ok(@value.Logic(n == 1))
+    None => Err(Cannot("head?"))
+  }
+}
+
+///|
+pub fn tail_q(series : @value.Cell) -> Result[@value.Cell, ActionError] {
+  match @series.is_tail(series) {
+    Some(flag) => Ok(@value.Logic(flag))
+    None => Err(Cannot("tail?"))
+  }
+}
+
+///|
+pub fn poke(
+  series : @value.Cell,
+  index : @value.Cell,
+  value : @value.Cell,
+) -> Result[@value.Cell, ActionError] {
+  match fit_int(index) {
+    Some(n) =>
+      changed(series, "poke", fn(cell) { @series.poke(cell, n, value) })
+    None => Err(Cannot("poke"))
+  }
+}

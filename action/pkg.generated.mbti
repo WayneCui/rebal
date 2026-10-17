@@ -10,6 +10,10 @@ pub fn add(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn append(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
+pub fn at(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn back(@value.Cell) -> Result[@value.Cell, ActionError]
+
 pub fn copy(@value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn equal(@value.Cell, @value.Cell) -> Bool
@@ -23,6 +27,12 @@ pub fn form(@value.Cell) -> Result[@value.Cell, ActionError]
 pub fn greater(@value.Cell, @value.Cell) -> Result[Bool, ActionError]
 
 pub fn greater_or_equal(@value.Cell, @value.Cell) -> Result[Bool, ActionError]
+
+pub fn head(@value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn head_q(@value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn index(@value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn insert(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
@@ -42,13 +52,23 @@ pub fn mold(@value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn multiply(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
+pub fn next(@value.Cell) -> Result[@value.Cell, ActionError]
+
 pub fn pick(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
+pub fn poke(@value.Cell, @value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
+
 pub fn remove(@value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn skip(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn strict_equal(@value.Cell, @value.Cell) -> Bool
 
 pub fn subtract(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn tail(@value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn tail_q(@value.Cell) -> Result[@value.Cell, ActionError]
 
 // Errors
 

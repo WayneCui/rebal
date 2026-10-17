@@ -299,6 +299,26 @@ fn apply(
     logic_order(@action.greater_or_equal(args[0], args[1]))
   } else if func.code() == native_strict_equal {
     @value.Logic(@action.strict_equal(args[0], args[1]))
+  } else if func.code() == native_next {
+    from_action(@action.next(args[0]))
+  } else if func.code() == native_back {
+    from_action(@action.back(args[0]))
+  } else if func.code() == native_head {
+    from_action(@action.head(args[0]))
+  } else if func.code() == native_tail {
+    from_action(@action.tail(args[0]))
+  } else if func.code() == native_skip {
+    from_action(@action.skip(args[0], args[1]))
+  } else if func.code() == native_at {
+    from_action(@action.at(args[0], args[1]))
+  } else if func.code() == native_index {
+    from_action(@action.index(args[0]))
+  } else if func.code() == native_head_q {
+    from_action(@action.head_q(args[0]))
+  } else if func.code() == native_tail_q {
+    from_action(@action.tail_q(args[0]))
+  } else if func.code() == native_poke {
+    from_action(@action.poke(args[0], args[1], args[2]))
   } else {
     raise EvalError::Cannot("function")
   }

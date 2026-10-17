@@ -134,6 +134,36 @@ let native_greater_or_equal : Int = 42
 let native_strict_equal : Int = 43
 
 ///|
+let native_next : Int = 44
+
+///|
+let native_back : Int = 45
+
+///|
+let native_head : Int = 46
+
+///|
+let native_tail : Int = 47
+
+///|
+let native_skip : Int = 48
+
+///|
+let native_at : Int = 49
+
+///|
+let native_index : Int = 50
+
+///|
+let native_head_q : Int = 51
+
+///|
+let native_tail_q : Int = 52
+
+///|
+let native_poke : Int = 53
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -182,6 +212,16 @@ pub fn Env::new() -> Env {
   define_native(env, "<=", 2, true, native_lesser_or_equal)
   define_native(env, ">=", 2, true, native_greater_or_equal)
   define_native(env, "==", 2, true, native_strict_equal)
+  define_native(env, "next", 1, false, native_next)
+  define_native(env, "back", 1, false, native_back)
+  define_native(env, "head", 1, false, native_head)
+  define_native(env, "tail", 1, false, native_tail)
+  define_native(env, "skip", 2, false, native_skip)
+  define_native(env, "at", 2, false, native_at)
+  define_native(env, "index?", 1, false, native_index)
+  define_native(env, "head?", 1, false, native_head_q)
+  define_native(env, "tail?", 1, false, native_tail_q)
+  define_native(env, "poke", 3, false, native_poke)
   install(env, "unset!", @value.Type(@value.Unset))
   install(env, "none!", @value.Type(@value.None))
   install(env, "logic!", @value.Type(@value.Logic))
