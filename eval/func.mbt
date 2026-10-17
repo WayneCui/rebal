@@ -143,6 +143,7 @@ fn perform_try(env : Env, cell : @value.Cell) -> @value.Cell raise EvalError {
         EvalError::Returned(value) => raise EvalError::Returned(value)
         EvalError::Broken => raise EvalError::Broken
         EvalError::Continued => raise EvalError::Continued
+        EvalError::Thrown(name, value) => raise EvalError::Thrown(name, value)
         error => error.to_cell()
       }
     _ => cell

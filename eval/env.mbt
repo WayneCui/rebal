@@ -200,6 +200,12 @@ let native_also : Int = 64
 let native_comment : Int = 65
 
 ///|
+let native_catch : Int = 66
+
+///|
+let native_throw : Int = 67
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -270,6 +276,8 @@ pub fn Env::new() -> Env {
   define_native(env, "unless", 2, false, native_unless)
   define_native(env, "also", 2, false, native_also)
   define_native(env, "comment", 1, false, native_comment)
+  define_native(env, "catch", 2, false, native_catch)
+  define_native(env, "throw", 2, false, native_throw)
   install(env, "unset!", @value.Type(@value.Unset))
   install(env, "none!", @value.Type(@value.None))
   install(env, "logic!", @value.Type(@value.Logic))

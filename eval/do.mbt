@@ -6,6 +6,7 @@ pub fn run(env : Env, source : String) -> @value.Cell raise EvalError {
     EvalError::Returned(_) => raise EvalError::NoReturn
     EvalError::Broken => raise EvalError::NoBreak
     EvalError::Continued => raise EvalError::NoContinue
+    EvalError::Thrown(name, _) => raise EvalError::NoThrow(name)
     error => raise error
   }
 }
@@ -345,6 +346,10 @@ fn apply(
   } else if func.code() == native_comment {
     let _ = args[0]
     @value.Unset
+  } else if func.code() == native_catch {
+    perform_catch(env, args[0], args[1])
+  } else if func.code() == native_throw {
+    perform_throw(args[0], args[1])
   } else {
     raise EvalError::Cannot("function")
   }

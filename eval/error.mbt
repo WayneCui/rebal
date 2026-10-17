@@ -18,6 +18,19 @@ pub(all) suberror EvalError {
   Continued
   /// `continue` reached `run` with no loop to resume.
   NoContinue
+  /// A `throw` looking for a matching `catch`.
+  Thrown(String, @value.Cell)
+  /// `throw` reached `run` with no matching `catch`.
+  NoThrow(String)
+}
+
+///|
+fn throw_arg(name : String) -> String {
+  if name == "" {
+    "throw"
+  } else {
+    name
+  }
 }
 
 ///|
@@ -36,6 +49,8 @@ pub fn EvalError::to_cell(self : EvalError) -> @value.Cell {
     NoBreak => ("break", "break")
     Continued => ("continue", "continue")
     NoContinue => ("continue", "continue")
+    Thrown(name, _) => ("throw", throw_arg(name))
+    NoThrow(name) => ("throw", throw_arg(name))
   }
   @value.Error(@value.ErrorValue::make(id, arg, ""))
 }
@@ -55,5 +70,7 @@ pub fn EvalError::id(self : EvalError) -> String {
     NoBreak => "break"
     Continued => "continue"
     NoContinue => "continue"
+    Thrown(_, _) => "throw"
+    NoThrow(_) => "throw"
   }
 }
