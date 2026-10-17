@@ -41,7 +41,39 @@ fn do_text(env : Env, text : String) -> @value.Cell raise EvalError {
 
 ///|
 fn perform_load(env : Env, source : @value.Cell) -> @value.Cell raise EvalError {
-  singular(drop_header(load(env, source_text(source))))
+  if pkix_file(source) {
+    match read_pem(read_file(loaded_path(source))) {
+      Some(pem) => pem_block(env, pem)
+      None => @value.None
+    }
+  } else {
+    singular(drop_header(load(env, source_text(source))))
+  }
+}
+
+///|
+/// %.pem, %.ssh, and %.certSigningRequest are PKIX armor, as in codec-pkix.reb.
+fn pkix_file(source : @value.Cell) -> Bool raise EvalError {
+  match source {
+    @value.Seq(series, _) if series.datatype() == @value.File =>
+      match perform_suffix(source) {
+        @value.Seq(suffix, index) => {
+          let name = text_from(suffix, index).to_lower()
+          name == ".pem" || name == ".ssh" || name == ".certsigningrequest"
+        }
+        _ => false
+      }
+    _ => false
+  }
+}
+
+///|
+fn loaded_path(source : @value.Cell) -> String raise EvalError {
+  match source {
+    @value.Seq(series, index) if series.datatype() == @value.File =>
+      text_from(series, index)
+    _ => raise EvalError::Cannot("load")
+  }
 }
 
 ///|
