@@ -46,44 +46,57 @@ let aes_tables : AesTables = {
 }
 
 ///|
-/// Expands a 16-byte key into the 11 round keys AES-128 applies in order.
-fn aes128_rounds(key : Array[Int]) -> Array[Int] raise EvalError {
-  if key.length() != 16 {
+/// Expands a 16- or 24-byte key. The round count is `key words + 6`.
+fn aes_rounds(key : Array[Int]) -> Array[Int] raise EvalError {
+  let nk = key.length() / 4
+  if (nk != 4 && nk != 6) || key.length() != nk * 4 {
     raise EvalError::Cannot("modify")
   }
+  let total = 4 * (nk + 6 + 1)
   let rounds : Array[Int] = []
   for byte in key {
     rounds.push(byte)
   }
   let rcon = [0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36]
-  let mut word = 4
-  while word < 44 {
-    let mut t0 = rounds[(word - 1) * 4]
-    let mut t1 = rounds[(word - 1) * 4 + 1]
-    let mut t2 = rounds[(word - 1) * 4 + 2]
-    let mut t3 = rounds[(word - 1) * 4 + 3]
-    if word % 4 == 0 {
-      let spun = t0
-      t0 = aes_tables.sbox[t1] ^ rcon[word / 4 - 1]
-      t1 = aes_tables.sbox[t2]
-      t2 = aes_tables.sbox[t3]
-      t3 = aes_tables.sbox[spun]
-    }
-    let prev = (word - 4) * 4
-    rounds.push(rounds[prev] ^ t0)
-    rounds.push(rounds[prev + 1] ^ t1)
-    rounds.push(rounds[prev + 2] ^ t2)
-    rounds.push(rounds[prev + 3] ^ t3)
+  let mut word = nk
+  while word < total {
+    aes_next_word(rounds, word, nk, rcon)
     word = word + 1
   }
   rounds
 }
 
 ///|
-fn aes128_encrypt(rounds : Array[Int], block : Array[Int]) -> Array[Int] {
+fn aes_next_word(
+  rounds : Array[Int],
+  word : Int,
+  nk : Int,
+  rcon : Array[Int],
+) -> Unit {
+  let mut t0 = rounds[(word - 1) * 4]
+  let mut t1 = rounds[(word - 1) * 4 + 1]
+  let mut t2 = rounds[(word - 1) * 4 + 2]
+  let mut t3 = rounds[(word - 1) * 4 + 3]
+  if word % nk == 0 {
+    let spun = t0
+    t0 = aes_tables.sbox[t1] ^ rcon[word / nk - 1]
+    t1 = aes_tables.sbox[t2]
+    t2 = aes_tables.sbox[t3]
+    t3 = aes_tables.sbox[spun]
+  }
+  let prev = (word - nk) * 4
+  rounds.push(rounds[prev] ^ t0)
+  rounds.push(rounds[prev + 1] ^ t1)
+  rounds.push(rounds[prev + 2] ^ t2)
+  rounds.push(rounds[prev + 3] ^ t3)
+}
+
+///|
+fn aes_encrypt(rounds : Array[Int], block : Array[Int]) -> Array[Int] {
+  let nr = rounds.length() / 16 - 1
   let state = copy_block(block)
   add_round(state, rounds, 0)
-  for round in 1..<10 {
+  for round in 1..<nr {
     sub_bytes(state, aes_tables.sbox)
     shift_rows(state)
     mix_columns(state)
@@ -91,15 +104,16 @@ fn aes128_encrypt(rounds : Array[Int], block : Array[Int]) -> Array[Int] {
   }
   sub_bytes(state, aes_tables.sbox)
   shift_rows(state)
-  add_round(state, rounds, 10)
+  add_round(state, rounds, nr)
   state
 }
 
 ///|
-fn aes128_decrypt(rounds : Array[Int], block : Array[Int]) -> Array[Int] {
+fn aes_decrypt(rounds : Array[Int], block : Array[Int]) -> Array[Int] {
+  let nr = rounds.length() / 16 - 1
   let state = copy_block(block)
-  add_round(state, rounds, 10)
-  let mut round = 9
+  add_round(state, rounds, nr)
+  let mut round = nr - 1
   while round >= 1 {
     inv_shift_rows(state)
     sub_bytes(state, aes_tables.inv)

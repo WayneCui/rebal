@@ -5,6 +5,7 @@ priv struct CryptSlot {
   mut live : Bool
   mut encrypting : Bool
   mut key_ready : Bool
+  mut key_len : Int
   mut rounds : Array[Int]
   mut pending : Array[Int]
   mut output : Array[Int]
@@ -42,7 +43,7 @@ fn crypt_actor(
 }
 
 ///|
-/// `crypt://aes-128-ecb` encrypts. A `#decrypt` fragment starts in decrypt.
+/// `crypt://aes-128-ecb` or `aes-192-ecb` encrypts. `#decrypt` starts in decrypt.
 fn crypt_open(env : Env, port : @value.Cell) -> @value.Cell raise EvalError {
   match port {
     @value.Port(value) =>
@@ -50,13 +51,15 @@ fn crypt_open(env : Env, port : @value.Cell) -> @value.Cell raise EvalError {
         raise EvalError::Cannot("open")
       } else {
         let (algorithm, direction) = crypt_target(port_url(env, value))
-        if algorithm != "aes-128-ecb" {
-          raise EvalError::Cannot("open")
+        match ecb_key_len(algorithm) {
+          Some(key_len) => {
+            let handle = crypt_alloc(direction == "decrypt", key_len)
+            value.set_handle(handle)
+            value.set_opened(true)
+            port
+          }
+          None => raise EvalError::Cannot("open")
         }
-        let handle = crypt_alloc(direction == "decrypt")
-        value.set_handle(handle)
-        value.set_opened(true)
-        port
       }
     _ => raise EvalError::Cannot("open")
   }
@@ -134,7 +137,7 @@ fn crypt_modify(
       match lexeme.spelling().to_lower() {
         "key" => crypt_set_key(slot, value)
         "direction" => crypt_set_direction(slot, value)
-        "algorithm" => crypt_set_algorithm(value)
+        "algorithm" => crypt_set_algorithm(slot, value)
         "init-vector" | "iv" => crypt_set_iv(value)
         _ => {
           let _ = env
@@ -152,7 +155,10 @@ fn crypt_set_key(slot : CryptSlot, value : @value.Cell) -> Unit raise EvalError 
       bytes_from(series, index)
     _ => raise EvalError::Cannot("modify")
   }
-  slot.rounds = aes128_rounds(key)
+  if key.length() != slot.key_len {
+    raise EvalError::Cannot("modify")
+  }
+  slot.rounds = aes_rounds(key)
   slot.key_ready = true
   slot.pending = []
 }
@@ -174,13 +180,33 @@ fn crypt_set_direction(
 }
 
 ///|
-fn crypt_set_algorithm(value : @value.Cell) -> Unit raise EvalError {
+fn crypt_set_algorithm(
+  slot : CryptSlot,
+  value : @value.Cell,
+) -> Unit raise EvalError {
   match value {
     @value.Sym(_, lexeme) =>
-      if lexeme.spelling().to_lower() != "aes-128-ecb" {
-        raise EvalError::Cannot("modify")
+      match ecb_key_len(lexeme.spelling().to_lower()) {
+        Some(key_len) => {
+          slot.key_len = key_len
+          slot.key_ready = false
+          slot.rounds = []
+          slot.pending = []
+        }
+        None => raise EvalError::Cannot("modify")
       }
     _ => raise EvalError::Cannot("modify")
+  }
+}
+
+///|
+fn ecb_key_len(name : String) -> Int? {
+  if name == "aes-128-ecb" {
+    Some(16)
+  } else if name == "aes-192-ecb" {
+    Some(24)
+  } else {
+    None
   }
 }
 
@@ -203,9 +229,9 @@ fn crypt_absorb(slot : CryptSlot, bytes : Array[Int]) -> Unit raise EvalError {
     slot.pending.push(byte)
     if slot.pending.length() == 16 {
       let block = if slot.encrypting {
-        aes128_encrypt(slot.rounds, slot.pending)
+        aes_encrypt(slot.rounds, slot.pending)
       } else {
-        aes128_decrypt(slot.rounds, slot.pending)
+        aes_decrypt(slot.rounds, slot.pending)
       }
       for out in block {
         slot.output.push(out)
@@ -216,7 +242,7 @@ fn crypt_absorb(slot : CryptSlot, bytes : Array[Int]) -> Unit raise EvalError {
 }
 
 ///|
-fn crypt_alloc(decrypting : Bool) -> Int {
+fn crypt_alloc(decrypting : Bool, key_len : Int) -> Int {
   let mut index = 0
   let mut found = -1
   while index < crypts.slots.length() && found < 0 {
@@ -226,21 +252,22 @@ fn crypt_alloc(decrypting : Bool) -> Int {
     index = index + 1
   }
   if found >= 0 {
-    crypt_reset(crypts.slots[found], decrypting)
+    crypt_reset(crypts.slots[found], decrypting, key_len)
     found
   } else {
-    let slot = crypt_fresh(decrypting)
+    let slot = crypt_fresh(decrypting, key_len)
     crypts.slots.push(slot)
     crypts.slots.length() - 1
   }
 }
 
 ///|
-fn crypt_fresh(decrypting : Bool) -> CryptSlot {
+fn crypt_fresh(decrypting : Bool, key_len : Int) -> CryptSlot {
   {
     live: true,
     encrypting: !decrypting,
     key_ready: false,
+    key_len,
     rounds: [],
     pending: [],
     output: [],
@@ -248,10 +275,11 @@ fn crypt_fresh(decrypting : Bool) -> CryptSlot {
 }
 
 ///|
-fn crypt_reset(slot : CryptSlot, decrypting : Bool) -> Unit {
+fn crypt_reset(slot : CryptSlot, decrypting : Bool, key_len : Int) -> Unit {
   slot.live = true
   slot.encrypting = !decrypting
   slot.key_ready = false
+  slot.key_len = key_len
   slot.rounds = []
   slot.pending = []
   slot.output = []
