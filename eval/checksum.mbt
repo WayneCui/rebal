@@ -1,6 +1,7 @@
 ///|
 /// CRC-24, CRC-32, Adler-32, MD5, SHA-1, SHA-256, SHA-384, or SHA-512.
-/// The CRCs are integers. The hashes are raw digests. `/with` is HMAC.
+/// The CRCs are integers. The hashes are raw digests.
+/// `/with` is HMAC. `/part` limits the input.
 fn perform_checksum(
   env : Env,
   args : Array[@value.Cell],
@@ -8,9 +9,10 @@ fn perform_checksum(
 ) -> @value.Cell raise EvalError {
   let word = as_word(args[1], "checksum")
   let name = env.symbols.canon(word.sym())
-  let bytes = payload_bytes(args[0], "checksum")
-  match checksum_key(env, args, active) {
-    Some(key) => binary_cell(hmac(key, bytes, name))
+  let (key, part) = checksum_options(env, args, active)
+  let bytes = ranged_payload(args[0], part, "checksum")
+  match key {
+    Some(raw) => binary_cell(hmac(raw, bytes, name))
     None =>
       match name {
         "crc24" => @value.Integer(crc24(bytes))
@@ -27,24 +29,27 @@ fn perform_checksum(
 }
 
 ///|
-fn checksum_key(
+fn checksum_options(
   env : Env,
   args : Array[@value.Cell],
   active : Array[Int],
-) -> Array[Int]? raise EvalError {
-  let mut keyed = false
+) -> (Array[Int]?, Int?) raise EvalError {
+  let mut key : Array[Int]? = None
+  let mut part : Int? = None
+  let mut cursor = 2
   for sym in active {
-    if env.symbols.canon(sym) == "with" {
-      keyed = true
+    let name = env.symbols.canon(sym)
+    if name == "with" {
+      key = Some(payload_bytes(args[cursor], "checksum"))
+      cursor = cursor + 1
+    } else if name == "part" {
+      part = Some(part_count(args[0], args[cursor], "checksum"))
+      cursor = cursor + 1
     } else {
       raise EvalError::Cannot("checksum")
     }
   }
-  if keyed {
-    Some(payload_bytes(args[2], "checksum"))
-  } else {
-    None
-  }
+  (key, part)
 }
 
 ///|

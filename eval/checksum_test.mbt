@@ -222,3 +222,30 @@ test "checksum/with is HMAC for the digest methods" {
   }
   assert_true(other)
 }
+
+///|
+test "checksum/part limits the hashed bytes" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(env, "(checksum/part {abc123} 'md5 3) = checksum {abc} 'md5")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "(checksum/part skip {123abc} 3 'md5 3) = checksum {abc} 'md5",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "(checksum/part tail {123abc} 'md5 -3) = checksum {abc} 'md5",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "(checksum/with/part {Hello world!!} 'sha1 {mykey} 11) = checksum/with {Hello world} 'sha1 {mykey}",
+    )
+    is @value.Logic(true),
+  )
+}
