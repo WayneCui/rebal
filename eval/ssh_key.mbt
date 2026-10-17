@@ -13,6 +13,8 @@ fn decode_ssh_key(
         rsa_handle(pem.bytes)
       } else if pem.label == "RSA PRIVATE KEY" {
         rsa_private_handle(env, pem.bytes)
+      } else if pem.label == "PRIVATE KEY" {
+        pkcs8_private_handle(env, pem.bytes)
       } else {
         raise EvalError::Caused("no-codec", "ssh-key")
       }
@@ -49,6 +51,76 @@ fn rsa_handle(bytes : Array[Int]) -> @value.Cell raise EvalError {
         raise EvalError::Caused("no-codec", "ssh-key")
       }
     None => raise EvalError::Caused("no-codec", "ssh-key")
+  }
+}
+
+///|
+/// PKCS#8 `PRIVATE KEY`: an rsaEncryption id wrapped around a PKCS#1 key.
+fn pkcs8_private_handle(
+  env : Env,
+  bytes : Array[Int],
+) -> @value.Cell raise EvalError {
+  match pkcs8_key_bytes(env, bytes) {
+    Some(inner) => rsa_private_handle(env, inner)
+    None => raise EvalError::Caused("no-codec", "ssh-key")
+  }
+}
+
+///|
+fn pkcs8_key_bytes(
+  env : Env,
+  bytes : Array[Int],
+) -> Array[Int]? raise EvalError {
+  match block_items(decode_der(env, binary_cell(bytes))) {
+    Some(outer) =>
+      if outer.length() >= 2 && word_named(outer[0], "sequence") {
+        pkcs8_octet(outer[1])
+      } else {
+        None
+      }
+    None => None
+  }
+}
+
+///|
+fn pkcs8_octet(body : @value.Cell) -> Array[Int]? {
+  match block_items(body) {
+    Some(items) =>
+      if items.length() >= 6 &&
+        word_named(items[2], "sequence") &&
+        word_named(items[4], "octet_string") &&
+        rsa_encryption_id(items[3]) {
+        binary_of(items[5])
+      } else {
+        None
+      }
+    None => None
+  }
+}
+
+///|
+fn rsa_encryption_id(body : @value.Cell) -> Bool {
+  match block_items(body) {
+    Some(items) =>
+      if items.length() >= 2 && word_named(items[0], "object_identifier") {
+        match binary_of(items[1]) {
+          Some(oid) =>
+            oid.length() == 9 &&
+            oid[0] == 0x2A &&
+            oid[1] == 0x86 &&
+            oid[2] == 0x48 &&
+            oid[3] == 0x86 &&
+            oid[4] == 0xF7 &&
+            oid[5] == 0x0D &&
+            oid[6] == 0x01 &&
+            oid[7] == 0x01 &&
+            oid[8] == 0x01
+          None => false
+        }
+      } else {
+        false
+      }
+    None => false
   }
 }
 
