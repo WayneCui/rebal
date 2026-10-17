@@ -211,7 +211,8 @@ fn call(
     active.length() > 0 &&
     func.code() != native_find &&
     func.code() != native_sort &&
-    func.code() != native_call {
+    func.code() != native_call &&
+    func.code() != native_now {
     raise EvalError::Cannot("func")
   }
   let args : Array[@value.Cell] = []
@@ -239,6 +240,8 @@ fn call(
     (perform_sort(env, args, active), cursor)
   } else if func.code() == native_call {
     (perform_call(env, args, active), cursor)
+  } else if func.code() == native_now {
+    (perform_now(env, active), cursor)
   } else if func.code() == 0 {
     (call_user(env, func, args, active), cursor)
   } else {

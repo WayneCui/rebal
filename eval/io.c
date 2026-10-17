@@ -7,6 +7,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <time.h>
 #include <unistd.h>
 
 static int32_t rebal_status = 0;
@@ -497,3 +498,40 @@ moonbit_string_t rebal_spawn(
   free(captured);
   return text;
 }
+
+static int32_t rebal_year = 0;
+static int32_t rebal_month = 0;
+static int32_t rebal_day = 0;
+static int32_t rebal_zone = 0;
+static int32_t rebal_weekday = 0;
+static int32_t rebal_yearday = 0;
+static double rebal_seconds = 0.0;
+
+void rebal_read_clock(int32_t utc, int32_t precise) {
+  struct timespec ts;
+  clock_gettime(CLOCK_REALTIME, &ts);
+  struct tm parts;
+  if (utc) {
+    gmtime_r(&ts.tv_sec, &parts);
+    rebal_zone = 0;
+  } else {
+    localtime_r(&ts.tv_sec, &parts);
+    rebal_zone = (int32_t)(parts.tm_gmtoff / 60);
+  }
+  rebal_year = parts.tm_year + 1900;
+  rebal_month = parts.tm_mon + 1;
+  rebal_day = parts.tm_mday;
+  rebal_seconds =
+    parts.tm_hour * 3600.0 + parts.tm_min * 60.0 + parts.tm_sec +
+    (precise ? ts.tv_nsec / 1000000000.0 : 0.0);
+  rebal_weekday = (parts.tm_wday + 6) % 7 + 1;
+  rebal_yearday = parts.tm_yday + 1;
+}
+
+int32_t rebal_clock_year(void) { return rebal_year; }
+int32_t rebal_clock_month(void) { return rebal_month; }
+int32_t rebal_clock_day(void) { return rebal_day; }
+int32_t rebal_clock_zone(void) { return rebal_zone; }
+int32_t rebal_clock_weekday(void) { return rebal_weekday; }
+int32_t rebal_clock_yearday(void) { return rebal_yearday; }
+double rebal_clock_seconds(void) { return rebal_seconds; }
