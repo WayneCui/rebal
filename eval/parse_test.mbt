@@ -428,3 +428,69 @@ test "parse paren runs for its effect" {
     is @value.Logic(true),
   )
 }
+
+///|
+test "parse while, then, return, and do" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "v: {yx} all [parse v [while [remove #\"y\" | #\"x\"]] v = {x}]",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "v: {yxxyyx} all [parse v [while [remove #\"y\" | #\"x\"]] v = {xxx}]",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "v: {} all [parse v [while [remove #\"y\" | #\"x\"]] v = {}]",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse {ab} [{a} then {b} | {c}]) = true")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse {c} [{a} then {b} | {c}]) = true")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse {a} [{a} then {b} | {a}]) = false")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse {ab} [{a} then {b} {z} | {ab}]) = true")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse [{a} 1 2] [string! return to end]) = [1 2]")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse [{a} 1 2] [string! return ({done})]) = {done}")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "(parse [2] [set n integer! if (n > 0) return ({positive})]) = {positive}",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "(parse [-2] [set n integer! if (n > 0) return ({positive})]) = false",
+    )
+    is @value.Logic(true),
+  )
+  let blocked = try {
+    @eval.run(env, "parse [1 + 1] [set result do integer!]") |> ignore
+    false
+  } catch {
+    error => error.id() == "cannot"
+  }
+  assert_true(blocked)
+}

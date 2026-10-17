@@ -3,10 +3,11 @@ priv struct Gather {
   mut stack : Array[@value.Series]
   mut held : @value.Cell?
   mut sink : @value.Series?
+  mut committed : Bool
 }
 
 ///|
-let gather : Gather = { stack: [], held: None, sink: None, }
+let gather : Gather = { stack: [], held: None, sink: None, committed: false, }
 
 ///|
 /// Match a rule block against a series. Success does not require reaching the tail
@@ -23,26 +24,41 @@ fn perform_parse(
         let outer_stack = gather.stack
         let outer_held = gather.held
         let outer_sink = gather.sink
+        let outer_committed = gather.committed
         gather.stack = []
         gather.held = None
         gather.sink = None
+        gather.committed = false
         errdefer {
           gather.stack = outer_stack
           gather.held = outer_held
           gather.sink = outer_sink
+          gather.committed = outer_committed
         }
-        let outcome = match_rules(env, series, index, rule_series, rule_index)
-        let result = match gather.held {
-          Some(block) => block
+        let mut early : @value.Cell? = None
+        let outcome = match_rules(env, series, index, rule_series, rule_index) catch {
+          EvalError::Returned(value) => {
+            early = Some(value)
+            None
+          }
+          error => raise error
+        }
+        let result = match early {
+          Some(value) => value
           None =>
-            match outcome {
-              Some(_) => @value.Logic(true)
-              None => @value.Logic(false)
+            match gather.held {
+              Some(block) => block
+              None =>
+                match outcome {
+                  Some(_) => @value.Logic(true)
+                  None => @value.Logic(false)
+                }
             }
         }
         gather.stack = outer_stack
         gather.held = outer_held
         gather.sink = outer_sink
+        gather.committed = outer_committed
         result
       } else {
         raise EvalError::Cannot("parse")
@@ -59,10 +75,15 @@ fn match_rules(
   rules : @value.Series,
   index : Int,
 ) -> Int? raise EvalError {
+  let saved = gather.committed
+  gather.committed = false
+  errdefer {
+    gather.committed = saved
+  }
   let mut start = index
   let mut found : Int? = None
   let mut cursor = index
-  while found is None && cursor <= rules.length() {
+  while found is None && !gather.committed && cursor <= rules.length() {
     let bar = cursor == rules.length() || is_word(rules.item(cursor), "|")
     if bar {
       found = match_seq(env, input, pos, rules, start, cursor)
@@ -70,7 +91,13 @@ fn match_rules(
     }
     cursor = cursor + 1
   }
-  found
+  let stopped = gather.committed
+  gather.committed = saved
+  if stopped {
+    None
+  } else {
+    found
+  }
 }
 
 ///|
@@ -87,19 +114,25 @@ fn match_seq(
   } else {
     match rules.item(cursor) {
       Some(rule) =>
-        if is_word(Some(rule), "some") || is_word(Some(rule), "any") {
+        if is_word(Some(rule), "some") ||
+          is_word(Some(rule), "any") ||
+          is_word(Some(rule), "while") {
           match rules.item(cursor + 1) {
             Some(item) =>
-              repeat_rule(
-                env,
-                input,
-                pos,
-                item,
-                is_word(Some(rule), "some"),
-                rules,
-                cursor + 2,
-                end,
-              )
+              if is_word(Some(rule), "while") {
+                while_rule(env, input, pos, item, rules, cursor + 2, end)
+              } else {
+                repeat_rule(
+                  env,
+                  input,
+                  pos,
+                  item,
+                  is_word(Some(rule), "some"),
+                  rules,
+                  cursor + 2,
+                  end,
+                )
+              }
             None => None
           }
         } else if is_word(Some(rule), "to") || is_word(Some(rule), "thru") {
@@ -144,6 +177,12 @@ fn match_seq(
           raise EvalError::Stopped(pos)
         } else if is_word(Some(rule), "fail") {
           None
+        } else if is_word(Some(rule), "do") {
+          raise EvalError::Cannot("parse")
+        } else if is_word(Some(rule), "then") {
+          then_rule(env, input, pos, rules, cursor, end)
+        } else if is_word(Some(rule), "return") {
+          return_rule(env, input, pos, rules, cursor, end)
         } else if is_word(Some(rule), "if") {
           when_true(env, input, pos, rules, cursor, end)
         } else if is_word(Some(rule), "into") {
@@ -238,6 +277,106 @@ fn repeat_rule(
     index = index - 1
   }
   found
+}
+
+///|
+/// `while` repeats like `any`, and keeps going when a match edits the series without moving.
+fn while_rule(
+  env : Env,
+  input : @value.Series,
+  pos : Int,
+  item : @value.Cell,
+  rules : @value.Series,
+  cursor : Int,
+  end : Int,
+) -> Int? raise EvalError {
+  let mut current = pos
+  let mut running = true
+  let mut times = 0
+  let mut halted : Int? = None
+  while running && halted is None {
+    if times == 10000 {
+      raise EvalError::Cannot("parse")
+    }
+    times = times + 1
+    let before = input.length()
+    let stepped = match_one(env, input, current, item) catch {
+      EvalError::Stopped(at) => {
+        halted = Some(at)
+        None
+      }
+      error => raise error
+    }
+    match halted {
+      Some(_) => ()
+      None =>
+        match stepped {
+          Some(next) =>
+            if next == current && input.length() == before {
+              running = false
+            } else {
+              current = next
+            }
+          None => running = false
+        }
+    }
+  }
+  match halted {
+    Some(at) => match_seq(env, input, at, rules, cursor, end)
+    None => match_seq(env, input, current, rules, cursor, end)
+  }
+}
+
+///|
+/// A failure after `then` rejects every later alternative in this rule block.
+fn then_rule(
+  env : Env,
+  input : @value.Series,
+  pos : Int,
+  rules : @value.Series,
+  cursor : Int,
+  end : Int,
+) -> Int? raise EvalError {
+  let rule_at = cursor + 1
+  let stop = rule_extent(env, rules, rule_at, end)
+  match match_seq(env, input, pos, rules, rule_at, stop) {
+    Some(next) => match_seq(env, input, next, rules, stop, end)
+    None => {
+      gather.committed = true
+      None
+    }
+  }
+}
+
+///|
+/// `return (value)` yields that value. `return rule` yields the matched span.
+fn return_rule(
+  env : Env,
+  input : @value.Series,
+  pos : Int,
+  rules : @value.Series,
+  cursor : Int,
+  end : Int,
+) -> Int? raise EvalError {
+  let rule_at = cursor + 1
+  if rule_at >= end {
+    raise EvalError::Cannot("parse")
+  }
+  match rules.item(rule_at) {
+    Some(item) if is_paren(item) =>
+      match item {
+        @value.Seq(body, body_index) =>
+          raise EvalError::Returned(do_series(env, body, body_index))
+        _ => raise EvalError::Cannot("parse")
+      }
+    _ => {
+      let stop = rule_extent(env, rules, rule_at, end)
+      match match_seq(env, input, pos, rules, rule_at, stop) {
+        Some(next) => raise EvalError::Returned(copy_span(input, pos, next))
+        None => None
+      }
+    }
+  }
 }
 
 ///|
@@ -914,7 +1053,10 @@ fn rule_extent(
         is_word(Some(rule), "not") ||
         is_word(Some(rule), "ahead") ||
         is_word(Some(rule), "and") ||
-        is_word(Some(rule), "remove") {
+        is_word(Some(rule), "remove") ||
+        is_word(Some(rule), "while") ||
+        is_word(Some(rule), "then") ||
+        is_word(Some(rule), "return") {
         rule_extent(env, rules, cursor + 1, limit)
       } else if is_word(Some(rule), "keep") {
         let at = if is_word(rules.item(cursor + 1), "pick") {
@@ -1005,7 +1147,11 @@ fn is_command(cell : @value.Cell) -> Bool {
   is_word(Some(cell), "change") ||
   is_word(Some(cell), "insert") ||
   is_word(Some(cell), "collect") ||
-  is_word(Some(cell), "keep")
+  is_word(Some(cell), "keep") ||
+  is_word(Some(cell), "while") ||
+  is_word(Some(cell), "then") ||
+  is_word(Some(cell), "return") ||
+  is_word(Some(cell), "do")
 }
 
 ///|
@@ -1321,6 +1467,10 @@ fn bad_target(spelling : String) -> Bool {
   spelling == "insert" ||
   spelling == "collect" ||
   spelling == "keep" ||
+  spelling == "while" ||
+  spelling == "then" ||
+  spelling == "return" ||
+  spelling == "do" ||
   spelling == "|"
 }
 
@@ -1461,10 +1611,10 @@ fn capture(
           match_seq(env, input, pos + 1, rules, at + 1, end)
         }
       } else {
-        match match_one(env, input, pos, item) {
-          Some(next) => {
+        match one_step(env, input, pos, rules, at, end) {
+          Some((next, next_cursor)) => {
             write_capture(env, lexeme, input, pos, next, copying)
-            match_seq(env, input, next, rules, at + 1, end)
+            match_seq(env, input, next, rules, next_cursor, end)
           }
           None => None
         }
