@@ -90,3 +90,13 @@ test "reduce evaluates expressions and drops unset" {
   assert_true(@eval.run(env, "length? form \"ab\"") is @value.Integer(2L))
   assert_true(@eval.run(env, "length? mold \"ab\"") is @value.Integer(4L))
 }
+
+///|
+test "local words stay inside the function" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(env, "n: 0 f: func [x /local n] [n: x n] f 3")
+    is @value.Integer(3L),
+  )
+  assert_true(@eval.run(env, "n") is @value.Integer(0L))
+}

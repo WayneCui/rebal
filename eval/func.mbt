@@ -5,34 +5,51 @@ fn build_func(
   spec : @value.Cell,
   body : @value.Cell,
 ) -> @value.Cell raise EvalError {
-  let params = param_syms(spec)
+  let names = spec_names(spec)
   let frame = @value.Frame::new()
-  for sym in params {
+  for sym in names.0 {
+    frame.ensure(sym) |> ignore
+  }
+  for sym in names.1 {
     frame.ensure(sym) |> ignore
   }
   match copied_block(body) {
     Some(series) => {
       @bind.bind(@value.Seq(series, 0), frame) |> ignore
-      @value.Function(@value.Func::make(params, series, false, frame))
+      @value.Function(@value.Func::make(names.0, series, false, frame))
     }
     None => raise EvalError::Cannot("func")
   }
 }
 
 ///|
-fn param_syms(spec : @value.Cell) -> Array[Int] raise EvalError {
+/// Words before `/local` are arguments. Words after it are locals.
+fn spec_names(spec : @value.Cell) -> (Array[Int], Array[Int]) raise EvalError {
   match spec {
     @value.Seq(series, index) if series.datatype() == @value.Block => {
-      let names : Array[Int] = []
+      let args : Array[Int] = []
+      let locals : Array[Int] = []
       let mut cursor = index
+      let mut after_mark = false
       while cursor < series.length() {
         match series.item(cursor) {
-          Some(@value.Sym(@value.Word, lexeme)) => names.push(lexeme.sym())
+          Some(@value.Sym(@value.Word, lexeme)) =>
+            if after_mark {
+              locals.push(lexeme.sym())
+            } else {
+              args.push(lexeme.sym())
+            }
+          Some(@value.Sym(@value.Refinement, lexeme)) =>
+            if lexeme.spelling() == "local" {
+              after_mark = true
+            } else {
+              raise EvalError::Cannot("func")
+            }
           _ => raise EvalError::Cannot("func")
         }
         cursor = cursor + 1
       }
-      names
+      (args, locals)
     }
     _ => raise EvalError::Cannot("func")
   }
