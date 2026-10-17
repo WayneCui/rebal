@@ -24,11 +24,15 @@ pub fn complement(@value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn copy(@value.Cell) -> Result[@value.Cell, ActionError]
 
+pub fn difference(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
+
 pub fn divide(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn equal(@value.Cell, @value.Cell) -> Bool
 
 pub fn even_q(@value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn exclude(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn find(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
@@ -47,6 +51,8 @@ pub fn head_q(@value.Cell) -> Result[@value.Cell, ActionError]
 pub fn index(@value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn insert(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn intersect(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn length(@value.Cell) -> Result[@value.Cell, ActionError]
 
@@ -121,6 +127,10 @@ pub fn tail_q(@value.Cell) -> Result[@value.Cell, ActionError]
 pub fn take(@value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn trim(@value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn union(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn unique(@value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn zero_q(@value.Cell) -> Result[@value.Cell, ActionError]
 

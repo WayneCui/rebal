@@ -468,6 +468,16 @@ fn apply(
     from_action(@action.trim(args[0]))
   } else if func.code() == native_select {
     from_action(@action.select(args[0], args[1]))
+  } else if func.code() == native_union {
+    from_action(@action.union(args[0], args[1]))
+  } else if func.code() == native_intersect {
+    from_action(@action.intersect(args[0], args[1]))
+  } else if func.code() == native_difference {
+    from_action(@action.difference(args[0], args[1]))
+  } else if func.code() == native_exclude {
+    from_action(@action.exclude(args[0], args[1]))
+  } else if func.code() == native_unique {
+    from_action(@action.unique(args[0]))
   } else {
     raise EvalError::Cannot("function")
   }

@@ -290,6 +290,21 @@ let native_select : Int = 94
 let native_sort : Int = 95
 
 ///|
+let native_union : Int = 96
+
+///|
+let native_intersect : Int = 97
+
+///|
+let native_difference : Int = 98
+
+///|
+let native_exclude : Int = 99
+
+///|
+let native_unique : Int = 100
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -390,6 +405,11 @@ pub fn Env::new() -> Env {
   define_native(env, "trim", 1, false, native_trim)
   define_native(env, "select", 2, false, native_select)
   define_native(env, "sort", 1, false, native_sort)
+  define_native(env, "union", 2, false, native_union)
+  define_native(env, "intersect", 2, false, native_intersect)
+  define_native(env, "difference", 2, false, native_difference)
+  define_native(env, "exclude", 2, false, native_exclude)
+  define_native(env, "unique", 1, false, native_unique)
   install(env, "unset!", @value.Type(@value.Unset))
   install(env, "none!", @value.Type(@value.None))
   install(env, "logic!", @value.Type(@value.Logic))
