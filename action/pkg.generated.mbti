@@ -16,6 +16,10 @@ pub fn at(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn back(@value.Cell) -> Result[@value.Cell, ActionError]
 
+pub fn change(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn clear(@value.Cell) -> Result[@value.Cell, ActionError]
+
 pub fn complement(@value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn copy(@value.Cell) -> Result[@value.Cell, ActionError]
@@ -86,6 +90,8 @@ pub fn remainder(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn remove(@value.Cell) -> Result[@value.Cell, ActionError]
 
+pub fn reverse(@value.Cell) -> Result[@value.Cell, ActionError]
+
 pub fn round(@value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn shift(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
@@ -100,9 +106,15 @@ pub fn strict_equal(@value.Cell, @value.Cell) -> Bool
 
 pub fn subtract(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
+pub fn swap(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
+
 pub fn tail(@value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn tail_q(@value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn take(@value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn trim(@value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn zero_q(@value.Cell) -> Result[@value.Cell, ActionError]
 

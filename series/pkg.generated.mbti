@@ -10,6 +10,10 @@ pub fn append(@value.Cell, @value.Cell) -> @value.Cell?
 
 pub fn at(@value.Cell, Int) -> @value.Cell?
 
+pub fn change(@value.Cell, @value.Cell) -> @value.Cell?
+
+pub fn clear(@value.Cell) -> @value.Cell?
+
 pub fn copy(@value.Cell) -> @value.Cell?
 
 pub fn find(@value.Cell, @value.Cell) -> @value.Cell
@@ -32,9 +36,17 @@ pub fn poke(@value.Cell, Int, @value.Cell) -> @value.Cell?
 
 pub fn remove(@value.Cell) -> @value.Cell?
 
+pub fn reverse(@value.Cell) -> @value.Cell?
+
 pub fn skip(@value.Cell, Int) -> @value.Cell?
 
+pub fn swap(@value.Cell, @value.Cell) -> @value.Cell?
+
 pub fn tail(@value.Cell) -> @value.Cell?
+
+pub fn take(@value.Cell) -> @value.Cell?
+
+pub fn trim(@value.Cell) -> @value.Cell?
 
 // Errors
 

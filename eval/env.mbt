@@ -266,6 +266,24 @@ let native_shift_left : Int = 86
 let native_shift_right : Int = 87
 
 ///|
+let native_clear : Int = 88
+
+///|
+let native_take : Int = 89
+
+///|
+let native_reverse : Int = 90
+
+///|
+let native_swap : Int = 91
+
+///|
+let native_change : Int = 92
+
+///|
+let native_trim : Int = 93
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -358,6 +376,12 @@ pub fn Env::new() -> Env {
   define_native(env, "shift", 2, false, native_shift)
   define_native(env, "<<", 2, true, native_shift_left)
   define_native(env, ">>", 2, true, native_shift_right)
+  define_native(env, "clear", 1, false, native_clear)
+  define_native(env, "take", 1, false, native_take)
+  define_native(env, "reverse", 1, false, native_reverse)
+  define_native(env, "swap", 2, false, native_swap)
+  define_native(env, "change", 2, false, native_change)
+  define_native(env, "trim", 1, false, native_trim)
   install(env, "unset!", @value.Type(@value.Unset))
   install(env, "none!", @value.Type(@value.None))
   install(env, "logic!", @value.Type(@value.Logic))

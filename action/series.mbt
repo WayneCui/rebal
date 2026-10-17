@@ -201,6 +201,48 @@ pub fn tail_q(series : @value.Cell) -> Result[@value.Cell, ActionError] {
 }
 
 ///|
+pub fn clear(series : @value.Cell) -> Result[@value.Cell, ActionError] {
+  changed(series, "clear", fn(cell) { @series.clear(cell) })
+}
+
+///|
+pub fn take(series : @value.Cell) -> Result[@value.Cell, ActionError] {
+  match @series.take(series) {
+    Some(value) => Ok(value)
+    None => Err(Cannot("take"))
+  }
+}
+
+///|
+pub fn reverse(series : @value.Cell) -> Result[@value.Cell, ActionError] {
+  changed(series, "reverse", fn(cell) { @series.reverse(cell) })
+}
+
+///|
+pub fn swap(
+  left : @value.Cell,
+  right : @value.Cell,
+) -> Result[@value.Cell, ActionError] {
+  match @series.swap(left, right) {
+    Some(cell) => Ok(cell)
+    None => Err(Cannot("swap"))
+  }
+}
+
+///|
+pub fn change(
+  series : @value.Cell,
+  value : @value.Cell,
+) -> Result[@value.Cell, ActionError] {
+  changed(series, "change", fn(cell) { @series.change(cell, value) })
+}
+
+///|
+pub fn trim(series : @value.Cell) -> Result[@value.Cell, ActionError] {
+  changed(series, "trim", fn(cell) { @series.trim(cell) })
+}
+
+///|
 pub fn poke(
   series : @value.Cell,
   index : @value.Cell,

@@ -428,6 +428,18 @@ fn apply(
     from_action(@action.shift_left(args[0], args[1]))
   } else if func.code() == native_shift_right {
     from_action(@action.shift_right(args[0], args[1]))
+  } else if func.code() == native_clear {
+    from_action(@action.clear(args[0]))
+  } else if func.code() == native_take {
+    from_action(@action.take(args[0]))
+  } else if func.code() == native_reverse {
+    from_action(@action.reverse(args[0]))
+  } else if func.code() == native_swap {
+    from_action(@action.swap(args[0], args[1]))
+  } else if func.code() == native_change {
+    from_action(@action.change(args[0], args[1]))
+  } else if func.code() == native_trim {
+    from_action(@action.trim(args[0]))
   } else {
     raise EvalError::Cannot("function")
   }
