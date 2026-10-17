@@ -210,13 +210,16 @@ fn call(
   if func.code() != 0 &&
     active.length() > 0 &&
     func.code() != native_find &&
-    func.code() != native_sort {
+    func.code() != native_sort &&
+    func.code() != native_call {
     raise EvalError::Cannot("func")
   }
   let args : Array[@value.Cell] = []
   let mut cursor = index
   let count = if func.code() == native_find && named(env, active, "part") {
     func.arity() + 1
+  } else if func.code() == native_call {
+    func.arity() + call_extra(env, active)
   } else if func.code() == 0 {
     taken_count(func, active)
   } else {
@@ -234,6 +237,8 @@ fn call(
     (perform_find(env, args, active), cursor)
   } else if func.code() == native_sort {
     (perform_sort(env, args, active), cursor)
+  } else if func.code() == native_call {
+    (perform_call(env, args, active), cursor)
   } else if func.code() == 0 {
     (call_user(env, func, args, active), cursor)
   } else {

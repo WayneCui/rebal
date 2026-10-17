@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 static int32_t rebal_status = 0;
 
@@ -326,4 +328,172 @@ int32_t rebal_make_dir(moonbit_string_t path, int32_t path_len) {
   int failed = mkdir(cpath, 0755) != 0 && errno != EEXIST;
   free(cpath);
   return failed ? 1 : 0;
+}
+
+static int32_t rebal_call_result = 0;
+
+int32_t rebal_call_code(void) { return rebal_call_result; }
+
+static void rebal_add_bytes(
+  char **out,
+  size_t *len,
+  size_t *cap,
+  const char *text,
+  size_t add
+) {
+  while (*len + add + 1 > *cap) {
+    *cap = *cap == 0 ? 64 : *cap * 2;
+    char *grown = (char *)realloc(*out, *cap);
+    if (grown == NULL) {
+      return;
+    }
+    *out = grown;
+  }
+  memcpy(*out + *len, text, add);
+  *len += add;
+  (*out)[*len] = 0;
+}
+
+moonbit_string_t rebal_spawn(
+  moonbit_string_t packed,
+  int32_t packed_len,
+  int32_t flags,
+  moonbit_string_t input,
+  int32_t input_len
+) {
+  rebal_call_result = -1;
+  int wait_flag = (flags & 1) != 0;
+  int shell = (flags & 2) != 0;
+  int capture = (flags & 4) != 0;
+  if (capture) {
+    wait_flag = 1;
+  }
+  char *body = rebal_to_utf8(packed, packed_len);
+  char *in_body = NULL;
+  if (input_len > 0) {
+    in_body = rebal_to_utf8(input, input_len);
+  }
+  if (body == NULL || (input_len > 0 && in_body == NULL)) {
+    free(body);
+    free(in_body);
+    return moonbit_make_string(0, 0);
+  }
+  char *argv_store[64];
+  int argc = 0;
+  if (shell) {
+    argv_store[0] = "/bin/sh";
+    argv_store[1] = "-c";
+    argv_store[2] = body;
+    argv_store[3] = NULL;
+    argc = 3;
+  } else {
+    argv_store[argc++] = body;
+    size_t n = strlen(body);
+    for (size_t i = 0; i < n && argc < 63; i++) {
+      if (body[i] == 1) {
+        body[i] = 0;
+        argv_store[argc++] = body + i + 1;
+      }
+    }
+    argv_store[argc] = NULL;
+  }
+  int in_pipe[2] = { -1, -1 };
+  int out_pipe[2] = { -1, -1 };
+  if (in_body != NULL && pipe(in_pipe) != 0) {
+    free(body);
+    free(in_body);
+    return moonbit_make_string(0, 0);
+  }
+  if (capture && pipe(out_pipe) != 0) {
+    if (in_pipe[0] >= 0) {
+      close(in_pipe[0]);
+      close(in_pipe[1]);
+    }
+    free(body);
+    free(in_body);
+    return moonbit_make_string(0, 0);
+  }
+  pid_t pid = fork();
+  if (pid < 0) {
+    if (in_pipe[0] >= 0) {
+      close(in_pipe[0]);
+      close(in_pipe[1]);
+    }
+    if (out_pipe[0] >= 0) {
+      close(out_pipe[0]);
+      close(out_pipe[1]);
+    }
+    free(body);
+    free(in_body);
+    return moonbit_make_string(0, 0);
+  }
+  if (pid == 0) {
+    if (in_pipe[0] >= 0) {
+      dup2(in_pipe[0], 0);
+      close(in_pipe[0]);
+      close(in_pipe[1]);
+    }
+    if (out_pipe[1] >= 0) {
+      dup2(out_pipe[1], 1);
+      close(out_pipe[0]);
+      close(out_pipe[1]);
+    }
+    execvp(argv_store[0], argv_store);
+    _exit(127);
+  }
+  free(body);
+  if (in_pipe[0] >= 0) {
+    close(in_pipe[0]);
+    size_t left = strlen(in_body);
+    char *cursor = in_body;
+    while (left > 0) {
+      ssize_t wrote = write(in_pipe[1], cursor, left);
+      if (wrote < 0) {
+        break;
+      }
+      cursor += wrote;
+      left -= (size_t)wrote;
+    }
+    close(in_pipe[1]);
+  }
+  free(in_body);
+  char *captured = NULL;
+  size_t captured_len = 0;
+  size_t captured_cap = 0;
+  if (out_pipe[0] >= 0) {
+    close(out_pipe[1]);
+    char tmp[1024];
+    ssize_t got = 0;
+    while ((got = read(out_pipe[0], tmp, sizeof tmp)) > 0) {
+      rebal_add_bytes(&captured, &captured_len, &captured_cap, tmp, (size_t)got);
+    }
+    close(out_pipe[0]);
+  }
+  if (wait_flag) {
+    int status = 0;
+    if (waitpid(pid, &status, 0) < 0) {
+      rebal_call_result = -1;
+    } else if (WIFEXITED(status)) {
+      rebal_call_result = WEXITSTATUS(status);
+    } else if (WIFSIGNALED(status)) {
+      rebal_call_result = 128 + WTERMSIG(status);
+    } else {
+      rebal_call_result = -1;
+    }
+  } else {
+    rebal_call_result = (int32_t)pid;
+  }
+  if (captured == NULL) {
+    return moonbit_make_string(0, 0);
+  }
+  int32_t units = rebal_utf8_units((unsigned char *)captured, captured_len);
+  if (units < 0) {
+    free(captured);
+    rebal_call_result = -1;
+    return moonbit_make_string(0, 0);
+  }
+  moonbit_string_t text = moonbit_make_string(units, 0);
+  rebal_fill_utf16(text, (unsigned char *)captured, captured_len);
+  free(captured);
+  return text;
 }

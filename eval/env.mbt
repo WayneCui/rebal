@@ -371,6 +371,9 @@ let native_write : Int = 121
 let native_query : Int = 122
 
 ///|
+let native_call : Int = 123
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -498,6 +501,7 @@ pub fn Env::new() -> Env {
   define_native(env, "read", 1, false, native_read)
   define_native(env, "write", 2, false, native_write)
   define_native(env, "query", 1, false, native_query)
+  define_native(env, "call", 1, false, native_call)
   install(env, "unset!", @value.Type(@value.Unset))
   install(env, "none!", @value.Type(@value.None))
   install(env, "logic!", @value.Type(@value.Logic))
