@@ -1,5 +1,5 @@
 ///|
-/// CRC-32, Adler-32, MD5, SHA-1, SHA-256, or SHA-512 of a string or a binary.
+/// CRC-32, Adler-32, MD5, SHA-1, SHA-256, SHA-384, or SHA-512.
 /// The two CRCs are signed 32-bit integers. The hashes are raw digests.
 fn perform_checksum(
   env : Env,
@@ -14,6 +14,7 @@ fn perform_checksum(
     "sha1" => binary_cell(sha1(bytes))
     "md5" => binary_cell(md5(bytes))
     "sha256" => binary_cell(sha256(bytes))
+    "sha384" => binary_cell(sha384(bytes))
     "sha512" => binary_cell(sha512(bytes))
     _ => raise EvalError::Cannot("checksum")
   }
@@ -418,15 +419,44 @@ fn sha256_terms() -> Array[Int64] {
 
 ///|
 fn sha512(bytes : Array[Int]) -> Array[Int] {
+  wide_sha(
+    bytes, 0x6A09E667F3BCC908UL, 0xBB67AE8584CAA73BUL, 0x3C6EF372FE94F82BUL, 0xA54FF53A5F1D36F1UL,
+    0x510E527FADE682D1UL, 0x9B05688C2B3E6C1FUL, 0x1F83D9ABFB41BD6BUL, 0x5BE0CD19137E2179UL,
+    8,
+  )
+}
+
+///|
+fn sha384(bytes : Array[Int]) -> Array[Int] {
+  wide_sha(
+    bytes, 0xCBBB9D5DC1059ED8UL, 0x629A292A367CD507UL, 0x9159015A3070DD17UL, 0x152FECD8F70E5939UL,
+    0x67332667FFC00B31UL, 0x8EB44A8768581511UL, 0xDB0C2E0D64F98FA7UL, 0x47B5481DBEFA4FA4UL,
+    6,
+  )
+}
+
+///|
+fn wide_sha(
+  bytes : Array[Int],
+  start0 : UInt64,
+  start1 : UInt64,
+  start2 : UInt64,
+  start3 : UInt64,
+  start4 : UInt64,
+  start5 : UInt64,
+  start6 : UInt64,
+  start7 : UInt64,
+  keep : Int,
+) -> Array[Int] {
   let padded = pad_sha512(bytes)
-  let mut h0 = 0x6A09E667F3BCC908UL
-  let mut h1 = 0xBB67AE8584CAA73BUL
-  let mut h2 = 0x3C6EF372FE94F82BUL
-  let mut h3 = 0xA54FF53A5F1D36F1UL
-  let mut h4 = 0x510E527FADE682D1UL
-  let mut h5 = 0x9B05688C2B3E6C1FUL
-  let mut h6 = 0x1F83D9ABFB41BD6BUL
-  let mut h7 = 0x5BE0CD19137E2179UL
+  let mut h0 = start0
+  let mut h1 = start1
+  let mut h2 = start2
+  let mut h3 = start3
+  let mut h4 = start4
+  let mut h5 = start5
+  let mut h6 = start6
+  let mut h7 = start7
   let terms = sha512_terms()
   let mut offset = 0
   while offset < padded.length() {
@@ -465,15 +495,11 @@ fn sha512(bytes : Array[Int]) -> Array[Int] {
     h7 = h7 + h
     offset = offset + 128
   }
+  let words = [h0, h1, h2, h3, h4, h5, h6, h7]
   let out : Array[Int] = []
-  push_be64(out, h0)
-  push_be64(out, h1)
-  push_be64(out, h2)
-  push_be64(out, h3)
-  push_be64(out, h4)
-  push_be64(out, h5)
-  push_be64(out, h6)
-  push_be64(out, h7)
+  for i in 0..<keep {
+    push_be64(out, words[i])
+  }
   out
 }
 
