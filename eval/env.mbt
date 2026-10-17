@@ -437,6 +437,9 @@ let native_ask : Int = 143
 let native_confirm : Int = 144
 
 ///|
+let native_wildcard : Int = 145
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -460,6 +463,7 @@ pub fn Env::new() -> Env {
   define_native(env, "input", 0, false, native_input)
   define_native(env, "ask", 1, false, native_ask)
   define_native(env, "confirm", 1, false, native_confirm)
+  define_native(env, "wildcard", 2, false, native_wildcard)
   define_native(env, "copy", 1, false, native_copy)
   define_native(env, "insert", 2, false, native_insert)
   define_native(env, "remove", 1, false, native_remove)
