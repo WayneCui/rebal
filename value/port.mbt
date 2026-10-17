@@ -6,6 +6,7 @@ pub struct PortValue {
   scheme : Frame
   name : String
   mut opened : Bool
+  mut handle : Int
 }
 
 ///|
@@ -14,7 +15,7 @@ pub fn PortValue::make(
   scheme : Frame,
   name : String,
 ) -> PortValue {
-  { spec, scheme, name, opened: false, }
+  { spec, scheme, name, opened: false, handle: -1, }
 }
 
 ///|
@@ -25,4 +26,14 @@ pub fn PortValue::set_opened(self : PortValue, flag : Bool) -> Unit {
 ///|
 pub fn PortValue::is_open(self : PortValue) -> Bool {
   self.opened
+}
+
+///|
+pub fn PortValue::set_handle(self : PortValue, handle : Int) -> Unit {
+  self.handle = handle
+}
+
+///|
+pub fn PortValue::handle(self : PortValue) -> Int {
+  self.handle
 }

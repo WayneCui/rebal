@@ -143,6 +143,8 @@ fn run_scheme(
     console_actor(env, action, port, extra)
   } else if name == "dir" {
     dir_actor(env, action, port, extra)
+  } else if name == "tcp" {
+    tcp_actor(env, action, port, extra)
   } else {
     let _ = (env, action, port, extra)
     raise EvalError::Cannot("port")

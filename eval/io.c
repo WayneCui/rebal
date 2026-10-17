@@ -1,12 +1,15 @@
+#include <arpa/inet.h>
 #include <dirent.h>
 #include <errno.h>
 #include <moonbit.h>
+#include <netinet/in.h>
+#include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
-#include <errno.h>
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
@@ -600,3 +603,185 @@ int32_t rebal_clock_zone(void) { return rebal_zone; }
 int32_t rebal_clock_weekday(void) { return rebal_weekday; }
 int32_t rebal_clock_yearday(void) { return rebal_yearday; }
 double rebal_clock_seconds(void) { return rebal_seconds; }
+
+static int32_t rebal_tcp_status = 0;
+
+int32_t rebal_tcp_code(void) { return rebal_tcp_status; }
+
+static int rebal_tcp_socket(void) {
+  int fd = socket(AF_INET, SOCK_STREAM, 0);
+  if (fd < 0) {
+    return -1;
+  }
+  int yes = 1;
+  setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+  return fd;
+}
+
+int32_t rebal_tcp_connect(moonbit_string_t host, int32_t host_len, int32_t port) {
+  rebal_tcp_status = 1;
+  char *name = rebal_to_utf8(host, host_len);
+  if (name == NULL || port < 1 || port > 65535) {
+    free(name);
+    return -1;
+  }
+  int fd = rebal_tcp_socket();
+  if (fd < 0) {
+    free(name);
+    return -1;
+  }
+  struct sockaddr_in addr;
+  memset(&addr, 0, sizeof(addr));
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons((uint16_t)port);
+  if (inet_pton(AF_INET, name, &addr.sin_addr) != 1 ||
+      connect(fd, (struct sockaddr *)&addr, sizeof(addr)) != 0) {
+    free(name);
+    close(fd);
+    return -1;
+  }
+  free(name);
+  rebal_tcp_status = 0;
+  return fd;
+}
+
+int32_t rebal_tcp_send(int32_t fd, moonbit_string_t text, int32_t text_len) {
+  rebal_tcp_status = 1;
+  char *body = rebal_to_utf8(text, text_len);
+  if (body == NULL || fd < 0) {
+    free(body);
+    return 1;
+  }
+  size_t len = strlen(body);
+  size_t sent = 0;
+  while (sent < len) {
+    ssize_t n = send(fd, body + sent, len - sent, 0);
+    if (n < 0) {
+      if (errno == EINTR) {
+        continue;
+      }
+      free(body);
+      return 1;
+    }
+    sent += (size_t)n;
+  }
+  free(body);
+  rebal_tcp_status = 0;
+  return 0;
+}
+
+moonbit_string_t rebal_tcp_recv(int32_t fd) {
+  rebal_tcp_status = 1;
+  size_t len = 0;
+  size_t cap = 64;
+  char *buf = malloc(cap);
+  if (buf == NULL || fd < 0) {
+    free(buf);
+    return moonbit_make_string(0, 0);
+  }
+  for (;;) {
+    if (len == cap) {
+      cap *= 2;
+      char *grown = realloc(buf, cap);
+      if (grown == NULL) {
+        free(buf);
+        return moonbit_make_string(0, 0);
+      }
+      buf = grown;
+    }
+    ssize_t n = recv(fd, buf + len, cap - len, 0);
+    if (n < 0) {
+      if (errno == EINTR) {
+        continue;
+      }
+      free(buf);
+      return moonbit_make_string(0, 0);
+    }
+    if (n == 0) {
+      break;
+    }
+    len += (size_t)n;
+  }
+  int32_t units = rebal_utf8_units((unsigned char *)buf, len);
+  if (units < 0) {
+    free(buf);
+    return moonbit_make_string(0, 0);
+  }
+  moonbit_string_t text = moonbit_make_string(units, 0);
+  rebal_fill_utf16(text, (unsigned char *)buf, len);
+  free(buf);
+  rebal_tcp_status = 0;
+  return text;
+}
+
+int32_t rebal_tcp_close(int32_t fd) {
+  if (fd < 0) {
+    return 0;
+  }
+  return close(fd) == 0 ? 0 : 1;
+}
+
+static void *rebal_echo_main(void *arg) {
+  int listen_fd = (int)(intptr_t)arg;
+  struct sockaddr_in peer;
+  socklen_t peer_len = sizeof(peer);
+  int conn = accept(listen_fd, (struct sockaddr *)&peer, &peer_len);
+  close(listen_fd);
+  if (conn < 0) {
+    return NULL;
+  }
+  char buf[1024];
+  size_t got = 0;
+  while (got < sizeof(buf)) {
+    ssize_t n = recv(conn, buf + got, 1, 0);
+    if (n <= 0) {
+      break;
+    }
+    got += 1;
+    if (buf[got - 1] == '\n') {
+      break;
+    }
+  }
+  size_t sent = 0;
+  while (sent < got) {
+    ssize_t n = send(conn, buf + sent, got - sent, 0);
+    if (n < 0) {
+      if (errno == EINTR) {
+        continue;
+      }
+      break;
+    }
+    sent += (size_t)n;
+  }
+  close(conn);
+  return NULL;
+}
+
+int32_t rebal_tcp_echo(void) {
+  int fd = rebal_tcp_socket();
+  if (fd < 0) {
+    return -1;
+  }
+  struct sockaddr_in addr;
+  memset(&addr, 0, sizeof(addr));
+  addr.sin_family = AF_INET;
+  addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+  addr.sin_port = 0;
+  if (bind(fd, (struct sockaddr *)&addr, sizeof(addr)) != 0 ||
+      listen(fd, 1) != 0) {
+    close(fd);
+    return -1;
+  }
+  socklen_t len = sizeof(addr);
+  if (getsockname(fd, (struct sockaddr *)&addr, &len) != 0) {
+    close(fd);
+    return -1;
+  }
+  pthread_t thread;
+  if (pthread_create(&thread, NULL, rebal_echo_main, (void *)(intptr_t)fd) != 0) {
+    close(fd);
+    return -1;
+  }
+  pthread_detach(thread);
+  return (int32_t)ntohs(addr.sin_port);
+}
