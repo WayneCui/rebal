@@ -75,10 +75,35 @@ test "crypt aes-192-ecb matches the FIPS-197 block" {
 }
 
 ///|
+test "crypt aes-128-cbc chains blocks with the init vector" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "port: open crypt://aes-128-cbc\nmodify port 'key #{2B7E151628AED2A6ABF7158809CF4F3C}\nmodify port 'init-vector #{000102030405060708090A0B0C0D0E0F}\ncipher: read write port #{6BC1BEE22E409F96E93D7E117393172AAE2D8A571E03AC9C9EB76FAC45AF8E51}\nmodify port 'direction 'decrypt\nmodify port 'init-vector #{000102030405060708090A0B0C0D0E0F}\nplain: read write port cipher\n(reduce [cipher plain]) = reduce [#{7649ABAC8119B246CEE98E9B12E9197D5086CB9B507219EE95DB113A917678B2} #{6BC1BEE22E409F96E93D7E117393172AAE2D8A571E03AC9C9EB76FAC45AF8E51}]",
+    )
+    is @value.Logic(true),
+  )
+  let bare = try {
+    @eval.run(
+      env, "port: open crypt://aes-128-cbc\nmodify port 'key #{2B7E151628AED2A6ABF7158809CF4F3C}\nwrite port #{6BC1BEE22E409F96E93D7E117393172A}",
+    )
+    |> ignore
+    false
+  } catch {
+    error =>
+      match error.to_cell() {
+        @value.Error(err) => err.id == "cannot" && err.arg1 == "write"
+        _ => false
+      }
+  }
+  assert_true(bare)
+}
+
+///|
 test "crypt rejects a cipher that is not wired yet" {
   let env = @eval.Env::new()
   let missing = try {
-    @eval.run(env, "open crypt://aes-128-cbc") |> ignore
+    @eval.run(env, "open crypt://aes-128-gcm") |> ignore
     false
   } catch {
     error =>

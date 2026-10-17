@@ -247,3 +247,12 @@ fn gmul(left : Int, right : Int) -> Int {
   }
   product
 }
+
+///|
+fn chain_xor(left : Array[Int], right : Array[Int]) -> Array[Int] {
+  let out : Array[Int] = []
+  for index in 0..<16 {
+    out.push(left[index] ^ right[index])
+  }
+  out
+}

@@ -6,6 +6,9 @@ priv struct CryptSlot {
   mut encrypting : Bool
   mut key_ready : Bool
   mut key_len : Int
+  mut cbc : Bool
+  mut iv_ready : Bool
+  mut iv : Array[Int]
   mut rounds : Array[Int]
   mut pending : Array[Int]
   mut output : Array[Int]
@@ -43,7 +46,7 @@ fn crypt_actor(
 }
 
 ///|
-/// `crypt://aes-128-ecb`, `aes-192-ecb`, or `aes-256-ecb`. `#decrypt` starts in decrypt.
+/// ECB and AES-128-CBC. `#decrypt` starts in decrypt. CBC needs an init vector.
 fn crypt_open(env : Env, port : @value.Cell) -> @value.Cell raise EvalError {
   match port {
     @value.Port(value) =>
@@ -51,9 +54,9 @@ fn crypt_open(env : Env, port : @value.Cell) -> @value.Cell raise EvalError {
         raise EvalError::Cannot("open")
       } else {
         let (algorithm, direction) = crypt_target(port_url(env, value))
-        match ecb_key_len(algorithm) {
-          Some(key_len) => {
-            let handle = crypt_alloc(direction == "decrypt", key_len)
+        match cipher_kind(algorithm) {
+          Some(kind) => {
+            let handle = crypt_alloc(direction == "decrypt", kind.0, kind.1)
             value.set_handle(handle)
             value.set_opened(true)
             port
@@ -138,7 +141,7 @@ fn crypt_modify(
         "key" => crypt_set_key(slot, value)
         "direction" => crypt_set_direction(slot, value)
         "algorithm" => crypt_set_algorithm(slot, value)
-        "init-vector" | "iv" => crypt_set_iv(value)
+        "init-vector" | "iv" => crypt_set_iv(slot, value)
         _ => {
           let _ = env
           raise EvalError::Cannot("modify")
@@ -186,9 +189,10 @@ fn crypt_set_algorithm(
 ) -> Unit raise EvalError {
   match value {
     @value.Sym(_, lexeme) =>
-      match ecb_key_len(lexeme.spelling().to_lower()) {
-        Some(key_len) => {
-          slot.key_len = key_len
+      match cipher_kind(lexeme.spelling().to_lower()) {
+        Some(kind) => {
+          slot.key_len = kind.0
+          slot.cbc = kind.1
           slot.key_ready = false
           slot.rounds = []
           slot.pending = []
@@ -200,24 +204,39 @@ fn crypt_set_algorithm(
 }
 
 ///|
-fn ecb_key_len(name : String) -> Int? {
+/// Key length, then whether the mode chains blocks with the init vector.
+fn cipher_kind(name : String) -> (Int, Bool)? {
   if name == "aes-128-ecb" {
-    Some(16)
+    Some((16, false))
   } else if name == "aes-192-ecb" {
-    Some(24)
+    Some((24, false))
   } else if name == "aes-256-ecb" {
-    Some(32)
+    Some((32, false))
+  } else if name == "aes-128-cbc" {
+    Some((16, true))
   } else {
     None
   }
 }
 
 ///|
-/// ECB ignores the vector. `none` is the value the FIPS tests pass.
-fn crypt_set_iv(value : @value.Cell) -> Unit raise EvalError {
+/// ECB ignores the vector. CBC keeps a 16-byte vector and updates it per block.
+fn crypt_set_iv(slot : CryptSlot, value : @value.Cell) -> Unit raise EvalError {
   match value {
-    @value.None => ()
-    @value.Seq(series, _) if series.datatype() == @value.Binary => ()
+    @value.None =>
+      if slot.cbc {
+        slot.iv = []
+        slot.iv_ready = false
+      }
+    @value.Seq(series, index) if series.datatype() == @value.Binary =>
+      if slot.cbc {
+        let bytes = bytes_from(series, index)
+        if bytes.length() != 16 {
+          raise EvalError::Cannot("modify")
+        }
+        slot.iv = bytes
+        slot.iv_ready = true
+      }
     _ => raise EvalError::Cannot("modify")
   }
 }
@@ -230,11 +249,7 @@ fn crypt_absorb(slot : CryptSlot, bytes : Array[Int]) -> Unit raise EvalError {
   for byte in bytes {
     slot.pending.push(byte)
     if slot.pending.length() == 16 {
-      let block = if slot.encrypting {
-        aes_encrypt(slot.rounds, slot.pending)
-      } else {
-        aes_decrypt(slot.rounds, slot.pending)
-      }
+      let block = crypt_block(slot)
       for out in block {
         slot.output.push(out)
       }
@@ -244,7 +259,30 @@ fn crypt_absorb(slot : CryptSlot, bytes : Array[Int]) -> Unit raise EvalError {
 }
 
 ///|
-fn crypt_alloc(decrypting : Bool, key_len : Int) -> Int {
+fn crypt_block(slot : CryptSlot) -> Array[Int] raise EvalError {
+  if !slot.cbc {
+    if slot.encrypting {
+      aes_encrypt(slot.rounds, slot.pending)
+    } else {
+      aes_decrypt(slot.rounds, slot.pending)
+    }
+  } else if !slot.iv_ready {
+    raise EvalError::Cannot("write")
+  } else if slot.encrypting {
+    let mixed = chain_xor(slot.pending, slot.iv)
+    let out = aes_encrypt(slot.rounds, mixed)
+    slot.iv = copy_block(out)
+    out
+  } else {
+    let plain = aes_decrypt(slot.rounds, slot.pending)
+    let out = chain_xor(plain, slot.iv)
+    slot.iv = copy_block(slot.pending)
+    out
+  }
+}
+
+///|
+fn crypt_alloc(decrypting : Bool, key_len : Int, cbc : Bool) -> Int {
   let mut index = 0
   let mut found = -1
   while index < crypts.slots.length() && found < 0 {
@@ -254,22 +292,25 @@ fn crypt_alloc(decrypting : Bool, key_len : Int) -> Int {
     index = index + 1
   }
   if found >= 0 {
-    crypt_reset(crypts.slots[found], decrypting, key_len)
+    crypt_reset(crypts.slots[found], decrypting, key_len, cbc)
     found
   } else {
-    let slot = crypt_fresh(decrypting, key_len)
+    let slot = crypt_fresh(decrypting, key_len, cbc)
     crypts.slots.push(slot)
     crypts.slots.length() - 1
   }
 }
 
 ///|
-fn crypt_fresh(decrypting : Bool, key_len : Int) -> CryptSlot {
+fn crypt_fresh(decrypting : Bool, key_len : Int, cbc : Bool) -> CryptSlot {
   {
     live: true,
     encrypting: !decrypting,
     key_ready: false,
     key_len,
+    cbc,
+    iv_ready: false,
+    iv: [],
     rounds: [],
     pending: [],
     output: [],
@@ -277,11 +318,19 @@ fn crypt_fresh(decrypting : Bool, key_len : Int) -> CryptSlot {
 }
 
 ///|
-fn crypt_reset(slot : CryptSlot, decrypting : Bool, key_len : Int) -> Unit {
+fn crypt_reset(
+  slot : CryptSlot,
+  decrypting : Bool,
+  key_len : Int,
+  cbc : Bool,
+) -> Unit {
   slot.live = true
   slot.encrypting = !decrypting
   slot.key_ready = false
   slot.key_len = key_len
+  slot.cbc = cbc
+  slot.iv_ready = false
+  slot.iv = []
   slot.rounds = []
   slot.pending = []
   slot.output = []
