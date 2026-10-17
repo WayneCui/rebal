@@ -207,7 +207,10 @@ fn call(
   func : @value.Func,
   active : Array[Int],
 ) -> (@value.Cell, Int) raise EvalError {
-  if func.code() != 0 && active.length() > 0 && func.code() != native_find {
+  if func.code() != 0 &&
+    active.length() > 0 &&
+    func.code() != native_find &&
+    func.code() != native_sort {
     raise EvalError::Cannot("func")
   }
   let args : Array[@value.Cell] = []
@@ -229,6 +232,8 @@ fn call(
   }
   if func.code() == native_find {
     (perform_find(env, args, active), cursor)
+  } else if func.code() == native_sort {
+    (perform_sort(env, args, active), cursor)
   } else if func.code() == 0 {
     (call_user(env, func, args, active), cursor)
   } else {

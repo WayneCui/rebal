@@ -106,6 +106,8 @@ pub fn shift_right(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn skip(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
+pub fn sort(@value.Cell, Bool) -> Result[@value.Cell, ActionError]
+
 pub fn strict_equal(@value.Cell, @value.Cell) -> Bool
 
 pub fn subtract(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]

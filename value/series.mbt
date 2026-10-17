@@ -123,6 +123,21 @@ pub fn Series::push_item(self : Series, cell : Cell) -> Bool {
 }
 
 ///|
+pub fn Series::set_code(self : Series, index : Int, code : Int) -> Bool {
+  match self.payload {
+    Text(xs) =>
+      match xs.get(index) {
+        Some(_) => {
+          xs[index] = code
+          true
+        }
+        None => false
+      }
+    Items(_) | Bytes(_) => false
+  }
+}
+
+///|
 pub fn Series::code(self : Series, index : Int) -> Int? {
   match self.payload {
     Text(xs) => xs.get(index)

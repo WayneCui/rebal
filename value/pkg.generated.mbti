@@ -172,6 +172,7 @@ pub fn Series::push_item(Self, Cell) -> Bool
 pub fn Series::remove_byte(Self, Int) -> Byte?
 pub fn Series::remove_code(Self, Int) -> Int?
 pub fn Series::remove_item(Self, Int) -> Cell?
+pub fn Series::set_code(Self, Int, Int) -> Bool
 pub fn Series::set_item(Self, Int, Cell) -> Bool
 pub fn Series::set_path() -> Self
 pub fn Series::text() -> Self
