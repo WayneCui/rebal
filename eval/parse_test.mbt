@@ -149,3 +149,30 @@ test "parse into a nested series, and break out of some" {
   }
   assert_true(bare)
 }
+
+///|
+test "parse fail and if" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(env, "(parse {a} [fail]) = false") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse {a} [{a} | fail]) = true") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse {a} [if (1 = 1) {a}]) = true") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse {a} [if (1 = 2) {a}]) = false") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse {} [if (true) end]) = true") is @value.Logic(true),
+  )
+  let missing = try {
+    @eval.run(env, "parse {a} [if {a}]") |> ignore
+    false
+  } catch {
+    error => error.id() == "cannot"
+  }
+  assert_true(missing)
+}

@@ -111,6 +111,10 @@ fn match_seq(
           match_seq(env, input, next, rules, cursor + 1, end)
         } else if is_word(Some(rule), "break") {
           raise EvalError::Stopped(pos)
+        } else if is_word(Some(rule), "fail") {
+          None
+        } else if is_word(Some(rule), "if") {
+          when_true(env, input, pos, rules, cursor, end)
         } else if is_word(Some(rule), "into") {
           enter(env, input, pos, rules, cursor, end)
         } else {
@@ -462,6 +466,8 @@ fn bad_target(spelling : String) -> Bool {
   spelling == "set" ||
   spelling == "into" ||
   spelling == "break" ||
+  spelling == "fail" ||
+  spelling == "if" ||
   spelling == "|"
 }
 
@@ -495,6 +501,26 @@ fn match_value(input : @value.Series, pos : Int, rule : @value.Cell) -> Int? {
   match input.item(pos) {
     Some(item) => if item.equal(rule) { Some(pos + 1) } else { None }
     None => None
+  }
+}
+
+///|
+fn when_true(
+  env : Env,
+  input : @value.Series,
+  pos : Int,
+  rules : @value.Series,
+  cursor : Int,
+  end : Int,
+) -> Int? raise EvalError {
+  match rules.item(cursor + 1) {
+    Some(@value.Seq(body, body_index)) if body.datatype() == @value.Paren =>
+      if is_false(do_series(env, body, body_index)) {
+        None
+      } else {
+        match_seq(env, input, pos, rules, cursor + 2, end)
+      }
+    _ => raise EvalError::Cannot("parse")
   }
 }
 
