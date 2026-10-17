@@ -1,5 +1,5 @@
 ///|
-/// Turns a string or a binary into base-64 or base-16 text.
+/// Turns a string or a binary into base-64, base-16, or base-2 text.
 fn perform_enbase(
   value : @value.Cell,
   base : @value.Cell,
@@ -8,12 +8,13 @@ fn perform_enbase(
   match coding_base(base) {
     Some(64) => text_series(encode_base64(bytes))
     Some(16) => text_series(encode_base16(bytes))
+    Some(2) => text_series(encode_base2(bytes))
     _ => raise EvalError::Cannot("enbase")
   }
 }
 
 ///|
-/// Turns base-64 or base-16 text back into a binary. Spaces and line breaks are skipped.
+/// Turns base-64, base-16, or base-2 text back into a binary. Spaces and line breaks are skipped.
 fn perform_debase(
   value : @value.Cell,
   base : @value.Cell,
@@ -28,6 +29,7 @@ fn perform_debase(
   match coding_base(base) {
     Some(64) => binary_cell(decode_base64(text))
     Some(16) => binary_cell(decode_base16(text))
+    Some(2) => binary_cell(decode_base2(text))
     _ => raise EvalError::Cannot("debase")
   }
 }
@@ -37,6 +39,7 @@ fn coding_base(base : @value.Cell) -> Int? {
   match base {
     @value.Integer(64L) => Some(64)
     @value.Integer(16L) => Some(16)
+    @value.Integer(2L) => Some(2)
     _ => None
   }
 }
@@ -267,6 +270,51 @@ fn hex_value(char : Char) -> Int? {
   } else {
     None
   }
+}
+
+///|
+fn encode_base2(bytes : Array[Int]) -> String {
+  let buf = StringBuilder()
+  for byte in bytes {
+    let mut mask = 128
+    while mask > 0 {
+      if byte / mask % 2 == 1 {
+        buf.write_char('1')
+      } else {
+        buf.write_char('0')
+      }
+      mask = mask / 2
+    }
+  }
+  buf.to_string()
+}
+
+///|
+fn decode_base2(text : String) -> Array[Int] raise EvalError {
+  let digits : Array[Int] = []
+  for char in text {
+    if is_b64_space(char) {
+      ()
+    } else if char == '0' || char == '1' {
+      digits.push(if char == '1' { 1 } else { 0 })
+    } else {
+      raise EvalError::Cannot("debase")
+    }
+  }
+  if digits.length() % 8 != 0 {
+    raise EvalError::Cannot("debase")
+  }
+  let bytes : Array[Int] = []
+  let mut index = 0
+  while index < digits.length() {
+    let mut byte = 0
+    for _ in 0..<8 {
+      byte = byte * 2 + digits[index]
+      index = index + 1
+    }
+    bytes.push(byte)
+  }
+  bytes
 }
 
 ///|
