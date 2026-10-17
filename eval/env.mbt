@@ -77,6 +77,15 @@ let native_lesser : Int = 23
 let native_greater : Int = 24
 
 ///|
+let native_if : Int = 25
+
+///|
+let native_either : Int = 26
+
+///|
+let native_return : Int = 27
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -106,6 +115,9 @@ pub fn Env::new() -> Env {
   define_native(env, "<>", 2, true, native_not_equal)
   define_native(env, "<", 2, true, native_lesser)
   define_native(env, ">", 2, true, native_greater)
+  define_native(env, "if", 2, false, native_if)
+  define_native(env, "either", 3, false, native_either)
+  define_native(env, "return", 1, false, native_return)
   install(env, "unset!", @value.Type(@value.Unset))
   install(env, "none!", @value.Type(@value.None))
   install(env, "logic!", @value.Type(@value.Logic))

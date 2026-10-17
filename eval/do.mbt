@@ -1,7 +1,11 @@
 ///|
 /// Evaluates a source string in the user frame.
+/// A `return` with no function around it becomes an error.
 pub fn run(env : Env, source : String) -> @value.Cell raise EvalError {
-  eval(env, load(env, source))
+  eval(env, load(env, source)) catch {
+    EvalError::Returned(_) => raise EvalError::NoReturn
+    error => raise error
+  }
 }
 
 ///|
@@ -255,6 +259,12 @@ fn apply(
     logic_order(@action.lesser(args[0], args[1]))
   } else if func.code() == native_greater {
     logic_order(@action.greater(args[0], args[1]))
+  } else if func.code() == native_if {
+    perform_if(env, args[0], args[1])
+  } else if func.code() == native_either {
+    perform_either(env, args[0], args[1], args[2])
+  } else if func.code() == native_return {
+    raise EvalError::Returned(args[0])
   } else {
     raise EvalError::Cannot("function")
   }

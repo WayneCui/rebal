@@ -22,6 +22,8 @@ pub(all) suberror EvalError {
   Cannot(String)
   BadSource(String)
   InvalidPath(String)
+  Returned(@value.Cell)
+  NoReturn
 }
 pub fn EvalError::id(Self) -> String
 pub fn EvalError::to_cell(Self) -> @value.Cell

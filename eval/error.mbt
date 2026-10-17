@@ -6,6 +6,10 @@ pub(all) suberror EvalError {
   Cannot(String)
   BadSource(String)
   InvalidPath(String)
+  /// A function exit. Callers re-raise this instead of boxing it.
+  Returned(@value.Cell)
+  /// `return` reached the top of `run` with no function to leave.
+  NoReturn
 }
 
 ///|
@@ -18,6 +22,8 @@ pub fn EvalError::to_cell(self : EvalError) -> @value.Cell {
     Cannot(text) => ("cannot", text)
     BadSource(text) => ("bad-source", text)
     InvalidPath(text) => ("invalid-path", text)
+    Returned(_) => ("return", "return")
+    NoReturn => ("return", "return")
   }
   @value.Error(@value.ErrorValue::make(id, arg, ""))
 }
@@ -31,5 +37,7 @@ pub fn EvalError::id(self : EvalError) -> String {
     Cannot(_) => "cannot"
     BadSource(_) => "bad-source"
     InvalidPath(_) => "invalid-path"
+    Returned(_) => "return"
+    NoReturn => "return"
   }
 }

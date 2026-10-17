@@ -64,7 +64,10 @@ fn call_user(
     }
     index = index + 1
   }
-  do_series(env, func.body(), 0)
+  do_series(env, func.body(), 0) catch {
+    EvalError::Returned(cell) => cell
+    error => raise error
+  }
 }
 
 ///|
@@ -114,11 +117,13 @@ fn lookup_word(
 
 ///|
 /// Evaluates a block. A failure inside it comes back as `error!`.
-fn perform_try(env : Env, cell : @value.Cell) -> @value.Cell {
+/// `return` is not a failure and keeps traveling to the function that called it.
+fn perform_try(env : Env, cell : @value.Cell) -> @value.Cell raise EvalError {
   match cell {
     @value.Seq(series, _) if series.datatype() == @value.Block ||
       series.datatype() == @value.Paren =>
       eval(env, cell) catch {
+        EvalError::Returned(value) => raise EvalError::Returned(value)
         error => error.to_cell()
       }
     _ => cell
