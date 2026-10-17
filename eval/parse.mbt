@@ -1,6 +1,17 @@
 ///|
+priv struct Gather {
+  mut stack : Array[@value.Series]
+  mut held : @value.Cell?
+  mut sink : @value.Series?
+}
+
+///|
+let gather : Gather = { stack: [], held: None, sink: None, }
+
+///|
 /// Match a rule block against a series. Success does not require reaching the tail
 /// unless the rules say `end`. `some` and `any` give back input when a later rule needs it.
+/// A `collect` that is not `collect set` makes `parse` return that block.
 fn perform_parse(
   env : Env,
   input : @value.Cell,
@@ -9,10 +20,30 @@ fn perform_parse(
   match (input, rules) {
     (@value.Seq(series, index), @value.Seq(rule_series, rule_index)) =>
       if rule_series.datatype() == @value.Block {
-        match match_rules(env, series, index, rule_series, rule_index) {
-          Some(_) => @value.Logic(true)
-          None => @value.Logic(false)
+        let outer_stack = gather.stack
+        let outer_held = gather.held
+        let outer_sink = gather.sink
+        gather.stack = []
+        gather.held = None
+        gather.sink = None
+        errdefer {
+          gather.stack = outer_stack
+          gather.held = outer_held
+          gather.sink = outer_sink
         }
+        let outcome = match_rules(env, series, index, rule_series, rule_index)
+        let result = match gather.held {
+          Some(block) => block
+          None =>
+            match outcome {
+              Some(_) => @value.Logic(true)
+              None => @value.Logic(false)
+            }
+        }
+        gather.stack = outer_stack
+        gather.held = outer_held
+        gather.sink = outer_sink
+        result
       } else {
         raise EvalError::Cannot("parse")
       }
@@ -123,6 +154,10 @@ fn match_seq(
           change_rule(env, input, pos, rules, cursor, end)
         } else if is_word(Some(rule), "insert") {
           insert_rule(env, input, pos, rules, cursor, end)
+        } else if is_word(Some(rule), "collect") {
+          collect_rule(env, input, pos, rules, cursor, end)
+        } else if is_word(Some(rule), "keep") {
+          keep_rule(env, input, pos, rules, cursor, end)
         } else if is_word(Some(rule), "opt") {
           counted_at(env, input, pos, rules, cursor + 1, end, 0L, 1L)
         } else if is_word(Some(rule), "not") {
@@ -629,6 +664,242 @@ fn as_word_value(value : @value.Cell) -> @value.Cell {
 }
 
 ///|
+fn collect_rule(
+  env : Env,
+  input : @value.Series,
+  pos : Int,
+  rules : @value.Series,
+  cursor : Int,
+  end : Int,
+) -> Int? raise EvalError {
+  let mut at = cursor + 1
+  let mut target : @value.Lexeme? = None
+  if is_word(rules.item(at), "set") {
+    target = Some(capture_name(rules.item(at + 1)))
+    at = at + 2
+  }
+  let stop = rule_extent(rules, at, end)
+  open_collect(env, target)
+  let matched = match_seq(env, input, pos, rules, at, stop)
+  close_collect()
+  match matched {
+    Some(next) => match_seq(env, input, next, rules, stop, end)
+    None => None
+  }
+}
+
+///|
+fn keep_rule(
+  env : Env,
+  input : @value.Series,
+  pos : Int,
+  rules : @value.Series,
+  cursor : Int,
+  end : Int,
+) -> Int? raise EvalError {
+  let mut at = cursor + 1
+  let mut pick = false
+  if is_word(rules.item(at), "pick") {
+    pick = true
+    at = at + 1
+  }
+  match rules.item(at) {
+    Some(@value.Seq(body, body_index)) if body.datatype() == @value.Paren => {
+      let value = do_series(env, body, body_index)
+      keep_value(value)
+      match_seq(env, input, pos, rules, at + 1, end)
+    }
+    _ => {
+      let stop = rule_extent(rules, at, end)
+      match match_seq(env, input, pos, rules, at, stop) {
+        Some(next) => {
+          keep_span(input, pos, next, pick)
+          match_seq(env, input, next, rules, stop, end)
+        }
+        None => None
+      }
+    }
+  }
+}
+
+///|
+fn open_collect(env : Env, target : @value.Lexeme?) -> Unit {
+  let block = @value.Series::block()
+  match target {
+    Some(lexeme) => {
+      write_word(env, lexeme, @value.Seq(block, 0))
+      gather.stack.push(block)
+    }
+    None =>
+      if gather.stack.length() == 0 {
+        match gather.sink {
+          None => {
+            gather.held = Some(@value.Seq(block, 0))
+            gather.sink = Some(block)
+            gather.stack.push(block)
+          }
+          Some(parent) => {
+            parent.push_item(@value.Seq(block, 0)) |> ignore
+            gather.stack.push(block)
+          }
+        }
+      } else {
+        let parent = gather.stack[gather.stack.length() - 1]
+        parent.push_item(@value.Seq(block, 0)) |> ignore
+        gather.stack.push(block)
+      }
+  }
+}
+
+///|
+fn close_collect() -> Unit {
+  if gather.stack.length() > 0 {
+    gather.stack.pop() |> ignore
+  }
+}
+
+///|
+fn keep_value(value : @value.Cell) -> Unit raise EvalError {
+  let block = keep_block()
+  block.push_item(value.snapshot()) |> ignore
+}
+
+///|
+fn keep_span(
+  input : @value.Series,
+  begin : Int,
+  end : Int,
+  pick : Bool,
+) -> Unit raise EvalError {
+  let count = if end > begin { end - begin } else { 0 }
+  if count == 0 {
+    ()
+  } else {
+    let block = keep_block()
+    if input.datatype() == @value.String {
+      if pick && count > 1 {
+        for index in begin..<end {
+          match input.code(index) {
+            Some(code) => block.push_item(@value.Char(code)) |> ignore
+            None => ()
+          }
+        }
+      } else if count == 1 {
+        match input.code(begin) {
+          Some(code) => block.push_item(@value.Char(code)) |> ignore
+          None => ()
+        }
+      } else {
+        block.push_item(copy_span(input, begin, end)) |> ignore
+      }
+    } else if pick && count > 1 {
+      for index in begin..<end {
+        match input.item(index) {
+          Some(item) => block.push_item(item.snapshot()) |> ignore
+          None => ()
+        }
+      }
+    } else if count == 1 {
+      match input.item(begin) {
+        Some(item) => block.push_item(item.snapshot()) |> ignore
+        None => ()
+      }
+    } else {
+      block.push_item(copy_span(input, begin, end)) |> ignore
+    }
+  }
+}
+
+///|
+fn keep_block() -> @value.Series raise EvalError {
+  let length = gather.stack.length()
+  if length == 0 {
+    raise EvalError::Cannot("parse")
+  }
+  gather.stack[length - 1]
+}
+
+///|
+fn rule_extent(
+  rules : @value.Series,
+  cursor : Int,
+  limit : Int,
+) -> Int raise EvalError {
+  if cursor >= limit {
+    raise EvalError::Cannot("parse")
+  }
+  match rules.item(cursor) {
+    Some(rule) =>
+      if is_word(Some(rule), "some") ||
+        is_word(Some(rule), "any") ||
+        is_word(Some(rule), "opt") ||
+        is_word(Some(rule), "not") ||
+        is_word(Some(rule), "ahead") ||
+        is_word(Some(rule), "and") ||
+        is_word(Some(rule), "remove") {
+        rule_extent(rules, cursor + 1, limit)
+      } else if is_word(Some(rule), "keep") {
+        let at = if is_word(rules.item(cursor + 1), "pick") {
+          cursor + 2
+        } else {
+          cursor + 1
+        }
+        rule_extent(rules, at, limit)
+      } else if is_word(Some(rule), "collect") {
+        let at = if is_word(rules.item(cursor + 1), "set") {
+          cursor + 3
+        } else {
+          cursor + 1
+        }
+        rule_extent(rules, at, limit)
+      } else if is_word(Some(rule), "change") {
+        value_extent(rules, rule_extent(rules, cursor + 1, limit), limit)
+      } else if is_word(Some(rule), "insert") {
+        value_extent(rules, cursor + 1, limit)
+      } else if is_word(Some(rule), "copy") || is_word(Some(rule), "set") {
+        rule_extent(rules, cursor + 2, limit)
+      } else if is_word(Some(rule), "quote") ||
+        is_word(Some(rule), "to") ||
+        is_word(Some(rule), "thru") ||
+        is_word(Some(rule), "if") ||
+        is_word(Some(rule), "into") {
+        if cursor + 1 >= limit {
+          raise EvalError::Cannot("parse")
+        }
+        cursor + 2
+      } else {
+        match rule {
+          @value.Integer(_) => {
+            let at = match rules.item(cursor + 1) {
+              Some(@value.Integer(_)) => cursor + 2
+              _ => cursor + 1
+            }
+            rule_extent(rules, at, limit)
+          }
+          _ => cursor + 1
+        }
+      }
+    None => raise EvalError::Cannot("parse")
+  }
+}
+
+///|
+fn value_extent(
+  rules : @value.Series,
+  cursor : Int,
+  limit : Int,
+) -> Int raise EvalError {
+  if cursor >= limit {
+    raise EvalError::Cannot("parse")
+  }
+  let at = if is_word(rules.item(cursor), "only") { cursor + 1 } else { cursor }
+  if at >= limit {
+    raise EvalError::Cannot("parse")
+  }
+  at + 1
+}
+
+///|
 fn is_command(cell : @value.Cell) -> Bool {
   is_word(Some(cell), "some") ||
   is_word(Some(cell), "any") ||
@@ -643,7 +914,9 @@ fn is_command(cell : @value.Cell) -> Bool {
   is_word(Some(cell), "and") ||
   is_word(Some(cell), "remove") ||
   is_word(Some(cell), "change") ||
-  is_word(Some(cell), "insert")
+  is_word(Some(cell), "insert") ||
+  is_word(Some(cell), "collect") ||
+  is_word(Some(cell), "keep")
 }
 
 ///|
@@ -942,6 +1215,8 @@ fn bad_target(spelling : String) -> Bool {
   spelling == "remove" ||
   spelling == "change" ||
   spelling == "insert" ||
+  spelling == "collect" ||
+  spelling == "keep" ||
   spelling == "|"
 }
 

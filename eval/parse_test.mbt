@@ -290,3 +290,73 @@ test "parse change, remove, and insert" {
     is @value.Logic(true),
   )
 }
+
+///|
+test "parse collect and keep" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(env, "(parse [1] [collect [keep skip]]) = [1]")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse [1 2] [collect [keep skip]]) = [1]")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse [1 2] [collect [some [keep skip]]]) = [1 2]")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse [1 2] [collect [keep 2 skip]]) = [[1 2]]")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse [1 2] [collect [keep pick 2 skip]]) = [1 2]")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse [1] [collect [skip keep (1 + 2)]]) = [3]")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse [] [collect [collect [collect []]]]) = [[[]]]")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "(parse [1 2] [collect [collect [keep skip keep skip]]]) = [[1 2]]",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "(parse [1 2 3] [collect [keep 2 skip] collect [keep skip]]) = [[1 2] [3]]",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse {ab} [collect [keep skip]]) = [#\"a\"]")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse {ab} [collect [keep pick {ab}]]) = [#\"a\" #\"b\"]")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse [1] [collect [keep {zz}]]) = []")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "a: none all [parse [1] [collect set a [keep skip]] a = [1]]",
+    )
+    is @value.Logic(true),
+  )
+  let bare = try {
+    @eval.run(env, "parse [1] [keep skip]") |> ignore
+    false
+  } catch {
+    error => error.id() == "cannot"
+  }
+  assert_true(bare)
+}
