@@ -20,6 +20,8 @@ pub fn push_console(String) -> Unit
 
 pub fn run(Env, String) -> @value.Cell raise EvalError
 
+pub fn set_browser(String) -> Unit
+
 pub fn write_file(String, String) -> Unit raise EvalError
 
 // Errors

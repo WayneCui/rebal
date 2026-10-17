@@ -532,6 +532,8 @@ fn apply(
     perform_query(env, args[0])
   } else if func.code() == native_wait {
     perform_wait(args[0])
+  } else if func.code() == native_browse {
+    perform_browse(args[0])
   } else {
     raise EvalError::Cannot("function")
   }

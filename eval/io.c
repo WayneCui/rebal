@@ -551,6 +551,48 @@ int32_t rebal_sleep(double seconds) {
   return 0;
 }
 
+int32_t rebal_browse(
+  moonbit_string_t program,
+  int32_t program_len,
+  moonbit_string_t target,
+  int32_t target_len
+) {
+  if (program_len <= 0 || target_len <= 0) {
+    return 1;
+  }
+  char *cmd = rebal_to_utf8(program, program_len);
+  char *arg = rebal_to_utf8(target, target_len);
+  if (cmd == NULL || arg == NULL) {
+    free(cmd);
+    free(arg);
+    return 1;
+  }
+  pid_t child = fork();
+  if (child < 0) {
+    free(cmd);
+    free(arg);
+    return 1;
+  }
+  if (child == 0) {
+    char *argv[3];
+    argv[0] = cmd;
+    argv[1] = arg;
+    argv[2] = NULL;
+    execvp(argv[0], argv);
+    _exit(127);
+  }
+  free(cmd);
+  free(arg);
+  int status = 0;
+  if (waitpid(child, &status, 0) < 0) {
+    return 1;
+  }
+  if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
+    return 0;
+  }
+  return 1;
+}
+
 int32_t rebal_clock_year(void) { return rebal_year; }
 int32_t rebal_clock_month(void) { return rebal_month; }
 int32_t rebal_clock_day(void) { return rebal_day; }
