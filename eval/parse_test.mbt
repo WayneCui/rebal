@@ -411,3 +411,20 @@ test "parse datatype rules" {
   }
   assert_true(missing)
 }
+
+///|
+test "parse paren runs for its effect" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(env, "n: 0 all [(parse {a} [(n: 1) #\"a\"]) n = 1]")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse [1] [(false) integer!]) = true")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse [1] [if (false) integer!]) = false")
+    is @value.Logic(true),
+  )
+}

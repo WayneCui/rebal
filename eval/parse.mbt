@@ -168,6 +168,10 @@ fn match_seq(
           quoted(env, input, pos, rules, cursor, end)
         } else {
           match rule {
+            @value.Seq(body, body_index) if body.datatype() == @value.Paren => {
+              do_series(env, body, body_index) |> ignore
+              match_seq(env, input, pos, rules, cursor + 1, end)
+            }
             @value.Integer(n) => counted(env, input, pos, rules, cursor, end, n)
             @value.Sym(kind, _) if kind == @value.Word =>
               match_word(env, input, pos, rules, cursor, end, rule)
@@ -419,6 +423,14 @@ fn one_step(
         }
       } else if is_command(rule) {
         raise EvalError::Cannot("parse")
+      } else if is_paren(rule) {
+        match rule {
+          @value.Seq(body, body_index) => {
+            do_series(env, body, body_index) |> ignore
+            Some((pos, cursor + 1))
+          }
+          _ => None
+        }
       } else {
         let value = fetched_rule(env, rule)
         match value {
@@ -1590,6 +1602,14 @@ fn resume_at(
 fn is_kind(cell : @value.Cell, kind : @value.Datatype) -> Bool {
   match cell {
     @value.Sym(datatype, _) => datatype == kind
+    _ => false
+  }
+}
+
+///|
+fn is_paren(cell : @value.Cell) -> Bool {
+  match cell {
+    @value.Seq(body, _) => body.datatype() == @value.Paren
     _ => false
   }
 }
