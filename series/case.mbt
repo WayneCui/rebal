@@ -106,7 +106,7 @@ pub fn entab(cell : @value.Cell) -> @value.Cell? {
 
 ///|
 pub fn dehex(cell : @value.Cell) -> @value.Cell? {
-  map_text(cell, fn(codes) {
+  map_codes(cell, fn(codes) {
     let next : Array[Int] = []
     let mut cursor = 0
     while cursor < codes.length() {
@@ -160,6 +160,50 @@ fn change_case(cell : @value.Cell, upper : Bool) -> @value.Cell? {
         }
         next
       })
+  }
+}
+
+///|
+fn map_codes(
+  cell : @value.Cell,
+  produce : (Array[Int]) -> Array[Int],
+) -> @value.Cell? {
+  match view(cell) {
+    Some((series, index)) if @value.text_series(series.datatype()) => {
+      let codes : Array[Int] = []
+      for cursor in index..<series.length() {
+        match series.code(cursor) {
+          Some(code) => codes.push(code)
+          None => ()
+        }
+      }
+      let next = produce(codes)
+      while series.length() > index {
+        series.remove_code(index) |> ignore
+      }
+      for code in next {
+        series.push_code(code) |> ignore
+      }
+      Some(cell)
+    }
+    Some((series, index)) if series.datatype() == @value.Binary => {
+      let codes : Array[Int] = []
+      for cursor in index..<series.length() {
+        match series.byte_at(cursor) {
+          Some(byte) => codes.push(byte.to_int())
+          None => ()
+        }
+      }
+      let next = produce(codes)
+      while series.length() > index {
+        series.remove_byte(index) |> ignore
+      }
+      for code in next {
+        series.push_byte(code.to_byte()) |> ignore
+      }
+      Some(cell)
+    }
+    _ => None
   }
 }
 
