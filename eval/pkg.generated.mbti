@@ -14,6 +14,8 @@ pub fn load(Env, String) -> @value.Cell raise EvalError
 
 pub fn run(Env, String) -> @value.Cell raise EvalError
 
+pub fn write_file(String, String) -> Unit raise EvalError
+
 // Errors
 pub(all) suberror EvalError {
   NoValue(String)

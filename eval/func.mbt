@@ -278,8 +278,11 @@ fn perform_do(env : Env, cell : @value.Cell) -> @value.Cell raise EvalError {
     }
     @value.Function(func) => invoke(env, func)
     @value.Seq(series, _) if series.datatype() == @value.Block ||
-      series.datatype() == @value.Paren ||
-      series.datatype() == @value.String => eval(env, cell)
+      series.datatype() == @value.Paren => eval(env, cell)
+    @value.Seq(series, index) if series.datatype() == @value.String =>
+      do_text(env, text_from(series, index))
+    @value.Seq(series, index) if series.datatype() == @value.File =>
+      do_text(env, read_file(text_from(series, index)))
     _ => cell
   }
 }

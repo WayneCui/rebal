@@ -1,7 +1,12 @@
 import {
   "rebal/action",
   "rebal/bind",
+  "rebal/mold",
   "rebal/scan",
   "rebal/series",
   "rebal/value",
 }
+
+options(
+  "native-stub": [ "io.c" ],
+)

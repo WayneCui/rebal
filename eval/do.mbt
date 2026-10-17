@@ -496,6 +496,10 @@ fn apply(
     from_action(@action.enhex(args[0]))
   } else if func.code() == native_parse {
     perform_parse(env, args[0], args[1])
+  } else if func.code() == native_load {
+    perform_load(env, args[0])
+  } else if func.code() == native_save {
+    perform_save(args[0], args[1])
   } else {
     raise EvalError::Cannot("function")
   }
