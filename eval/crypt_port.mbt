@@ -46,7 +46,7 @@ fn crypt_actor(
 }
 
 ///|
-/// ECB and AES-128-CBC. `#decrypt` starts in decrypt. CBC needs an init vector.
+/// AES ECB, plus CBC through 192-bit keys. `#decrypt` starts in decrypt.
 fn crypt_open(env : Env, port : @value.Cell) -> @value.Cell raise EvalError {
   match port {
     @value.Port(value) =>
@@ -214,6 +214,8 @@ fn cipher_kind(name : String) -> (Int, Bool)? {
     Some((32, false))
   } else if name == "aes-128-cbc" {
     Some((16, true))
+  } else if name == "aes-192-cbc" {
+    Some((24, true))
   } else {
     None
   }
