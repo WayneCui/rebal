@@ -30,6 +30,12 @@ fn perform_decode(
     }
     return decode_der(env, args[1])
   }
+  if kind == "oid" {
+    if binary {
+      raise EvalError::Cannot("decode")
+    }
+    return decode_oid(env, args[1])
+  }
   if kind != "pkix" {
     raise EvalError::Cannot("access")
   }
