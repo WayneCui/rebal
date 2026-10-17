@@ -12,7 +12,138 @@ fn decode_crt(env : Env, value : @value.Cell) -> @value.Cell raise EvalError {
       }
     None => ()
   }
+  set_fingerprint(env, frame, bytes)
   @value.Object(frame)
+}
+
+///|
+/// Hash of the to-be-signed body. The codec selects the digest from the
+/// algorithm word, including the misspelled `sha1WithRSAEncrption` entry,
+/// and always starts at the fifth byte.
+fn set_fingerprint(
+  env : Env,
+  frame : @value.Frame,
+  bytes : Array[Int],
+) -> Unit raise EvalError {
+  match fingerprint_method(env, frame) {
+    None => ()
+    Some(digest) =>
+      match signed_bytes(bytes) {
+        None => ()
+        Some(body) =>
+          put_cert(
+            env,
+            frame,
+            "fingerprint",
+            binary_cell(digest_of(digest, body)),
+          )
+      }
+  }
+}
+
+///|
+fn fingerprint_method(env : Env, frame : @value.Frame) -> String? {
+  match frame.find(env.symbols.intern("algorithm")) {
+    None => None
+    Some(slot) =>
+      match frame.get(slot) {
+        Some(@value.Sym(_, lexeme)) =>
+          digest_name(env.symbols.canon(lexeme.sym()))
+        _ => None
+      }
+  }
+}
+
+///|
+fn digest_name(algorithm : String) -> String? {
+  if algorithm == "sha256withrsaencryption" || algorithm == "ecdsa-with-sha256" {
+    Some("sha256")
+  } else if algorithm == "sha384withrsaencryption" ||
+    algorithm == "ecdsa-with-sha384" {
+    Some("sha384")
+  } else if algorithm == "sha512withrsaencryption" ||
+    algorithm == "ecdsa-with-sha512" {
+    Some("sha512")
+  } else if algorithm == "md5withrsaencryption" {
+    Some("md5")
+  } else if algorithm == "sha1withrsaencrption" {
+    Some("sha1")
+  } else {
+    None
+  }
+}
+
+///|
+fn signed_bytes(bytes : Array[Int]) -> Array[Int]? {
+  match der_header(bytes, 0) {
+    None => None
+    Some(outer) =>
+      if outer.0 != 0x30 {
+        None
+      } else {
+        match der_header(bytes, outer.2) {
+          None => None
+          Some(inner) =>
+            if inner.0 != 0x30 {
+              None
+            } else {
+              slice_bytes(bytes, 4, inner.1 + 4)
+            }
+        }
+      }
+  }
+}
+
+///|
+fn der_header(bytes : Array[Int], at : Int) -> (Int, Int, Int)? {
+  if at + 1 >= bytes.length() {
+    None
+  } else {
+    let tag = bytes[at]
+    let first = bytes[at + 1]
+    if first < 128 {
+      if first > bytes.length() - (at + 2) {
+        None
+      } else {
+        Some((tag, first, 2))
+      }
+    } else if first == 128 || first > 131 {
+      None
+    } else {
+      let count = first - 128
+      if at + 2 + count > bytes.length() {
+        None
+      } else {
+        let mut length = 0
+        let mut index = 0
+        while index < count {
+          length = length * 256 + bytes[at + 2 + index]
+          index = index + 1
+        }
+        let header = 2 + count
+        if length > bytes.length() - (at + header) {
+          None
+        } else {
+          Some((tag, length, header))
+        }
+      }
+    }
+  }
+}
+
+///|
+fn slice_bytes(bytes : Array[Int], at : Int, size : Int) -> Array[Int]? {
+  if at < 0 || size < 0 || at + size > bytes.length() {
+    None
+  } else {
+    let out : Array[Int] = []
+    let mut index = 0
+    while index < size {
+      out.push(bytes[at + index])
+      index = index + 1
+    }
+    Some(out)
+  }
 }
 
 ///|

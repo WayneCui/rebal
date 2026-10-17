@@ -12,6 +12,7 @@ test "decode crt reads the Atlantis certificate fields" {
     @eval.run(env, "blank: decode 'crt #{00}\nnone? blank/version")
     is @value.Logic(true),
   )
+  assert_true(@eval.run(env, "none? cert/fingerprint") is @value.Logic(true))
 }
 
 ///|
@@ -40,6 +41,12 @@ test "decode crt reads the Google authority certificate" {
   assert_true(
     @eval.run(
       env, "(cert/extensions/subjectAltName) = reduce [false [{www.google.com}]]",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "(cert/fingerprint) = #{90F29E543B56B9E99FB351BDEB4EC5B9A70ADB5B3291A96F9C03C15ACCE0DDAF}",
     )
     is @value.Logic(true),
   )
