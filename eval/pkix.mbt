@@ -36,6 +36,12 @@ fn perform_decode(
     }
     return decode_oid(env, args[1])
   }
+  if kind == "crt" {
+    if binary {
+      raise EvalError::Cannot("decode")
+    }
+    return decode_crt(env, args[1])
+  }
   if kind != "pkix" {
     raise EvalError::Cannot("access")
   }
