@@ -7,6 +7,9 @@ priv struct CryptSlot {
   mut key_ready : Bool
   mut key_len : Int
   mut cbc : Bool
+  mut camellia : Bool
+  mut cam_enc : Array[UInt64]
+  mut cam_dec : Array[UInt64]
   mut iv_ready : Bool
   mut iv : Array[Int]
   mut rounds : Array[Int]
@@ -57,7 +60,12 @@ fn crypt_open(env : Env, port : @value.Cell) -> @value.Cell raise EvalError {
         let (algorithm, direction) = crypt_choice(env, value)
         match cipher_kind(algorithm) {
           Some(kind) => {
-            let handle = crypt_alloc(direction == "decrypt", kind.0, kind.1)
+            let handle = crypt_alloc(
+              direction == "decrypt",
+              kind.0,
+              kind.1,
+              kind.2,
+            )
             value.set_handle(handle)
             errdefer (if !value.is_open() {
               crypt_drop(handle)
@@ -167,9 +175,7 @@ fn crypt_set_key(slot : CryptSlot, value : @value.Cell) -> Unit raise EvalError 
   if key.length() != slot.key_len {
     raise EvalError::Cannot("modify")
   }
-  slot.rounds = aes_rounds(key)
-  slot.key_ready = true
-  slot.pending = []
+  install_key(slot, key)
 }
 
 ///|
@@ -199,8 +205,11 @@ fn crypt_set_algorithm(
         Some(kind) => {
           slot.key_len = kind.0
           slot.cbc = kind.1
+          slot.camellia = kind.2
           slot.key_ready = false
           slot.rounds = []
+          slot.cam_enc = []
+          slot.cam_dec = []
           slot.pending = []
         }
         None => raise EvalError::Cannot("modify")
@@ -210,20 +219,22 @@ fn crypt_set_algorithm(
 }
 
 ///|
-/// Key length, then whether the mode chains blocks with the init vector.
-fn cipher_kind(name : String) -> (Int, Bool)? {
+/// Key length, CBC chaining, then whether the block cipher is Camellia.
+fn cipher_kind(name : String) -> (Int, Bool, Bool)? {
   if name == "aes-128-ecb" {
-    Some((16, false))
+    Some((16, false, false))
   } else if name == "aes-192-ecb" {
-    Some((24, false))
+    Some((24, false, false))
   } else if name == "aes-256-ecb" {
-    Some((32, false))
+    Some((32, false, false))
   } else if name == "aes-128-cbc" {
-    Some((16, true))
+    Some((16, true, false))
   } else if name == "aes-192-cbc" {
-    Some((24, true))
+    Some((24, true, false))
   } else if name == "aes-256-cbc" {
-    Some((32, true))
+    Some((32, true, false))
+  } else if name == "camellia-128-ecb" {
+    Some((16, false, true))
   } else {
     None
   }
@@ -309,8 +320,23 @@ fn crypt_absorb(slot : CryptSlot, bytes : Array[Int]) -> Unit raise EvalError {
 }
 
 ///|
+fn install_key(slot : CryptSlot, key : Array[Int]) -> Unit raise EvalError {
+  if slot.camellia {
+    slot.cam_enc = camellia128_subkeys(key)
+    slot.cam_dec = camellia128_decrypt_keys(slot.cam_enc)
+  } else {
+    slot.rounds = aes_rounds(key)
+  }
+  slot.key_ready = true
+  slot.pending = []
+}
+
+///|
 fn crypt_block(slot : CryptSlot) -> Array[Int] raise EvalError {
-  if !slot.cbc {
+  if slot.camellia {
+    let keys = if slot.encrypting { slot.cam_enc } else { slot.cam_dec }
+    camellia128_crypt(keys, slot.pending)
+  } else if !slot.cbc {
     if slot.encrypting {
       aes_encrypt(slot.rounds, slot.pending)
     } else {
@@ -332,7 +358,12 @@ fn crypt_block(slot : CryptSlot) -> Array[Int] raise EvalError {
 }
 
 ///|
-fn crypt_alloc(decrypting : Bool, key_len : Int, cbc : Bool) -> Int {
+fn crypt_alloc(
+  decrypting : Bool,
+  key_len : Int,
+  cbc : Bool,
+  camellia : Bool,
+) -> Int {
   let mut index = 0
   let mut found = -1
   while index < crypts.slots.length() && found < 0 {
@@ -342,23 +373,31 @@ fn crypt_alloc(decrypting : Bool, key_len : Int, cbc : Bool) -> Int {
     index = index + 1
   }
   if found >= 0 {
-    crypt_reset(crypts.slots[found], decrypting, key_len, cbc)
+    crypt_reset(crypts.slots[found], decrypting, key_len, cbc, camellia)
     found
   } else {
-    let slot = crypt_fresh(decrypting, key_len, cbc)
+    let slot = crypt_fresh(decrypting, key_len, cbc, camellia)
     crypts.slots.push(slot)
     crypts.slots.length() - 1
   }
 }
 
 ///|
-fn crypt_fresh(decrypting : Bool, key_len : Int, cbc : Bool) -> CryptSlot {
+fn crypt_fresh(
+  decrypting : Bool,
+  key_len : Int,
+  cbc : Bool,
+  camellia : Bool,
+) -> CryptSlot {
   {
     live: true,
     encrypting: !decrypting,
     key_ready: false,
     key_len,
     cbc,
+    camellia,
+    cam_enc: [],
+    cam_dec: [],
     iv_ready: false,
     iv: [],
     rounds: [],
@@ -373,12 +412,16 @@ fn crypt_reset(
   decrypting : Bool,
   key_len : Int,
   cbc : Bool,
+  camellia : Bool,
 ) -> Unit {
   slot.live = true
   slot.encrypting = !decrypting
   slot.key_ready = false
   slot.key_len = key_len
   slot.cbc = cbc
+  slot.camellia = camellia
+  slot.cam_enc = []
+  slot.cam_dec = []
   slot.iv_ready = false
   slot.iv = []
   slot.rounds = []
@@ -524,9 +567,7 @@ fn crypt_use_key(slot : CryptSlot, value : @value.Cell) -> Unit raise EvalError 
       if key.length() != slot.key_len {
         raise EvalError::Cannot("open")
       }
-      slot.rounds = aes_rounds(key)
-      slot.key_ready = true
-      slot.pending = []
+      install_key(slot, key)
     }
     _ => raise EvalError::Cannot("open")
   }

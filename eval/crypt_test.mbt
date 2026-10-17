@@ -173,6 +173,23 @@ test "crypt opens from a spec object" {
 }
 
 ///|
+test "crypt camellia-128-ecb matches RFC 3713" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "port: open crypt://camellia-128-ecb\nmodify port 'key #{0123456789ABCDEFFEDCBA9876543210}\ncipher: read write port #{0123456789ABCDEFFEDCBA9876543210}\nmodify port 'direction 'decrypt\nplain: read write port cipher\n(reduce [cipher plain]) = reduce [#{67673138549669730857065648EABE43} #{0123456789ABCDEFFEDCBA9876543210}]",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "port: open crypt://camellia-128-ecb\nmodify port 'key #{000102030405060708090A0B0C0D0E0F}\n(read write port #{00112233445566778899AABBCCDDEEFF}) = #{77CF412067AF8270613529149919546F}",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "crypt rejects a cipher that is not wired yet" {
   let env = @eval.Env::new()
   let missing = try {
