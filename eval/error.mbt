@@ -26,6 +26,8 @@ pub(all) suberror EvalError {
   Stopped(Int)
   /// `quit` stops the evaluation. `try` does not catch it.
   Quit
+  /// An error raised by `cause-error`. `try` boxes it.
+  Caused(String, String)
 }
 
 ///|
@@ -57,6 +59,7 @@ pub fn EvalError::to_cell(self : EvalError) -> @value.Cell {
     NoThrow(name) => ("throw", throw_arg(name))
     Stopped(_) => ("parse", "break")
     Quit => ("quit", "quit")
+    Caused(id, arg) => (id, arg)
   }
   @value.Error(@value.ErrorValue::make(id, arg, ""))
 }
@@ -80,5 +83,6 @@ pub fn EvalError::id(self : EvalError) -> String {
     NoThrow(_) => "throw"
     Stopped(_) => "parse"
     Quit => "quit"
+    Caused(id, _) => id
   }
 }

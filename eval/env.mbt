@@ -395,6 +395,9 @@ let native_use : Int = 129
 let native_none_q : Int = 130
 
 ///|
+let native_cause_error : Int = 131
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -531,6 +534,7 @@ pub fn Env::new() -> Env {
   define_native(env, "function", 2, false, native_function)
   define_native(env, "funct", 2, false, native_function)
   define_native(env, "use", 2, false, native_use)
+  define_native(env, "cause-error", 3, false, native_cause_error)
   install(env, "unset!", @value.Type(@value.Unset))
   install(env, "none!", @value.Type(@value.None))
   install(env, "logic!", @value.Type(@value.Logic))

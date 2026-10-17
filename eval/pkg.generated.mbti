@@ -52,6 +52,7 @@ pub(all) suberror EvalError {
   NoThrow(String)
   Stopped(Int)
   Quit
+  Caused(String, String)
 }
 pub fn EvalError::id(Self) -> String
 pub fn EvalError::to_cell(Self) -> @value.Cell
