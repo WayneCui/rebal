@@ -227,10 +227,12 @@ fn call(
     func.arity()
   }
   let quoted = func.lits()
+  // foreach takes its word as written, the way a lit-word parameter does.
   for nth in 0..<count {
     if cursor >= series.length() {
       raise EvalError::MissingArg("argument")
-    } else if func.code() == 0 && nth < quoted.length() && quoted[nth] {
+    } else if (func.code() == 0 && nth < quoted.length() && quoted[nth]) ||
+      (func.code() == native_foreach && nth == 0) {
       match series.item(cursor) {
         Some(cell) => {
           args.push(cell)
