@@ -446,6 +446,18 @@ test "crypt aes-128-gcm mixes a long header with eight blocks" {
 }
 
 ///|
+test "crypt aes-128-ccm matches the first RFC 3610 packet" {
+  // crypt-port-ccm-test.r3, RFC 3610 example 1: 23-byte message, 8-byte tag.
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "port: open crypt://aes-128-ccm\nmodify port 'key #{C0C1C2C3C4C5C6C7C8C9CACBCCCDCECF}\nmodify port 'iv #{00000003020100A0A1A2A3A4A5}\nmodify port 'tag-length 8\nmodify port 'aad-length 8\nwrite port #{000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E}\n(take port) = #{588C979A61C663D2F066D0C2C0F989806D5F6B61DAC38417E8D12CFDF926E0}",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "crypt rejects a cipher that is not wired yet" {
   let env = @eval.Env::new()
   let missing = try {
