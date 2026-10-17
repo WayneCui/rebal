@@ -1,7 +1,16 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "rebal/cmd/repl"
 
+import {
+  "rebal/eval",
+}
+
 // Values
+pub fn finish(@eval.Env, String) -> String
+
+pub fn prompt_text(String) -> String
+
+pub fn take_line(@eval.Env, String, String) -> (String, String)
 
 // Errors
 
