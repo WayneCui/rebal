@@ -80,19 +80,24 @@ pub fn Frame::set(Self, Int, Cell) -> Unit
 pub struct Func {
   params : Array[Int]
   types : Array[Array[Datatype]]
+  refines : Array[Int]
+  refine_args : Array[Array[Int]]
   body : Series
   infix : Bool
   code : Int
   frame : Frame
 }
 pub fn Func::arity(Self) -> Int
+pub fn Func::as_op(Self) -> Self
 pub fn Func::body(Self) -> Series
 pub fn Func::code(Self) -> Int
 pub fn Func::frame(Self) -> Frame
 pub fn Func::is_infix(Self) -> Bool
-pub fn Func::make(Array[Int], Array[Array[Datatype]], Series, Bool, Frame) -> Self
+pub fn Func::make(Array[Int], Array[Array[Datatype]], Array[Int], Array[Array[Int]], Series, Bool, Frame) -> Self
 pub fn Func::native(Int, Bool, Int) -> Self
 pub fn Func::params(Self) -> Array[Int]
+pub fn Func::refine_args(Self) -> Array[Array[Int]]
+pub fn Func::refines(Self) -> Array[Int]
 pub fn Func::types(Self) -> Array[Array[Datatype]]
 
 pub struct Lexeme {

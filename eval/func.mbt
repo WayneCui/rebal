@@ -8,62 +8,95 @@ fn build_func(
 ) -> @value.Cell raise EvalError {
   let names = spec_names(env, spec)
   let frame = @value.Frame::new()
-  for sym in names.0 {
+  for sym in names.args {
     frame.ensure(sym) |> ignore
   }
-  for sym in names.2 {
+  for sym in names.locals {
     frame.ensure(sym) |> ignore
+  }
+  for sym in names.refines {
+    frame.ensure(sym) |> ignore
+  }
+  for group in names.refine_args {
+    for sym in group {
+      frame.ensure(sym) |> ignore
+    }
   }
   match copied_block(body) {
     Some(series) => {
       @bind.bind(@value.Seq(series, 0), frame) |> ignore
-      @value.Function(@value.Func::make(names.0, names.1, series, false, frame))
+      @value.Function(
+        @value.Func::make(
+          names.args,
+          names.types,
+          names.refines,
+          names.refine_args,
+          series,
+          false,
+          frame,
+        ),
+      )
     }
     None => raise EvalError::Cannot("func")
   }
 }
 
 ///|
-/// Words before `/local` are arguments. A block after a word lists allowed types.
-fn spec_names(
-  env : Env,
-  spec : @value.Cell,
-) -> (Array[Int], Array[Array[@value.Datatype]], Array[Int]) raise EvalError {
+priv struct FuncSpec {
+  args : Array[Int]
+  types : Array[Array[@value.Datatype]]
+  locals : Array[Int]
+  refines : Array[Int]
+  refine_args : Array[Array[Int]]
+}
+
+///|
+/// Words before a refinement are arguments. `/local` words stay in the frame.
+/// Other refinements take the words that follow them only when the call sets them.
+fn spec_names(env : Env, spec : @value.Cell) -> FuncSpec raise EvalError {
   match spec {
     @value.Seq(series, index) if series.datatype() == @value.Block => {
-      let args : Array[Int] = []
-      let types : Array[Array[@value.Datatype]] = []
-      let locals : Array[Int] = []
+      let built : FuncSpec = {
+        args: [],
+        types: [],
+        locals: [],
+        refines: [],
+        refine_args: [],
+      }
       let mut cursor = index
-      let mut after_mark = false
+      let mut mode = 0
       while cursor < series.length() {
         match series.item(cursor) {
           Some(@value.Sym(@value.Word, lexeme)) => {
             cursor = cursor + 1
-            if after_mark {
-              locals.push(lexeme.sym())
-            } else {
-              args.push(lexeme.sym())
-              types.push(arg_types(env, series, cursor))
+            if mode == 0 {
+              built.args.push(lexeme.sym())
+              built.types.push(arg_types(env, series, cursor))
               match series.item(cursor) {
                 Some(@value.Seq(block, _)) if block.datatype() == @value.Block =>
                   cursor = cursor + 1
                 _ => ()
               }
+            } else if mode < 0 {
+              built.locals.push(lexeme.sym())
+            } else {
+              built.refine_args[mode - 1].push(lexeme.sym())
             }
           }
           Some(@value.Sym(@value.Refinement, lexeme)) => {
             if lexeme.spelling() == "local" {
-              after_mark = true
+              mode = -1
             } else {
-              raise EvalError::Cannot("func")
+              built.refines.push(lexeme.sym())
+              built.refine_args.push([])
+              mode = built.refines.length()
             }
             cursor = cursor + 1
           }
           _ => raise EvalError::Cannot("func")
         }
       }
-      (args, types, locals)
+      built
     }
     _ => raise EvalError::Cannot("func")
   }
@@ -123,30 +156,41 @@ fn call_user(
   env : Env,
   func : @value.Func,
   args : Array[@value.Cell],
+  active : Array[Int],
 ) -> @value.Cell raise EvalError {
   let frame = func.frame()
   let names = func.params()
   let types = func.types()
   let mut index = 0
   while index < names.length() {
-    if index < types.length() && types[index].length() > 0 {
-      let got = args[index].datatype()
-      let mut allowed = false
-      for want in types[index] {
-        if got == want {
-          allowed = true
-        }
-      }
-      if !allowed {
-        raise EvalError::Cannot("func")
-      }
-    }
-    match frame.find(names[index]) {
-      Some(slot) => frame.set(slot, args[index])
-      None => raise EvalError::Cannot("func")
-    }
+    check_type(args[index], types, index)
+    write_slot(frame, names[index], args[index])
     index = index + 1
   }
+  let mut taken = names.length()
+  let refines = func.refines()
+  let groups = func.refine_args()
+  let mut which = 0
+  while which < refines.length() {
+    write_slot(frame, refines[which], @value.Logic(false))
+    for sym in groups[which] {
+      write_slot(frame, sym, @value.Unset)
+    }
+    which = which + 1
+  }
+  for sym in active {
+    match refine_at(func, sym) {
+      Some(at) => {
+        write_slot(frame, sym, @value.Logic(true))
+        for arg in groups[at] {
+          write_slot(frame, arg, args[taken])
+          taken = taken + 1
+        }
+      }
+      None => raise EvalError::Cannot("func")
+    }
+  }
+  let _ = taken
   do_series(env, func.body(), 0) catch {
     EvalError::Returned(cell) => cell
     error => raise error
@@ -154,11 +198,68 @@ fn call_user(
 }
 
 ///|
+fn check_type(
+  value : @value.Cell,
+  types : Array[Array[@value.Datatype]],
+  index : Int,
+) -> Unit raise EvalError {
+  if index < types.length() && types[index].length() > 0 {
+    let got = value.datatype()
+    let mut allowed = false
+    for want in types[index] {
+      if got == want {
+        allowed = true
+      }
+    }
+    if !allowed {
+      raise EvalError::Cannot("func")
+    }
+  }
+}
+
+///|
+fn write_slot(
+  frame : @value.Frame,
+  sym : Int,
+  value : @value.Cell,
+) -> Unit raise EvalError {
+  match frame.find(sym) {
+    Some(slot) => frame.set(slot, value)
+    None => raise EvalError::Cannot("func")
+  }
+}
+
+///|
+fn refine_at(func : @value.Func, sym : Int) -> Int? {
+  let names = func.refines()
+  let mut index = 0
+  while index < names.length() {
+    if names[index] == sym {
+      return Some(index)
+    }
+    index = index + 1
+  }
+  None
+}
+
+///|
+fn taken_count(func : @value.Func, active : Array[Int]) -> Int raise EvalError {
+  let mut count = func.arity()
+  for sym in active {
+    match refine_at(func, sym) {
+      Some(index) => count = count + func.refine_args()[index].length()
+      None => raise EvalError::Cannot("func")
+    }
+  }
+  count
+}
+
+///|
 fn invoke(env : Env, func : @value.Func) -> @value.Cell raise EvalError {
   if func.arity() != 0 {
     raise EvalError::MissingArg("argument")
   } else if func.code() == 0 {
-    call_user(env, func, [])
+    call_user(env, func, [], [])
   } else {
     apply(env, func, [])
   }

@@ -6,6 +6,15 @@ fn make_value(
 ) -> @value.Cell raise EvalError {
   match datatype {
     @value.Type(@value.Object) => make_object(env, spec)
+    @value.Type(@value.Op) => make_op(spec)
+    _ => raise EvalError::Cannot("make")
+  }
+}
+
+///|
+fn make_op(spec : @value.Cell) -> @value.Cell raise EvalError {
+  match spec {
+    @value.Function(func) => @value.Function(func.as_op())
     _ => raise EvalError::Cannot("make")
   }
 }

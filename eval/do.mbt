@@ -146,7 +146,7 @@ fn eval_atom(
       if func.is_infix() {
         raise EvalError::OpArg("op")
       } else {
-        call(env, series, index + 1, func)
+        call(env, series, index + 1, func, [])
       }
     Some(@value.Seq(nested, nested_index)) if is_set_path(nested) => {
       if index + 1 >= series.length() {
@@ -157,11 +157,24 @@ fn eval_atom(
       (value, next)
     }
     Some(@value.Seq(nested, nested_index)) if nested.datatype() == @value.Path => {
-      let value = path_get(env, nested, nested_index)
-      match value {
+      let head = path_head(env, nested, nested_index)
+      match head {
         @value.Function(func) if !func.is_infix() =>
-          call(env, series, index + 1, func)
-        _ => (value, index + 1)
+          call(
+            env,
+            series,
+            index + 1,
+            func,
+            path_refines(nested, nested_index + 1),
+          )
+        _ => {
+          let value = path_get(env, nested, nested_index)
+          match value {
+            @value.Function(func) if !func.is_infix() =>
+              call(env, series, index + 1, func, [])
+            _ => (value, index + 1)
+          }
+        }
       }
     }
     Some(@value.Sym(@value.Word, lexeme)) => {
@@ -171,7 +184,7 @@ fn eval_atom(
           if func.is_infix() {
             raise EvalError::OpArg(lexeme.spelling())
           } else {
-            call(env, series, index + 1, func)
+            call(env, series, index + 1, func, [])
           }
         _ => (value, index + 1)
       }
@@ -192,10 +205,14 @@ fn call(
   series : @value.Series,
   index : Int,
   func : @value.Func,
+  active : Array[Int],
 ) -> (@value.Cell, Int) raise EvalError {
+  if func.code() != 0 && active.length() > 0 {
+    raise EvalError::Cannot("func")
+  }
   let args : Array[@value.Cell] = []
   let mut cursor = index
-  for _ in 0..<func.arity() {
+  for _ in 0..<taken_count(func, active) {
     if cursor >= series.length() {
       raise EvalError::MissingArg("argument")
     }
@@ -203,7 +220,28 @@ fn call(
     args.push(arg)
     cursor = next
   }
-  (apply(env, func, args), cursor)
+  if func.code() == 0 {
+    (call_user(env, func, args, active), cursor)
+  } else {
+    (apply(env, func, args), cursor)
+  }
+}
+
+///|
+fn path_refines(
+  series : @value.Series,
+  index : Int,
+) -> Array[Int] raise EvalError {
+  let names : Array[Int] = []
+  let mut cursor = index
+  while cursor < series.length() {
+    match series.item(cursor) {
+      Some(@value.Sym(_, lexeme)) => names.push(lexeme.sym())
+      _ => raise EvalError::Cannot("func")
+    }
+    cursor = cursor + 1
+  }
+  names
 }
 
 ///|
@@ -213,7 +251,7 @@ fn apply(
   args : Array[@value.Cell],
 ) -> @value.Cell raise EvalError {
   if func.code() == 0 {
-    call_user(env, func, args)
+    call_user(env, func, args, [])
   } else if func.code() == native_add {
     from_action(@action.add(args[0], args[1]))
   } else if func.code() == native_subtract {

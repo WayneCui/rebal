@@ -18,4 +18,15 @@ test "a function rejects an argument of the wrong type" {
     error => error.id() == "cannot"
   }
   assert_true(rejected)
+  assert_true(
+    @eval.run(env, "g: func [x /plus y] [either plus [x + y] [x]] g 3")
+    is @value.Integer(3L),
+  )
+  assert_true(
+    @eval.run(env, "g: func [x /plus y] [either plus [x + y] [x]] g/plus 3 4")
+    is @value.Integer(7L),
+  )
+  assert_true(
+    @eval.run(env, "o: make op! func [a b] [a + b] 1 o 2") is @value.Integer(3L),
+  )
 }
