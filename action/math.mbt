@@ -55,6 +55,24 @@ fn combine(
     (@value.Integer(x), @value.Money(y)) =>
       Ok(@value.Money(on_decimal(x.to_double(), y)))
     (@value.Decimal(x), @value.Money(y)) => Ok(@value.Money(on_decimal(x, y)))
+    (@value.Time(x), @value.Time(y)) =>
+      if name == "add" || name == "subtract" {
+        Ok(@value.Time(@value.snap_seconds(on_decimal(x, y))))
+      } else {
+        Err(Cannot(name))
+      }
+    (@value.Time(x), @value.Integer(y)) =>
+      time_pair(name, on_decimal(x, y.to_double()))
+    (@value.Time(x), @value.Decimal(y)) => time_pair(name, on_decimal(x, y))
+    (@value.Integer(x), @value.Time(y)) =>
+      time_pair(name, on_decimal(x.to_double(), y))
+    (@value.Decimal(x), @value.Time(y)) => time_pair(name, on_decimal(x, y))
+    (@value.Time(x), @value.Percent(y)) => time_percent(name, on_decimal(x, y))
+    (@value.Percent(x), @value.Time(y)) => time_percent(name, on_decimal(x, y))
+    (@value.Time(x), @value.Money(y)) =>
+      time_money(name, on_decimal(x / 3600.0, y))
+    (@value.Money(x), @value.Time(y)) =>
+      time_money(name, on_decimal(x, y / 3600.0))
     _ =>
       match (as_double(left), as_double(right)) {
         (Some(x), Some(y)) => Ok(@value.Decimal(on_decimal(x, y)))
@@ -88,6 +106,42 @@ fn combine_tuple(
     } else {
       Ok(@value.Tuple(out))
     }
+  }
+}
+
+///|
+fn time_pair(
+  name : String,
+  seconds : Double,
+) -> Result[@value.Cell, ActionError] {
+  if name == "add" || name == "subtract" || name == "multiply" {
+    Ok(@value.Time(@value.snap_seconds(seconds)))
+  } else {
+    Err(Cannot(name))
+  }
+}
+
+///|
+fn time_percent(
+  name : String,
+  seconds : Double,
+) -> Result[@value.Cell, ActionError] {
+  if name == "multiply" {
+    Ok(@value.Time(@value.snap_seconds(seconds)))
+  } else {
+    Err(Cannot(name))
+  }
+}
+
+///|
+fn time_money(
+  name : String,
+  amount : Double,
+) -> Result[@value.Cell, ActionError] {
+  if name == "multiply" {
+    Ok(@value.Money(amount))
+  } else {
+    Err(Cannot(name))
   }
 }
 

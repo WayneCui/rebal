@@ -184,6 +184,13 @@ fn number_order(left : @value.Cell, right : @value.Cell) -> Int? {
         Some(cmp_int64(y, b))
       }
     (@value.Tuple(left), @value.Tuple(right)) => tuple_order(left, right)
+    (@value.Time(x), @value.Time(y)) => Some(cmp_double(x, y))
+    (@value.Time(x), @value.Integer(y)) => Some(cmp_double(x, y.to_double()))
+    (@value.Integer(x), @value.Time(y)) => Some(cmp_double(x.to_double(), y))
+    (@value.Time(x), @value.Decimal(y)) => Some(cmp_double(x, y))
+    (@value.Decimal(x), @value.Time(y)) => Some(cmp_double(x, y))
+    (@value.Time(x), @value.Percent(y)) => Some(cmp_double(x, y))
+    (@value.Percent(x), @value.Time(y)) => Some(cmp_double(x, y))
     _ =>
       match (as_double(left), as_double(right)) {
         (Some(x), Some(y)) if left.datatype() == @value.Percent ||

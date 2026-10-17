@@ -9,6 +9,7 @@ pub(all) enum Cell {
   Pair(Int64, Int64)
   Tuple(Array[Int])
   Money(Double)
+  Time(Double)
   Char(Int)
   Sym(Datatype, Lexeme)
   Seq(Series, Int)
@@ -30,6 +31,7 @@ pub fn Cell::datatype(self : Cell) -> Datatype {
     Pair(_, _) => Pair
     Tuple(_) => Tuple
     Money(_) => Money
+    Time(_) => Time
     Char(_) => Char
     Sym(datatype, _) => datatype
     Seq(series, _) => series.datatype()

@@ -2,6 +2,7 @@
 package "rebal/value"
 
 // Values
+pub fn snap_seconds(Double) -> Double
 
 // Errors
 
@@ -21,6 +22,7 @@ pub(all) enum Cell {
   Pair(Int64, Int64)
   Tuple(Array[Int])
   Money(Double)
+  Time(Double)
   Char(Int)
   Sym(Datatype, Lexeme)
   Seq(Series, Int)
@@ -46,6 +48,7 @@ pub(all) enum Datatype {
   Pair
   Tuple
   Money
+  Time
   Char
   Word
   SetWord

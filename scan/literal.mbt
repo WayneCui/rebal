@@ -32,8 +32,130 @@ fn Lexer::number(self : Lexer) -> Result[@value.Cell, ScanError] {
         Some(char) if is_digit(char) => self.decimal(sign, whole)
         _ => self.percent_suffix(finish_integer(sign, whole, 10))
       }
+    Some(':') =>
+      match self.chars.get(self.pos + 1) {
+        Some(char) if is_digit(char) => self.time_value(sign, whole)
+        _ => self.percent_suffix(finish_integer(sign, whole, 10))
+      }
     _ => self.percent_suffix(finish_integer(sign, whole, 10))
   }
+}
+
+///|
+/// `1:30` is one hour and thirty minutes. `1:30.5` is one minute and 30.5 seconds.
+fn Lexer::time_value(
+  self : Lexer,
+  sign : Int64,
+  hours : Array[Int],
+) -> Result[@value.Cell, ScanError] {
+  match signed(hours, 10, 1L) {
+    None => Err(Invalid("time"))
+    Some(hour) => {
+      self.bump() |> ignore
+      let minutes = self.digits(10)
+      match signed(minutes, 10, 1L) {
+        None => Err(Invalid("time"))
+        Some(minute) => self.finish_clock(sign, hour, minute)
+      }
+    }
+  }
+}
+
+///|
+fn Lexer::finish_clock(
+  self : Lexer,
+  sign : Int64,
+  hour : Int64,
+  minute : Int64,
+) -> Result[@value.Cell, ScanError] {
+  let signed_by = sign.to_double()
+  match self.peek() {
+    Some(':') =>
+      match self.chars.get(self.pos + 1) {
+        Some(char) if is_digit(char) => {
+          self.bump() |> ignore
+          match self.second_value() {
+            None => Err(Invalid("time"))
+            Some(second) =>
+              Ok(
+                @value.Time(
+                  @value.snap_seconds(
+                    signed_by *
+                    (
+                      hour.to_double() * 3600.0 +
+                      minute.to_double() * 60.0 +
+                      second
+                    ),
+                  ),
+                ),
+              )
+          }
+        }
+        _ => Err(Invalid("time"))
+      }
+    Some('.') =>
+      match self.chars.get(self.pos + 1) {
+        Some(char) if is_digit(char) => {
+          self.bump() |> ignore
+          let fraction = fraction_value(self.digits(10))
+          Ok(
+            @value.Time(
+              @value.snap_seconds(
+                signed_by *
+                (hour.to_double() * 60.0 + minute.to_double() + fraction),
+              ),
+            ),
+          )
+        }
+        _ =>
+          Ok(
+            @value.Time(
+              @value.snap_seconds(
+                signed_by *
+                (hour.to_double() * 3600.0 + minute.to_double() * 60.0),
+              ),
+            ),
+          )
+      }
+    _ =>
+      Ok(
+        @value.Time(
+          @value.snap_seconds(
+            signed_by * (hour.to_double() * 3600.0 + minute.to_double() * 60.0),
+          ),
+        ),
+      )
+  }
+}
+
+///|
+fn Lexer::second_value(self : Lexer) -> Double? {
+  match signed(self.digits(10), 10, 1L) {
+    None => None
+    Some(whole) =>
+      match self.peek() {
+        Some('.') =>
+          match self.chars.get(self.pos + 1) {
+            Some(char) if is_digit(char) => {
+              self.bump() |> ignore
+              Some(whole.to_double() + fraction_value(self.digits(10)))
+            }
+            _ => Some(whole.to_double())
+          }
+        _ => Some(whole.to_double())
+      }
+  }
+}
+
+///|
+fn fraction_value(digits : Array[Int]) -> Double {
+  let mut value = 0.0
+  let mut place = 0.1
+  for digit in digits {
+    value = value + digit.to_double() * place
+    place = place / 10.0
+  }
+  value
 }
 
 ///|

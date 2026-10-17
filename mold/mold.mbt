@@ -59,6 +59,7 @@ fn write_cell(
           buf.write_char('$')
           buf.write_string(money_text(n))
         }
+      @value.Time(n) => write_time(buf, n)
       @value.Char(code) => write_char_value(buf, code, molded)
       @value.Sym(datatype, lexeme) =>
         write_word(buf, datatype, lexeme.spelling())
@@ -309,6 +310,60 @@ fn hex_digit(value : Int) -> Char {
 }
 
 ///|
+fn write_time(buf : StringBuilder, seconds : Double) -> Unit {
+  let snapped = @value.snap_seconds(seconds)
+  if snapped < 0.0 {
+    buf.write_char('-')
+  }
+  let magnitude = if snapped < 0.0 { 0.0 - snapped } else { snapped }
+  let total = (magnitude * 1000000000.0 + 0.5).to_int64()
+  let hour = total / 3600000000000L
+  let after_hour = total % 3600000000000L
+  let minute = after_hour / 60000000000L
+  let after_minute = after_hour % 60000000000L
+  let second = after_minute / 1000000000L
+  let nano = after_minute % 1000000000L
+  buf.write_string(hour.to_string())
+  buf.write_char(':')
+  buf.write_string(two_digits(minute))
+  if second != 0L || nano != 0L {
+    buf.write_char(':')
+    buf.write_string(two_digits(second))
+    let fraction = nano_text(nano)
+    if fraction.length() > 0 {
+      buf.write_char('.')
+      buf.write_string(fraction)
+    }
+  }
+}
+
+///|
+fn two_digits(value : Int64) -> String {
+  if value < 10L {
+    "0" + value.to_string()
+  } else {
+    value.to_string()
+  }
+}
+
+///|
+fn nano_text(nano : Int64) -> String {
+  if nano <= 0L {
+    ""
+  } else {
+    let mut text = nano.to_string()
+    while text.length() < 9 {
+      text = "0" + text
+    }
+    let mut end = text.length()
+    while end > 0 && text[end - 1:end].to_owned() == "0" {
+      end = end - 1
+    }
+    text[0:end].to_owned()
+  }
+}
+
+///|
 fn money_text(value : Double) -> String {
   let text = value.to_string()
   let mut expo = false
@@ -384,6 +439,7 @@ pub fn type_name(datatype : @value.Datatype) -> String {
     @value.Pair => "pair!"
     @value.Tuple => "tuple!"
     @value.Money => "money!"
+    @value.Time => "time!"
     @value.Char => "char!"
     @value.Word => "word!"
     @value.SetWord => "set-word!"

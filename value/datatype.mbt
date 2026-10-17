@@ -9,6 +9,7 @@ pub(all) enum Datatype {
   Pair
   Tuple
   Money
+  Time
   Char
   Word
   SetWord
