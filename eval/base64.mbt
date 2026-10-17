@@ -1,5 +1,5 @@
 ///|
-/// Turns a string or a binary into base-64, base-16, or base-2 text.
+/// Turns a string or a binary into base-85, base-64, base-16, or base-2 text.
 /// `/part` limits how many characters or bytes are encoded.
 fn perform_enbase(
   env : Env,
@@ -9,6 +9,7 @@ fn perform_enbase(
   let (part, url) = base_flags(env, args, active, "enbase")
   let bytes = ranged_payload(args[0], part, "enbase")
   match coding_base(args[1]) {
+    Some(85) => text_series(encode_base85(bytes))
     Some(64) => text_series(encode_base64(bytes, url))
     Some(16) => text_series(encode_base16(bytes))
     Some(2) => text_series(encode_base2(bytes))
@@ -17,7 +18,7 @@ fn perform_enbase(
 }
 
 ///|
-/// Turns base-64, base-16, or base-2 text back into a binary.
+/// Turns base-85, base-64, base-16, or base-2 text back into a binary.
 /// Spaces and line breaks are skipped. `/part` limits the input.
 fn perform_debase(
   env : Env,
@@ -27,6 +28,7 @@ fn perform_debase(
   let (part, _) = base_flags(env, args, active, "debase")
   let text = latin_text(ranged_payload(args[0], part, "debase"))
   match coding_base(args[1]) {
+    Some(85) => binary_cell(decode_base85(text))
     Some(64) => binary_cell(decode_base64(text))
     Some(16) => binary_cell(decode_base16(text))
     Some(2) => binary_cell(decode_base2(text))
@@ -65,6 +67,7 @@ fn base_flags(
 ///|
 fn coding_base(base : @value.Cell) -> Int? {
   match base {
+    @value.Integer(85L) => Some(85)
     @value.Integer(64L) => Some(64)
     @value.Integer(16L) => Some(16)
     @value.Integer(2L) => Some(2)
@@ -144,6 +147,139 @@ fn binary_cell(bytes : Array[Int]) -> @value.Cell {
     series.push_byte(byte.to_byte()) |> ignore
   }
   @value.Seq(series, 0)
+}
+
+///|
+fn encode_base85(bytes : Array[Int]) -> String {
+  let buf = StringBuilder()
+  let mut index = 0
+  while index + 3 < bytes.length() {
+    let chunk = (bytes[index].to_int64() << 24) |
+      (bytes[index + 1].to_int64() << 16) |
+      (bytes[index + 2].to_int64() << 8) |
+      bytes[index + 3].to_int64()
+    if chunk == 0L {
+      buf.write_char('z')
+    } else {
+      write_base85(buf, chunk, 5)
+    }
+    index = index + 4
+  }
+  let rest = bytes.length() - index
+  if rest > 0 {
+    let mut chunk = bytes[index].to_int64() << 24
+    if rest > 1 {
+      chunk = chunk | (bytes[index + 1].to_int64() << 16)
+    }
+    if rest > 2 {
+      chunk = chunk | (bytes[index + 2].to_int64() << 8)
+    }
+    write_base85(buf, chunk, rest + 1)
+  }
+  buf.to_string()
+}
+
+///|
+fn write_base85(buf : StringBuilder, chunk : Int64, count : Int) -> Unit {
+  let digits : Array[Int] = [0, 0, 0, 0, 0]
+  let mut value = chunk
+  for place in 0..<5 {
+    digits[4 - place] = (value % 85L).to_int()
+    value = value / 85L
+  }
+  for cursor in 0..<count {
+    buf.write_char((33 + digits[cursor]).to_char().unwrap())
+  }
+}
+
+///|
+fn decode_base85(text : String) -> Array[Int] raise EvalError {
+  let chars : Array[Char] = []
+  for char in text {
+    if !is_b85_space(char) {
+      chars.push(char)
+    }
+  }
+  let out : Array[Int] = []
+  let mut index = 0
+  while index < chars.length() {
+    if chars[index] == 'z' {
+      out.push(0)
+      out.push(0)
+      out.push(0)
+      out.push(0)
+      index = index + 1
+    } else {
+      let (chunk, pad, next) = base85_group(chars, index)
+      let produced = [
+        ((chunk >> 24) & 0xFFL).to_int(),
+        ((chunk >> 16) & 0xFFL).to_int(),
+        ((chunk >> 8) & 0xFFL).to_int(),
+        (chunk & 0xFFL).to_int(),
+      ]
+      let keep = 4 - pad
+      for cursor in 0..<keep {
+        out.push(produced[cursor])
+      }
+      index = next
+    }
+  }
+  out
+}
+
+///|
+fn base85_group(
+  chars : Array[Char],
+  start : Int,
+) -> (Int64, Int, Int) raise EvalError {
+  let mut chunk = 0L
+  let mut pad = 0
+  let mut index = start
+  for place in 0..<5 {
+    let digit = if index < chars.length() {
+      let value = base85_digit(chars[index])
+      index = index + 1
+      value
+    } else {
+      if pad == 0 {
+        chunk = chunk + 1L
+      }
+      pad = pad + 1
+      0
+    }
+    if place == 4 {
+      if chunk > 50529026L {
+        raise EvalError::Cannot("debase")
+      }
+      chunk = chunk * 85L
+      if chunk > 4294967295L - digit.to_int64() {
+        raise EvalError::Cannot("debase")
+      }
+      chunk = chunk + digit.to_int64()
+    } else {
+      chunk = chunk * 85L + digit.to_int64()
+    }
+  }
+  (chunk, pad, index)
+}
+
+///|
+fn base85_digit(char : Char) -> Int raise EvalError {
+  let code = char.to_int()
+  if code >= '!'.to_int() && code <= 'u'.to_int() {
+    code - '!'.to_int()
+  } else {
+    raise EvalError::Cannot("debase")
+  }
+}
+
+///|
+fn is_b85_space(char : Char) -> Bool {
+  char == ' ' ||
+  char == '\t' ||
+  char == '\n' ||
+  char == '\r' ||
+  char == '\u{000C}'
 }
 
 ///|

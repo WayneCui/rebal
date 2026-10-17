@@ -31,7 +31,7 @@ test "enbase and debase round-trip base 64" {
   }
   assert_true(bad)
   let other = try {
-    @eval.run(env, "enbase {f} 85") |> ignore
+    @eval.run(env, "enbase {f} 36") |> ignore
     false
   } catch {
     error => error.id() == "cannot"
@@ -136,4 +136,75 @@ test "enbase/url uses the url alphabet and omits padding" {
   assert_true(
     @eval.run(env, "(enbase/flat {foo} 64) = {Zm9v}") is @value.Logic(true),
   )
+}
+
+///|
+test "enbase and debase round-trip ascii85" {
+  let env = @eval.Env::new()
+  assert_true(@eval.run(env, "(enbase {} 85) = {}") is @value.Logic(true))
+  assert_true(@eval.run(env, "(enbase {h} 85) = {BE}") is @value.Logic(true))
+  assert_true(
+    @eval.run(env, "(enbase {hell} 85) = {BOu!r}") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(enbase {hello world!} 85) = {BOu!rD]j7BEbo80}")
+    is @value.Logic(true),
+  )
+  assert_true(@eval.run(env, "(enbase #{00} 85) = {!!}") is @value.Logic(true))
+  assert_true(
+    @eval.run(env, "(enbase #{00000000} 85) = {z}") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(enbase #{0000000000000000} 85) = {zz}")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(enbase #{ffffffff} 85) = {s8W-!}") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(enbase #{0100000000} 85) = {!<<*\"!!}")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "(debase {BOu!rD]j7BEbo80} 85) = #{68656C6C6F20776F726C6421}",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(@eval.run(env, "(debase {B E} 85) = #{68}") is @value.Logic(true))
+  assert_true(
+    @eval.run(env, "(debase \"B^-E\" 85) = #{68}") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(debase \"B^/E\" 85) = #{68}") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(enbase/part {hello world!} 85 5) = {BOu!rDZ}")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(debase/part {BOu!rDZ!!!!!} 85 7) = #{68656C6C6F}")
+    is @value.Logic(true),
+  )
+  let bad = try {
+    @eval.run(env, "debase {abcx} 85") |> ignore
+    false
+  } catch {
+    error => error.id() == "cannot"
+  }
+  assert_true(bad)
+  let mark = try {
+    @eval.run(env, "debase {~>} 85") |> ignore
+    false
+  } catch {
+    error => error.id() == "cannot"
+  }
+  assert_true(mark)
+  let wide = try {
+    @eval.run(env, "debase {s8W-\"} 85") |> ignore
+    false
+  } catch {
+    error => error.id() == "cannot"
+  }
+  assert_true(wide)
 }
