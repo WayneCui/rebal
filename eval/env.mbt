@@ -592,6 +592,7 @@ pub fn Env::new() -> Env {
   boot_funcs(env)
   boot_series_helpers(env)
   boot_math(env)
+  boot_types(env)
   env
 }
 
