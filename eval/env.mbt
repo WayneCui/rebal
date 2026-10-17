@@ -389,6 +389,9 @@ let native_quit : Int = 127
 let native_function : Int = 128
 
 ///|
+let native_use : Int = 129
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -523,6 +526,7 @@ pub fn Env::new() -> Env {
   define_native(env, "quit", 0, false, native_quit)
   define_native(env, "function", 2, false, native_function)
   define_native(env, "funct", 2, false, native_function)
+  define_native(env, "use", 2, false, native_use)
   install(env, "unset!", @value.Type(@value.Unset))
   install(env, "none!", @value.Type(@value.None))
   install(env, "logic!", @value.Type(@value.Logic))
