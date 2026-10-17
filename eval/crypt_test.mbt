@@ -434,6 +434,18 @@ test "crypt aes-128-gcm encrypts eight blocks from a 16-byte nonce" {
 }
 
 ///|
+test "crypt aes-128-gcm mixes a long header with eight blocks" {
+  // crypt-port-gcm-test.r3, AES-GCM NIST Validation row 64.
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "port: open crypt://aes-128-gcm\nmodify port 'key #{839664bb6c352e64714254e4d590fb28}\nmodify port 'iv #{5482db71d85039076a541aaba287e7f7}\nmodify port 'tag-length 16\nmodify port 'aad-length 128\nwrite port #{4d75a10ff29414c74d945da046ed45dc02783da28c1ee58b59cbc6f953dd09788b6d513f7366be523e6c2d877c36795942690ce9543050f7ab6f6f647d262360994f7f892e9f59941a8d440619fda8aa20350be14c13d7924c0451c1489da9a0cafd759c3798776245170ad88dbceb3cacde6ba122b656601ccb726e99d54115}\nplain: #{752c7e877663d10f90e5c96cce2686f4aa846a12272a0aba399e860f2838827c7c718365e704084fbe1e68adb27ad18e993c800da2e05bcaf44b651944bde766e7b3ac22f068b525dd0b80b490b3498d7b7199f60faf69fee338087f7a752fb52147034de8922a3ed73b512d9c741f7bac1206e9b0871a970271f50688038ab7}\ncipher: read write port plain\ntag: take port\n(reduce [cipher tag]) = reduce [#{c7ee1c32f8bc0181b53ce57f116e863481db6f21666ba3fa19bd99ce83eee2d573388a0459dfede92e701982a9cc93d697f313062dbea9866526f1d720a128ab97452a35f458637116f7d9294ffc76079539061dfeff9642a049db53d89f2480a6d74a05ff25d46d7048cc16d43f7888b5aff9957b5dc828973afccff63bd42a} #{63c8aa731a60076725cd5f9973eeadb5}]",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "crypt rejects a cipher that is not wired yet" {
   let env = @eval.Env::new()
   let missing = try {
