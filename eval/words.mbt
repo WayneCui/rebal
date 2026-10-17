@@ -97,3 +97,34 @@ fn perform_in(
     _ => raise EvalError::Cannot("in")
   }
 }
+
+///|
+fn context_frame(env : Env, cell : @value.Cell) -> @value.Frame raise EvalError {
+  match cell {
+    @value.Object(frame) => frame
+    @value.Sym(_, lexeme) =>
+      match lexeme.binding() {
+        @value.Bound(frame, _) => frame
+        @value.Unbound =>
+          match env.user.find(lexeme.sym()) {
+            Some(_) => env.user
+            None => raise EvalError::Cannot("bind")
+          }
+      }
+    _ => raise EvalError::Cannot("bind")
+  }
+}
+
+///|
+fn perform_bind(
+  env : Env,
+  target : @value.Cell,
+  context : @value.Cell,
+) -> @value.Cell raise EvalError {
+  @bind.bind(target, context_frame(env, context))
+}
+
+///|
+fn perform_unbind(cell : @value.Cell) -> @value.Cell {
+  @bind.unbind(cell)
+}

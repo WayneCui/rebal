@@ -10,4 +10,9 @@ test "get set and unset address a word" {
   assert_true(
     @eval.run(env, "o: make object! [a: 4] in o 'a") is @value.Integer(4L),
   )
+  assert_true(
+    @eval.run(env, "a: 9 o: make object! [a: 1] b: [a] bind b o first reduce b")
+    is @value.Integer(1L),
+  )
+  assert_true(@eval.run(env, "unbind b first reduce b") is @value.Integer(9L))
 }

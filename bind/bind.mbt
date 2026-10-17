@@ -13,6 +13,20 @@ pub fn bind(cell : @value.Cell, frame : @value.Frame) -> @value.Cell {
 }
 
 ///|
+/// Clears bindings in `cell`. The series is updated in place.
+pub fn unbind(cell : @value.Cell) -> @value.Cell {
+  match cell {
+    @value.Sym(datatype, lexeme) =>
+      @value.Sym(datatype, lexeme.with_binding(@value.Unbound))
+    @value.Seq(series, index) => {
+      unbind_series(series, index, [])
+      cell
+    }
+    _ => cell
+  }
+}
+
+///|
 fn rebound(
   datatype : @value.Datatype,
   lexeme : @value.Lexeme,
@@ -74,6 +88,33 @@ fn bind_series(
           }
         Some(@value.Seq(nested, nested_index)) =>
           bind_series(nested, nested_index, frame, stack)
+        _ => ()
+      }
+      cursor = cursor + 1
+    }
+    stack.remove(stack.length() - 1) |> ignore
+  }
+}
+
+///|
+fn unbind_series(
+  series : @value.Series,
+  index : Int,
+  stack : Array[@value.Series],
+) -> Unit {
+  if holds_values(series) && !visiting(stack, series) {
+    stack.push(series)
+    let mut cursor = if index < 0 { 0 } else { index }
+    while cursor < series.length() {
+      match series.item(cursor) {
+        Some(@value.Sym(datatype, lexeme)) =>
+          series.set_item(
+            cursor,
+            @value.Sym(datatype, lexeme.with_binding(@value.Unbound)),
+          )
+          |> ignore
+        Some(@value.Seq(nested, nested_index)) =>
+          unbind_series(nested, nested_index, stack)
         _ => ()
       }
       cursor = cursor + 1

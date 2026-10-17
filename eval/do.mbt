@@ -331,6 +331,10 @@ fn apply(
     perform_value_q(env, args[0])
   } else if func.code() == native_unset_q {
     perform_unset_q(env, args[0])
+  } else if func.code() == native_bind {
+    perform_bind(env, args[0], args[1])
+  } else if func.code() == native_unbind {
+    perform_unbind(args[0])
   } else {
     raise EvalError::Cannot("function")
   }

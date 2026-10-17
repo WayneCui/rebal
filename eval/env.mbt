@@ -182,6 +182,12 @@ let native_value_q : Int = 58
 let native_unset_q : Int = 59
 
 ///|
+let native_bind : Int = 60
+
+///|
+let native_unbind : Int = 61
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -246,6 +252,8 @@ pub fn Env::new() -> Env {
   define_native(env, "in", 2, false, native_in)
   define_native(env, "value?", 1, false, native_value_q)
   define_native(env, "unset?", 1, false, native_unset_q)
+  define_native(env, "bind", 2, false, native_bind)
+  define_native(env, "unbind", 1, false, native_unbind)
   install(env, "unset!", @value.Type(@value.Unset))
   install(env, "none!", @value.Type(@value.None))
   install(env, "logic!", @value.Type(@value.Logic))
