@@ -410,6 +410,18 @@ test "crypt aes-128-gcm tags an empty message" {
 }
 
 ///|
+test "crypt aes-128-gcm authenticates a long aad and no plaintext" {
+  // crypt-port-gcm-test.r3, AES-GCM NIST Validation row 22.
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "port: open crypt://aes-128-gcm\nmodify port 'key #{b5beefbdd23360f2dd1e6e3c1ddbfebf}\nmodify port 'iv #{81a8494f85be635d71e5663789162494}\nmodify port 'tag-length 16\nmodify port 'aad-length 128\nwrite port #{f9ebf242b616a42e2057ede3b56b4c27349fed148817a710654de75d1cfc5f6304709b46ef1e2ccb42f877c50f484f8a8c6b0a25cff61d9537c3fd0c69bbc6ef21cbec8986cbc9b6e87963b8d9db91b7134afe69d3d9dec3a76b6c645f9c5528968f27396cc9e989d589369c90bbfefb249e3fa416451bc3d6592cc5feefbd76}\nwrite port #{}\ncipher: read port\ntag: take port\n(reduce [cipher tag]) = reduce [#{} #{159a642185e0756d46f1db57af975fa3}]",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "crypt rejects a cipher that is not wired yet" {
   let env = @eval.Env::new()
   let missing = try {
