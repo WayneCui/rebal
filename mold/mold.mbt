@@ -50,6 +50,15 @@ fn write_cell(
         buf.write_string(y.to_string())
       }
       @value.Tuple(parts) => write_tuple(buf, parts)
+      @value.Money(n) =>
+        if n < 0.0 {
+          buf.write_char('-')
+          buf.write_char('$')
+          buf.write_string(money_text(0.0 - n))
+        } else {
+          buf.write_char('$')
+          buf.write_string(money_text(n))
+        }
       @value.Char(code) => write_char_value(buf, code, molded)
       @value.Sym(datatype, lexeme) =>
         write_word(buf, datatype, lexeme.spelling())
@@ -300,6 +309,24 @@ fn hex_digit(value : Int) -> Char {
 }
 
 ///|
+fn money_text(value : Double) -> String {
+  let text = value.to_string()
+  let mut expo = false
+  for char in text {
+    if char == 'e' || char == 'E' {
+      expo = true
+    }
+  }
+  if !expo &&
+    text.length() >= 2 &&
+    text[text.length() - 2:text.length()].to_owned() == ".0" {
+    text[0:text.length() - 2].to_owned()
+  } else {
+    text
+  }
+}
+
+///|
 fn write_tuple(buf : StringBuilder, parts : Array[Int]) -> Unit {
   let mut index = 0
   for part in parts {
@@ -356,6 +383,7 @@ pub fn type_name(datatype : @value.Datatype) -> String {
     @value.Percent => "percent!"
     @value.Pair => "pair!"
     @value.Tuple => "tuple!"
+    @value.Money => "money!"
     @value.Char => "char!"
     @value.Word => "word!"
     @value.SetWord => "set-word!"

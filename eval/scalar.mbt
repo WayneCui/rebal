@@ -45,6 +45,17 @@ fn to_pair(spec : @value.Cell) -> @value.Cell raise EvalError {
 }
 
 ///|
+fn to_money(spec : @value.Cell) -> @value.Cell raise EvalError {
+  match spec {
+    @value.Money(n) => @value.Money(n)
+    @value.Integer(n) => @value.Money(n.to_double())
+    @value.Decimal(n) => @value.Money(n)
+    @value.Percent(n) => @value.Money(n)
+    _ => raise EvalError::Cannot("make")
+  }
+}
+
+///|
 fn to_tuple(spec : @value.Cell) -> @value.Cell raise EvalError {
   match spec {
     @value.Tuple(parts) => @value.Tuple(parts)
@@ -81,6 +92,7 @@ fn perform_to(
     @value.Type(@value.Integer) => integer_from(spec)
     @value.Type(@value.Pair) => to_pair(spec)
     @value.Type(@value.Tuple) => to_tuple(spec)
+    @value.Type(@value.Money) => to_money(spec)
     _ => raise EvalError::Cannot("to")
   }
 }

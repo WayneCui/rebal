@@ -48,6 +48,13 @@ fn combine(
       Ok(@value.Pair(on_int(n, x), on_int(n, y)))
     (@value.Tuple(left), @value.Tuple(right)) =>
       combine_tuple(left, right, name, on_int)
+    (@value.Money(x), @value.Money(y)) => Ok(@value.Money(on_decimal(x, y)))
+    (@value.Money(x), @value.Integer(y)) =>
+      Ok(@value.Money(on_decimal(x, y.to_double())))
+    (@value.Money(x), @value.Decimal(y)) => Ok(@value.Money(on_decimal(x, y)))
+    (@value.Integer(x), @value.Money(y)) =>
+      Ok(@value.Money(on_decimal(x.to_double(), y)))
+    (@value.Decimal(x), @value.Money(y)) => Ok(@value.Money(on_decimal(x, y)))
     _ =>
       match (as_double(left), as_double(right)) {
         (Some(x), Some(y)) => Ok(@value.Decimal(on_decimal(x, y)))
@@ -88,7 +95,7 @@ fn combine_tuple(
 fn as_double(cell : @value.Cell) -> Double? {
   match cell {
     @value.Integer(n) => Some(n.to_double())
-    @value.Decimal(n) | @value.Percent(n) => Some(n)
+    @value.Decimal(n) | @value.Percent(n) | @value.Money(n) => Some(n)
     _ => None
   }
 }

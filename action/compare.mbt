@@ -187,7 +187,9 @@ fn number_order(left : @value.Cell, right : @value.Cell) -> Int? {
     _ =>
       match (as_double(left), as_double(right)) {
         (Some(x), Some(y)) if left.datatype() == @value.Percent ||
-          right.datatype() == @value.Percent => Some(cmp_double(x, y))
+          right.datatype() == @value.Percent ||
+          left.datatype() == @value.Money ||
+          right.datatype() == @value.Money => Some(cmp_double(x, y))
         _ => None
       }
   }

@@ -8,6 +8,7 @@ pub(all) enum Cell {
   Percent(Double)
   Pair(Int64, Int64)
   Tuple(Array[Int])
+  Money(Double)
   Char(Int)
   Sym(Datatype, Lexeme)
   Seq(Series, Int)
@@ -28,6 +29,7 @@ pub fn Cell::datatype(self : Cell) -> Datatype {
     Percent(_) => Percent
     Pair(_, _) => Pair
     Tuple(_) => Tuple
+    Money(_) => Money
     Char(_) => Char
     Sym(datatype, _) => datatype
     Seq(series, _) => series.datatype()

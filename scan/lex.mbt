@@ -82,6 +82,9 @@ fn Lexer::value(self : Lexer) -> Result[@value.Cell, ScanError] {
     Some('"') => self.string()
     Some('{') => self.braced()
     Some('#') => self.hash()
+    Some('$') => self.money(1.0)
+    Some('-') if self.signed_money() => self.signed_money_value(-1.0)
+    Some('+') if self.signed_money() => self.signed_money_value(1.0)
     Some(':') => self.get_word()
     Some('\'') => self.lit_word()
     Some('/') => self.refinement()
@@ -89,6 +92,34 @@ fn Lexer::value(self : Lexer) -> Result[@value.Cell, ScanError] {
     Some(_) => self.word()
   }
   self.maybe_path(scanned)
+}
+
+///|
+fn Lexer::signed_money(self : Lexer) -> Bool {
+  match self.chars.get(self.pos + 1) {
+    Some('$') => true
+    _ => false
+  }
+}
+
+///|
+fn Lexer::signed_money_value(
+  self : Lexer,
+  sign : Double,
+) -> Result[@value.Cell, ScanError] {
+  self.bump() |> ignore
+  self.money(sign)
+}
+
+///|
+fn Lexer::money(self : Lexer, sign : Double) -> Result[@value.Cell, ScanError] {
+  self.bump() |> ignore
+  match self.number() {
+    Ok(@value.Integer(n)) => Ok(@value.Money(n.to_double() * sign))
+    Ok(@value.Decimal(n)) => Ok(@value.Money(n * sign))
+    Ok(_) => Err(Invalid("money"))
+    Err(error) => Err(error)
+  }
 }
 
 ///|

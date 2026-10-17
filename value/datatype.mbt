@@ -8,6 +8,7 @@ pub(all) enum Datatype {
   Percent
   Pair
   Tuple
+  Money
   Char
   Word
   SetWord

@@ -12,6 +12,7 @@ fn make_value(
     @value.Type(@value.Integer) => integer_from(spec)
     @value.Type(@value.Pair) => to_pair(spec)
     @value.Type(@value.Tuple) => to_tuple(spec)
+    @value.Type(@value.Money) => to_money(spec)
     _ => raise EvalError::Cannot("make")
   }
 }
