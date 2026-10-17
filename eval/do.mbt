@@ -512,6 +512,16 @@ fn apply(
     perform_protect(env, args[0], false)
   } else if func.code() == native_protected_q {
     perform_protected_q(env, args[0])
+  } else if func.code() == native_open {
+    perform_open(env, args[0])
+  } else if func.code() == native_close {
+    perform_close(env, args[0])
+  } else if func.code() == native_read {
+    perform_read(env, args[0])
+  } else if func.code() == native_write {
+    perform_write(env, args[0], args[1])
+  } else if func.code() == native_query {
+    perform_query(env, args[0])
   } else {
     raise EvalError::Cannot("function")
   }

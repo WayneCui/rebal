@@ -356,6 +356,21 @@ let native_unprotect : Int = 116
 let native_protected_q : Int = 117
 
 ///|
+let native_open : Int = 118
+
+///|
+let native_close : Int = 119
+
+///|
+let native_read : Int = 120
+
+///|
+let native_write : Int = 121
+
+///|
+let native_query : Int = 122
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -478,6 +493,11 @@ pub fn Env::new() -> Env {
   define_native(env, "protect", 1, false, native_protect)
   define_native(env, "unprotect", 1, false, native_unprotect)
   define_native(env, "protected?", 1, false, native_protected_q)
+  define_native(env, "open", 1, false, native_open)
+  define_native(env, "close", 1, false, native_close)
+  define_native(env, "read", 1, false, native_read)
+  define_native(env, "write", 2, false, native_write)
+  define_native(env, "query", 1, false, native_query)
   install(env, "unset!", @value.Type(@value.Unset))
   install(env, "none!", @value.Type(@value.None))
   install(env, "logic!", @value.Type(@value.Logic))
@@ -513,6 +533,7 @@ pub fn Env::new() -> Env {
   install(env, "closure!", @value.Type(@value.Closure))
   install(env, "op!", @value.Type(@value.Op))
   install(env, "object!", @value.Type(@value.Object))
+  install(env, "port!", @value.Type(@value.Port))
   install(env, "module!", @value.Type(@value.Module))
   install(env, "error!", @value.Type(@value.Error))
   install(env, "sys", @value.Object(@value.Frame::new()))

@@ -21,6 +21,7 @@ pub(all) enum Cell {
   Bitset(Bitset)
   Map(MapValue)
   Module(ModuleValue)
+  Port(PortValue)
 }
 
 ///|
@@ -54,6 +55,7 @@ pub fn Cell::datatype(self : Cell) -> Datatype {
     Bitset(_) => Bitset
     Map(_) => Map
     Module(_) => Module
+    Port(_) => Port
   }
 }
 

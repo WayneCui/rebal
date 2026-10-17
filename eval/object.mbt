@@ -6,6 +6,7 @@ fn make_value(
 ) -> @value.Cell raise EvalError {
   match datatype {
     @value.Type(@value.Object) => make_object(env, spec)
+    @value.Type(@value.Port) => make_port(env, spec)
     @value.Type(@value.Op) => make_op(spec)
     @value.Type(@value.Percent) => to_percent(spec, true)
     @value.Type(@value.Decimal) => decimal_from(spec)

@@ -100,6 +100,7 @@ fn path_step(
         Some(found) => found
         None => @value.None
       }
+    @value.Port(port) => port_field(port, selector)
     _ => raise EvalError::InvalidPath("path")
   }
 }

@@ -37,6 +37,7 @@ pub(all) enum Datatype {
   Map
   Module
   Closure
+  Port
 } derive(Eq)
 
 ///|

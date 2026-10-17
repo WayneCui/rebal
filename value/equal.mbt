@@ -36,6 +36,7 @@ fn equal_at(left : Cell, right : Cell, depth : Int) -> Bool {
       (Bitset(a), Bitset(b)) => a.same(b)
       (Map(a), Map(b)) => a.same(b)
       (Module(a), Module(b)) => physical_equal(a, b)
+      (Port(a), Port(b)) => physical_equal(a, b)
       _ => false
     }
   }
