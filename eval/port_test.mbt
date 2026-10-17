@@ -81,7 +81,7 @@ test "ports dispatch by scheme before any scheme is installed" {
   }
   assert_true(wrote)
   let asked = try {
-    @eval.run(env, "query http://example.com") |> ignore
+    @eval.run(env, "query ftp://example.com") |> ignore
     false
   } catch {
     error =>

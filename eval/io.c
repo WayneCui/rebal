@@ -902,3 +902,207 @@ int32_t rebal_udp_echo(void) {
   pthread_detach(thread);
   return (int32_t)ntohs(addr.sin_port);
 }
+
+static int32_t rebal_http_status = 0;
+
+int32_t rebal_http_code(void) { return rebal_http_status; }
+
+static char *rebal_read_all(int fd, size_t *out_len) {
+  size_t len = 0;
+  size_t cap = 256;
+  char *buf = malloc(cap);
+  if (buf == NULL) {
+    return NULL;
+  }
+  for (;;) {
+    if (len + 1 >= cap) {
+      cap *= 2;
+      char *grown = realloc(buf, cap);
+      if (grown == NULL) {
+        free(buf);
+        return NULL;
+      }
+      buf = grown;
+    }
+    ssize_t n = recv(fd, buf + len, cap - len - 1, 0);
+    if (n < 0) {
+      if (errno == EINTR) {
+        continue;
+      }
+      free(buf);
+      return NULL;
+    }
+    if (n == 0) {
+      break;
+    }
+    len += (size_t)n;
+  }
+  buf[len] = 0;
+  *out_len = len;
+  return buf;
+}
+
+moonbit_string_t rebal_http_get(
+  moonbit_string_t host,
+  int32_t host_len,
+  int32_t port,
+  moonbit_string_t path,
+  int32_t path_len
+) {
+  rebal_http_status = 1;
+  char *name = rebal_to_utf8(host, host_len);
+  char *target = rebal_to_utf8(path, path_len);
+  if (name == NULL || target == NULL) {
+    free(name);
+    free(target);
+    return moonbit_make_string(0, 0);
+  }
+  int fd = rebal_tcp_socket();
+  if (fd < 0) {
+    free(name);
+    free(target);
+    return moonbit_make_string(0, 0);
+  }
+  struct sockaddr_in addr;
+  memset(&addr, 0, sizeof(addr));
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons((uint16_t)port);
+  if (inet_pton(AF_INET, name, &addr.sin_addr) != 1 ||
+      connect(fd, (struct sockaddr *)&addr, sizeof(addr)) != 0) {
+    free(name);
+    free(target);
+    close(fd);
+    return moonbit_make_string(0, 0);
+  }
+  char header[1024];
+  int wrote = snprintf(
+    header, sizeof(header),
+    "GET %s HTTP/1.0\r\nHost: %s\r\nConnection: close\r\n\r\n", target, name
+  );
+  free(name);
+  free(target);
+  if (wrote < 0 || (size_t)wrote >= sizeof(header)) {
+    close(fd);
+    return moonbit_make_string(0, 0);
+  }
+  size_t sent = 0;
+  while (sent < (size_t)wrote) {
+    ssize_t n = send(fd, header + sent, (size_t)wrote - sent, 0);
+    if (n < 0) {
+      if (errno == EINTR) {
+        continue;
+      }
+      close(fd);
+      return moonbit_make_string(0, 0);
+    }
+    sent += (size_t)n;
+  }
+  size_t len = 0;
+  char *buf = rebal_read_all(fd, &len);
+  close(fd);
+  if (buf == NULL) {
+    return moonbit_make_string(0, 0);
+  }
+  if (strncmp(buf, "HTTP/", 5) != 0) {
+    free(buf);
+    return moonbit_make_string(0, 0);
+  }
+  char *status = strchr(buf, ' ');
+  if (status == NULL || strncmp(status, " 200", 4) != 0) {
+    free(buf);
+    return moonbit_make_string(0, 0);
+  }
+  char *body = strstr(buf, "\r\n\r\n");
+  if (body == NULL) {
+    free(buf);
+    return moonbit_make_string(0, 0);
+  }
+  body += 4;
+  size_t body_len = len - (size_t)(body - buf);
+  int32_t units = rebal_utf8_units((unsigned char *)body, body_len);
+  if (units < 0) {
+    free(buf);
+    return moonbit_make_string(0, 0);
+  }
+  moonbit_string_t text = moonbit_make_string(units, 0);
+  rebal_fill_utf16(text, (unsigned char *)body, body_len);
+  free(buf);
+  rebal_http_status = 0;
+  return text;
+}
+
+static int rebal_read_header(int fd) {
+  char buf[2048];
+  size_t len = 0;
+  while (len + 1 < sizeof(buf)) {
+    ssize_t n = recv(fd, buf + len, 1, 0);
+    if (n <= 0) {
+      return -1;
+    }
+    len += 1;
+    if (len >= 4 && memcmp(buf + len - 4, "\r\n\r\n", 4) == 0) {
+      return 0;
+    }
+  }
+  return -1;
+}
+
+static void *rebal_http_main(void *arg) {
+  int listen_fd = (int)(intptr_t)arg;
+  struct sockaddr_in peer;
+  socklen_t peer_len = sizeof(peer);
+  int conn = accept(listen_fd, (struct sockaddr *)&peer, &peer_len);
+  close(listen_fd);
+  if (conn < 0) {
+    return NULL;
+  }
+  if (rebal_read_header(conn) != 0) {
+    close(conn);
+    return NULL;
+  }
+  const char *response =
+    "HTTP/1.0 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok";
+  size_t total = strlen(response);
+  size_t sent = 0;
+  while (sent < total) {
+    ssize_t n = send(conn, response + sent, total - sent, 0);
+    if (n < 0) {
+      if (errno == EINTR) {
+        continue;
+      }
+      break;
+    }
+    sent += (size_t)n;
+  }
+  close(conn);
+  return NULL;
+}
+
+int32_t rebal_http_serve(void) {
+  int fd = rebal_tcp_socket();
+  if (fd < 0) {
+    return -1;
+  }
+  struct sockaddr_in addr;
+  memset(&addr, 0, sizeof(addr));
+  addr.sin_family = AF_INET;
+  addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+  addr.sin_port = 0;
+  if (bind(fd, (struct sockaddr *)&addr, sizeof(addr)) != 0 ||
+      listen(fd, 1) != 0) {
+    close(fd);
+    return -1;
+  }
+  socklen_t len = sizeof(addr);
+  if (getsockname(fd, (struct sockaddr *)&addr, &len) != 0) {
+    close(fd);
+    return -1;
+  }
+  pthread_t thread;
+  if (pthread_create(&thread, NULL, rebal_http_main, (void *)(intptr_t)fd) != 0) {
+    close(fd);
+    return -1;
+  }
+  pthread_detach(thread);
+  return (int32_t)ntohs(addr.sin_port);
+}

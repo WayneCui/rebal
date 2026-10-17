@@ -12,6 +12,8 @@ pub fn do_next(Env, @value.Cell) -> (@value.Cell, @value.Cell) raise EvalError
 
 pub fn eval(Env, @value.Cell) -> @value.Cell raise EvalError
 
+pub fn http_serve() -> Int
+
 pub fn load(Env, String) -> @value.Cell raise EvalError
 
 pub fn make_dir(String) -> Unit raise EvalError
