@@ -36,6 +36,7 @@ pub(all) enum Datatype {
   Bitset
   Map
   Module
+  Closure
 } derive(Eq)
 
 ///|

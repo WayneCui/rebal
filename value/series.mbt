@@ -263,3 +263,63 @@ pub fn Series::copy_from(self : Series, index : Int) -> Series {
     }
   }
 }
+
+///|
+/// Deep copy of a block, paren, or path. Nested series are copied too, so a
+/// later rebind of this copy does not touch the source.
+pub fn Series::copy_deep(self : Series, index : Int) -> Series {
+  copy_deep_at(self, index, [])
+}
+
+///|
+fn copy_deep_at(series : Series, index : Int, stack : Array[Series]) -> Series {
+  if !nested_series(series) || seen_series(stack, series) {
+    series.copy_from(index)
+  } else {
+    stack.push(series)
+    let start = if index < 0 { 0 } else { index }
+    let out = Series::make(series.datatype, Items([]))
+    let mut cursor = start
+    while cursor < series.length() {
+      match series.item(cursor) {
+        Some(cell) => out.push_item(copy_nested(cell, stack)) |> ignore
+        None => ()
+      }
+      cursor = cursor + 1
+    }
+    stack.pop() |> ignore
+    out
+  }
+}
+
+///|
+fn copy_nested(cell : Cell, stack : Array[Series]) -> Cell {
+  match cell {
+    Sym(_, _) => cell.snapshot()
+    Seq(series, index) if nested_series(series) =>
+      Seq(copy_deep_at(series, index, stack), 0)
+    _ => cell
+  }
+}
+
+///|
+fn nested_series(series : Series) -> Bool {
+  let datatype = series.datatype()
+  datatype == Block ||
+  datatype == Paren ||
+  datatype == Path ||
+  datatype == SetPath
+}
+
+///|
+fn seen_series(stack : Array[Series], series : Series) -> Bool {
+  let mut index = 0
+  let mut found = false
+  while index < stack.length() && !found {
+    if physical_equal(stack[index], series) {
+      found = true
+    }
+    index = index + 1
+  }
+  found
+}

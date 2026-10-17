@@ -344,6 +344,9 @@ let native_module : Int = 112
 let native_import : Int = 113
 
 ///|
+let native_closure : Int = 114
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -462,6 +465,7 @@ pub fn Env::new() -> Env {
   define_native(env, "save", 2, false, native_save)
   define_native(env, "module", 2, false, native_module)
   define_native(env, "import", 1, false, native_import)
+  define_native(env, "closure", 2, false, native_closure)
   install(env, "unset!", @value.Type(@value.Unset))
   install(env, "none!", @value.Type(@value.None))
   install(env, "logic!", @value.Type(@value.Logic))
@@ -494,6 +498,7 @@ pub fn Env::new() -> Env {
   install(env, "set-path!", @value.Type(@value.SetPath))
   install(env, "datatype!", @value.Type(@value.Datatype))
   install(env, "function!", @value.Type(@value.Function))
+  install(env, "closure!", @value.Type(@value.Closure))
   install(env, "op!", @value.Type(@value.Op))
   install(env, "object!", @value.Type(@value.Object))
   install(env, "module!", @value.Type(@value.Module))

@@ -43,3 +43,13 @@ pub fn Frame::set(self : Frame, index : Int, cell : Cell) -> Unit {
 pub fn Frame::length(self : Frame) -> Int {
   self.slots.length()
 }
+
+///|
+/// A new frame with the same words and empty slots. The original stays as it is.
+pub fn Frame::copy_shape(self : Frame) -> Frame {
+  let slots : Array[Cell] = []
+  for _ in 0..<self.slots.length() {
+    slots.push(Unset)
+  }
+  { slots, sym_to_slot: self.sym_to_slot.copy(), }
+}

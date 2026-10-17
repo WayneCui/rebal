@@ -301,9 +301,11 @@ fn apply(
   } else if func.code() == native_remove {
     from_action(@action.remove(args[0]))
   } else if func.code() == native_func {
-    build_func(env, args[0], args[1])
+    build_func(env, args[0], args[1], false)
+  } else if func.code() == native_closure {
+    build_func(env, args[0], args[1], true)
   } else if func.code() == native_does {
-    build_func(env, @value.Seq(@value.Series::block(), 0), args[0])
+    build_func(env, @value.Seq(@value.Series::block(), 0), args[0], false)
   } else if func.code() == native_make {
     make_value(env, args[0], args[1])
   } else if func.code() == native_reduce {

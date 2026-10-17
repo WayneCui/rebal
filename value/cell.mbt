@@ -41,7 +41,14 @@ pub fn Cell::datatype(self : Cell) -> Datatype {
     Sym(datatype, _) => datatype
     Seq(series, _) => series.datatype()
     Type(_) => Datatype
-    Function(func) => if func.infix { Op } else { Function }
+    Function(func) =>
+      if func.is_closure() {
+        Closure
+      } else if func.infix {
+        Op
+      } else {
+        Function
+      }
     Object(_) => Object
     Error(_) => Error
     Bitset(_) => Bitset

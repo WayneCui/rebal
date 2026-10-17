@@ -5,6 +5,7 @@ fn build_func(
   env : Env,
   spec : @value.Cell,
   body : @value.Cell,
+  closure : Bool,
 ) -> @value.Cell raise EvalError {
   let names = spec_names(env, spec)
   let frame = @value.Frame::new()
@@ -34,6 +35,7 @@ fn build_func(
           series,
           false,
           frame,
+          closure,
         ),
       )
     }
@@ -158,7 +160,14 @@ fn call_user(
   args : Array[@value.Cell],
   active : Array[Int],
 ) -> @value.Cell raise EvalError {
-  let frame = func.frame()
+  let (frame, body) = if func.is_closure() {
+    let fresh = func.frame().copy_shape()
+    let copied = func.body().copy_deep(0)
+    @bind.bind(@value.Seq(copied, 0), fresh) |> ignore
+    (fresh, copied)
+  } else {
+    (func.frame(), func.body())
+  }
   let names = func.params()
   let types = func.types()
   let mut index = 0
@@ -191,7 +200,7 @@ fn call_user(
     }
   }
   let _ = taken
-  do_series(env, func.body(), 0) catch {
+  do_series(env, body, 0) catch {
     EvalError::Returned(cell) => cell
     error => raise error
   }

@@ -68,7 +68,9 @@ fn write_cell(
         write_series(buf, series, index, molded, depth)
       @value.Type(datatype) => buf.write_string(type_name(datatype))
       @value.Function(func) =>
-        if func.is_infix() {
+        if func.is_closure() {
+          buf.write_string("closure!")
+        } else if func.is_infix() {
           buf.write_string("op!")
         } else {
           buf.write_string("function!")
@@ -661,5 +663,6 @@ pub fn type_name(datatype : @value.Datatype) -> String {
     @value.Bitset => "bitset!"
     @value.Map => "map!"
     @value.Module => "module!"
+    @value.Closure => "closure!"
   }
 }

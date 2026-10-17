@@ -8,6 +8,7 @@ pub struct Func {
   infix : Bool
   code : Int
   frame : Frame
+  closure : Bool
 }
 
 ///|
@@ -20,8 +21,9 @@ pub fn Func::make(
   body : Series,
   infix : Bool,
   frame : Frame,
+  closure : Bool,
 ) -> Func {
-  { params, types, refines, refine_args, body, infix, code: 0, frame, }
+  { params, types, refines, refine_args, body, infix, code: 0, frame, closure, }
 }
 
 ///|
@@ -39,6 +41,7 @@ pub fn Func::native(arity : Int, infix : Bool, code : Int) -> Func {
     infix,
     code,
     frame: Frame::new(),
+    closure: false,
   }
 }
 
@@ -50,6 +53,11 @@ pub fn Func::arity(self : Func) -> Int {
 ///|
 pub fn Func::is_infix(self : Func) -> Bool {
   self.infix
+}
+
+///|
+pub fn Func::is_closure(self : Func) -> Bool {
+  self.closure
 }
 
 ///|
@@ -99,6 +107,7 @@ pub fn Func::as_op(self : Func) -> Func {
     infix: true,
     code: self.code,
     frame: self.frame,
+    closure: self.closure,
   }
 }
 
