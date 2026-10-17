@@ -422,6 +422,18 @@ test "crypt aes-128-gcm authenticates a long aad and no plaintext" {
 }
 
 ///|
+test "crypt aes-128-gcm encrypts eight blocks from a 16-byte nonce" {
+  // crypt-port-gcm-test.r3, AES-GCM NIST Validation row 43.
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "port: open crypt://aes-128-gcm\nmodify port 'key #{ce0f8cfe9d64c4f4c045d11b97c2d918}\nmodify port 'iv #{ad4c3627a494fc628316dc03faf81db8}\nmodify port 'tag-length 16\nmodify port 'aad-length 0\nwrite port #{}\nplain: #{dfff250d380f363880963b42d6913c1ba11e8edf7c4ab8b76d79ccbaac628f548ee542f48728a9a2620a0d69339c8291e8d398440d740e310908cdee7c273cc91275ce7271ba12f69237998b07b789b3993aaac8dc4ec1914432a30f5172f79ea0539bd1f70b36d437e5170bc63039a5280816c05e1e41760b58e35696cebd55}\ncipher: read write port plain\ntag: take port\n(reduce [cipher tag]) = reduce [#{0de73d9702d9357c9e8619b7944e40732ac2f4dd3f1b42d8d7f36acb1f1497990d0ec3d626082cdb1384ec72a4c1d98955ba2a3aae6d81b24e9ce533eb5ede7210ae4a06d43f750138b8914d754d43bce416fee799cc4dd03949acedc34def7d6bde6ba41a4cf03d209689a3ad181f1b6dcf76ca25c87eb1c7459cc9f95ddc57} #{5f6a3620e59fe8977286f502d0da7517}]",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "crypt rejects a cipher that is not wired yet" {
   let env = @eval.Env::new()
   let missing = try {
