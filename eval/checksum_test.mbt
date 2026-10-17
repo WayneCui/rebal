@@ -177,3 +177,48 @@ test "checksum sha384 is the first 48 bytes of the wide digest" {
     "} 'sha384) = #{0691B6E978614B67D60557B2A2CDDD53406508522EFA21C624DBBFA8AB6E726D5C586B489C7C09F24109A64C10211D48}"
   assert_true(@eval.run(env, source) is @value.Logic(true))
 }
+
+///|
+test "checksum/with is HMAC for the digest methods" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "(checksum/with {Hello world} 'sha1 {mykey}) = #{800A1BC1B53CAA795F4DF39DC57652209239E1F1}",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "(checksum/with #{48656C6C6F20776F726C64} 'sha1 #{6D796B6579}) = #{800A1BC1B53CAA795F4DF39DC57652209239E1F1}",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "(checksum/with {Hello world} 'md5 {mykey}) = #{807F6A8C01DCF0D82EDA2DD704291C78}",
+    )
+    is @value.Logic(true),
+  )
+  let mut key = ""
+  for _ in 0..<70 {
+    key = key + "a"
+  }
+  let folded = "(checksum/with {data} 'sha256 {" +
+    key +
+    "}) = #{5909333A843DAD2C82B27FA55A907F9AB4579EFC3DC96DA5C2D3CD8B80D4E1DF}"
+  assert_true(@eval.run(env, folded) is @value.Logic(true))
+  let crc = try {
+    @eval.run(env, "checksum/with {a} 'crc32 {k}") |> ignore
+    false
+  } catch {
+    error => error.id() == "cannot"
+  }
+  assert_true(crc)
+  let other = try {
+    @eval.run(env, "checksum/only {a} 'sha1") |> ignore
+    false
+  } catch {
+    error => error.id() == "cannot"
+  }
+  assert_true(other)
+}

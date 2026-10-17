@@ -220,7 +220,8 @@ fn call(
     func.code() != native_encloak &&
     func.code() != native_decloak &&
     func.code() != native_dehex &&
-    func.code() != native_enhex {
+    func.code() != native_enhex &&
+    func.code() != native_checksum {
     raise EvalError::Cannot("func")
   }
   let args : Array[@value.Cell] = []
@@ -235,6 +236,8 @@ fn call(
     func.arity() + 1
   } else if func.code() == native_enhex {
     func.arity() + enhex_extra(env, active)
+  } else if func.code() == native_checksum && named(env, active, "with") {
+    func.arity() + 1
   } else if func.code() == native_call {
     func.arity() + call_extra(env, active)
   } else if func.code() == 0 {
@@ -290,6 +293,8 @@ fn call(
     (perform_enhex(env, args, active), cursor)
   } else if func.code() == native_dehex {
     (perform_dehex(env, args, active), cursor)
+  } else if func.code() == native_checksum {
+    (perform_checksum(env, args, active), cursor)
   } else if func.code() == 0 {
     (call_user(env, func, args, active), cursor)
   } else {
@@ -622,8 +627,6 @@ fn apply(
     perform_enbase(args[0], args[1])
   } else if func.code() == native_debase {
     perform_debase(args[0], args[1])
-  } else if func.code() == native_checksum {
-    perform_checksum(env, args[0], args[1])
   } else if func.code() == native_decompress {
     perform_decompress(env, args[0], args[1])
   } else {

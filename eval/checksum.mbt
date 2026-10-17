@@ -1,24 +1,93 @@
 ///|
 /// CRC-24, CRC-32, Adler-32, MD5, SHA-1, SHA-256, SHA-384, or SHA-512.
-/// The CRCs are integers. The hashes are raw digests.
+/// The CRCs are integers. The hashes are raw digests. `/with` is HMAC.
 fn perform_checksum(
   env : Env,
-  data : @value.Cell,
-  kind : @value.Cell,
+  args : Array[@value.Cell],
+  active : Array[Int],
 ) -> @value.Cell raise EvalError {
-  let word = as_word(kind, "checksum")
-  let bytes = payload_bytes(data, "checksum")
-  match env.symbols.canon(word.sym()) {
-    "crc24" => @value.Integer(crc24(bytes))
-    "crc32" => @value.Integer(crc32(bytes))
-    "adler32" => @value.Integer(adler32(bytes))
-    "sha1" => binary_cell(sha1(bytes))
-    "md5" => binary_cell(md5(bytes))
-    "sha256" => binary_cell(sha256(bytes))
-    "sha384" => binary_cell(sha384(bytes))
-    "sha512" => binary_cell(sha512(bytes))
+  let word = as_word(args[1], "checksum")
+  let name = env.symbols.canon(word.sym())
+  let bytes = payload_bytes(args[0], "checksum")
+  match checksum_key(env, args, active) {
+    Some(key) => binary_cell(hmac(key, bytes, name))
+    None =>
+      match name {
+        "crc24" => @value.Integer(crc24(bytes))
+        "crc32" => @value.Integer(crc32(bytes))
+        "adler32" => @value.Integer(adler32(bytes))
+        "sha1" => binary_cell(sha1(bytes))
+        "md5" => binary_cell(md5(bytes))
+        "sha256" => binary_cell(sha256(bytes))
+        "sha384" => binary_cell(sha384(bytes))
+        "sha512" => binary_cell(sha512(bytes))
+        _ => raise EvalError::Cannot("checksum")
+      }
+  }
+}
+
+///|
+fn checksum_key(
+  env : Env,
+  args : Array[@value.Cell],
+  active : Array[Int],
+) -> Array[Int]? raise EvalError {
+  let mut keyed = false
+  for sym in active {
+    if env.symbols.canon(sym) == "with" {
+      keyed = true
+    } else {
+      raise EvalError::Cannot("checksum")
+    }
+  }
+  if keyed {
+    Some(payload_bytes(args[2], "checksum"))
+  } else {
+    None
+  }
+}
+
+///|
+fn hmac(
+  key : Array[Int],
+  message : Array[Int],
+  name : String,
+) -> Array[Int] raise EvalError {
+  let block = if name == "sha384" || name == "sha512" { 128 } else { 64 }
+  let folded = if key.length() > block { digest_of(name, key) } else { key }
+  let ipad : Array[Int] = []
+  let opad : Array[Int] = []
+  for i in 0..<block {
+    let byte = if i < folded.length() { folded[i] } else { 0 }
+    ipad.push(byte ^ 0x36)
+    opad.push(byte ^ 0x5C)
+  }
+  let inner = digest_of(name, join_bytes(ipad, message))
+  digest_of(name, join_bytes(opad, inner))
+}
+
+///|
+fn digest_of(name : String, bytes : Array[Int]) -> Array[Int] raise EvalError {
+  match name {
+    "sha1" => sha1(bytes)
+    "md5" => md5(bytes)
+    "sha256" => sha256(bytes)
+    "sha384" => sha384(bytes)
+    "sha512" => sha512(bytes)
     _ => raise EvalError::Cannot("checksum")
   }
+}
+
+///|
+fn join_bytes(left : Array[Int], right : Array[Int]) -> Array[Int] {
+  let out : Array[Int] = []
+  for byte in left {
+    out.push(byte)
+  }
+  for byte in right {
+    out.push(byte)
+  }
+  out
 }
 
 ///|
