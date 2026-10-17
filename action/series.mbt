@@ -45,6 +45,8 @@ pub fn seek(
 ) -> Result[@value.Cell, ActionError] {
   match series {
     @value.None => Ok(@value.None)
+    @value.Bitset(bits) =>
+      find_bitset(bits, value, last, reverse, match_only, tail, only, part)
     _ =>
       if is_series(series) {
         Ok(
@@ -55,6 +57,36 @@ pub fn seek(
       } else {
         Err(Cannot("find"))
       }
+  }
+}
+
+///|
+fn find_bitset(
+  bits : @value.Bitset,
+  value : @value.Cell,
+  last : Bool,
+  reverse : Bool,
+  match_only : Bool,
+  tail : Bool,
+  only : Bool,
+  part : Int?,
+) -> Result[@value.Cell, ActionError] {
+  if last || reverse || match_only || tail || only || part is Some(_) {
+    Err(Cannot("find"))
+  } else {
+    match bit_code(value) {
+      Some(code) => if bits.has(code) { Ok(value) } else { Ok(@value.None) }
+      None => Err(Cannot("find"))
+    }
+  }
+}
+
+///|
+fn bit_code(value : @value.Cell) -> Int? {
+  match value {
+    @value.Char(code) => Some(code)
+    @value.Integer(n) => if n >= 0L { Some(n.to_int()) } else { None }
+    _ => None
   }
 }
 

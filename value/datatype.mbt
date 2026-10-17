@@ -28,6 +28,7 @@ pub(all) enum Datatype {
   Op
   Object
   Error
+  Bitset
 } derive(Eq)
 
 ///|

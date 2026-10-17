@@ -41,6 +41,7 @@ pub fn random(cell : @value.Cell) -> Result[@value.Cell, ActionError] {
 pub fn complement(cell : @value.Cell) -> Result[@value.Cell, ActionError] {
   match cell {
     @value.Integer(n) => Ok(@value.Integer(0L - n - 1L))
+    @value.Bitset(bits) => Ok(@value.Bitset(bits.complement()))
     _ => Err(Cannot("complement"))
   }
 }

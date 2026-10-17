@@ -33,6 +33,7 @@ fn equal_at(left : Cell, right : Cell, depth : Int) -> Bool {
       (Object(a), Object(b)) => physical_equal(a, b)
       (Error(a), Error(b)) =>
         a.id == b.id && a.arg1 == b.arg1 && a.near == b.near
+      (Bitset(a), Bitset(b)) => a.same(b)
       _ => false
     }
   }

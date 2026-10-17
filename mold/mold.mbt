@@ -74,6 +74,7 @@ fn write_cell(
           buf.write_string("function!")
         }
       @value.Object(_) => buf.write_string("object!")
+      @value.Bitset(bits) => write_bitset(buf, bits)
       @value.Error(error) => {
         buf.write_string("make error! [id: ")
         buf.write_string(error.id)
@@ -494,6 +495,15 @@ fn decimal_text(value : Double) -> String {
 }
 
 ///|
+fn write_bitset(buf : StringBuilder, bits : @value.Bitset) -> Unit {
+  buf.write_string("make bitset! #{")
+  for index in 0..<32 {
+    write_hex_byte(buf, bits.byte(index))
+  }
+  buf.write_string("}")
+}
+
+///|
 pub fn type_name(datatype : @value.Datatype) -> String {
   match datatype {
     @value.Unset => "unset!"
@@ -524,5 +534,6 @@ pub fn type_name(datatype : @value.Datatype) -> String {
     @value.Op => "op!"
     @value.Object => "object!"
     @value.Error => "error!"
+    @value.Bitset => "bitset!"
   }
 }

@@ -18,6 +18,7 @@ pub(all) enum Cell {
   Function(Func)
   Object(Frame)
   Error(ErrorValue)
+  Bitset(Bitset)
 }
 
 ///|
@@ -41,6 +42,7 @@ pub fn Cell::datatype(self : Cell) -> Datatype {
     Function(func) => if func.infix { Op } else { Function }
     Object(_) => Object
     Error(_) => Error
+    Bitset(_) => Bitset
   }
 }
 

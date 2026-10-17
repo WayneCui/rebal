@@ -14,6 +14,18 @@ pub(all) enum Binding {
   Bound(Frame, Int)
 }
 
+pub struct Bitset {
+  low : Array[Int]
+  extra : Array[Int]
+}
+pub fn Bitset::byte(Self, Int) -> Int
+pub fn Bitset::complement(Self) -> Self
+pub fn Bitset::fill(Self, Int, Int) -> Unit
+pub fn Bitset::has(Self, Int) -> Bool
+pub fn Bitset::insert(Self, Int) -> Unit
+pub fn Bitset::make() -> Self
+pub fn Bitset::same(Self, Self) -> Bool
+
 pub(all) enum Cell {
   Unset
   None
@@ -33,6 +45,7 @@ pub(all) enum Cell {
   Function(Func)
   Object(Frame)
   Error(ErrorValue)
+  Bitset(Bitset)
 }
 pub fn Cell::datatype(Self) -> Datatype
 pub fn Cell::equal(Self, Self) -> Bool
@@ -70,6 +83,7 @@ pub(all) enum Datatype {
   Op
   Object
   Error
+  Bitset
 } derive(Eq)
 pub fn Datatype::equal(Self, Self) -> Bool
 pub fn Datatype::not_equal(Self, Self) -> Bool
