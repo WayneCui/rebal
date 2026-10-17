@@ -611,7 +611,9 @@ fn apply(
   } else if func.code() == native_clear {
     from_action(@action.clear(args[0]))
   } else if func.code() == native_take {
-    from_action(@action.take(args[0]))
+    perform_take(args[0])
+  } else if func.code() == native_update {
+    perform_update(args[0])
   } else if func.code() == native_reverse {
     from_action(@action.reverse(args[0]))
   } else if func.code() == native_swap {

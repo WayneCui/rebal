@@ -33,6 +33,7 @@ fn crypt_actor(
     "open" => crypt_open(env, port)
     "close" => crypt_close(port)
     "read" => crypt_read(port)
+    "update" => crypt_update(port)
     "write" =>
       match extra {
         Some(value) => crypt_write(port, value)
@@ -242,6 +243,46 @@ fn crypt_set_iv(slot : CryptSlot, value : @value.Cell) -> Unit raise EvalError {
         slot.iv_ready = true
       }
     _ => raise EvalError::Cannot("modify")
+  }
+}
+
+///|
+/// Pads a short block with zeros, then encrypts or decrypts it.
+fn crypt_update(port : @value.Cell) -> @value.Cell raise EvalError {
+  let slot = crypt_slot(port)
+  if slot.pending.length() > 0 {
+    if !slot.key_ready || (slot.cbc && !slot.iv_ready) {
+      raise EvalError::Cannot("update")
+    }
+    while slot.pending.length() < 16 {
+      slot.pending.push(0)
+    }
+    let block = crypt_block(slot)
+    for out in block {
+      slot.output.push(out)
+    }
+    slot.pending = []
+  }
+  port
+}
+
+///|
+/// `take` on a crypt port pads, then reads. Other values stay on series `take`.
+fn perform_take(value : @value.Cell) -> @value.Cell raise EvalError {
+  match value {
+    @value.Port(port) if port.name == "crypt" => {
+      let _ = crypt_update(value)
+      crypt_read(value)
+    }
+    _ => from_action(@action.take(value))
+  }
+}
+
+///|
+fn perform_update(value : @value.Cell) -> @value.Cell raise EvalError {
+  match value {
+    @value.Port(port) if port.name == "crypt" => crypt_update(value)
+    _ => raise EvalError::Cannot("update")
   }
 }
 

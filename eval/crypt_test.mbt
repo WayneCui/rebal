@@ -122,6 +122,23 @@ test "crypt aes-256-cbc chains blocks with the init vector" {
 }
 
 ///|
+test "crypt update pads a short AES block with zeros" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "port: open crypt://aes-128-cbc\nmodify port 'key #{2B7E151628AED2A6ABF7158809CF4F3C}\niv: #{000102030405060708090A0B0C0D0E0F}\nmodify port 'init-vector iv\nwrite port #{6BC1BEE22E409F96}\nwrite port #{E93D7E117393172A}\nfull: read port\nmodify port 'init-vector iv\nwrite port #{6BC1BEE22E409F96}\nheld: read port\ncrypted: read update port\nmodify port 'direction 'decrypt\nmodify port 'init-vector iv\nplain: read write port crypted\n(reduce [full held crypted plain read update port take port]) = reduce [#{7649ABAC8119B246CEE98E9B12E9197D} none #{6F8BB83BE51C9A7DE442745E517D4377} #{6BC1BEE22E409F960000000000000000} none none]",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "c-port: open crypt://aes-128-cbc\nmodify c-port 'key #{2B7E151628AED2A6ABF7158809CF4F3C}\nmodify c-port 'init-vector #{000102030405060708090A0B0C0D0E0F}\nd-port: open crypt://aes-128-cbc#decrypt\nmodify d-port 'key #{2B7E151628AED2A6ABF7158809CF4F3C}\nmodify d-port 'init-vector #{000102030405060708090A0B0C0D0E0F}\nwrite c-port #{6BC1BEE22E409F96}\nwrite c-port #{E93D7E117393172ADEADBEEF}\nfirst: read c-port\nwrite d-port first\nsecond: take c-port\nwrite d-port second\nplain: take d-port\n(reduce [first second plain]) = reduce [#{7649ABAC8119B246CEE98E9B12E9197D} #{00CA0B3A31A8BD78A2815653B0C4C9DB} #{6BC1BEE22E409F96E93D7E117393172ADEADBEEF000000000000000000000000}]",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "crypt rejects a cipher that is not wired yet" {
   let env = @eval.Env::new()
   let missing = try {
