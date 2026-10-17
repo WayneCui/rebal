@@ -530,6 +530,8 @@ fn apply(
     perform_write(env, args[0], args[1])
   } else if func.code() == native_query {
     perform_query(env, args[0])
+  } else if func.code() == native_wait {
+    perform_wait(args[0])
   } else {
     raise EvalError::Cannot("function")
   }

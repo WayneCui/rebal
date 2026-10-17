@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <errno.h>
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
@@ -526,6 +527,28 @@ void rebal_read_clock(int32_t utc, int32_t precise) {
     (precise ? ts.tv_nsec / 1000000000.0 : 0.0);
   rebal_weekday = (parts.tm_wday + 6) % 7 + 1;
   rebal_yearday = parts.tm_yday + 1;
+}
+
+int32_t rebal_sleep(double seconds) {
+  if (seconds < 0.0) {
+    return 1;
+  }
+  struct timespec left;
+  left.tv_sec = (time_t)seconds;
+  double fraction = seconds - (double)left.tv_sec;
+  left.tv_nsec = (long)(fraction * 1000000000.0);
+  if (left.tv_nsec < 0) {
+    left.tv_nsec = 0;
+  }
+  if (left.tv_nsec > 999999999L) {
+    left.tv_nsec = 999999999L;
+  }
+  while (nanosleep(&left, &left) != 0) {
+    if (errno != EINTR) {
+      return 1;
+    }
+  }
+  return 0;
 }
 
 int32_t rebal_clock_year(void) { return rebal_year; }
