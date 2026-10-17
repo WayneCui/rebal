@@ -24,6 +24,8 @@ pub(all) suberror EvalError {
   InvalidPath(String)
   Returned(@value.Cell)
   NoReturn
+  Broken
+  NoBreak
 }
 pub fn EvalError::id(Self) -> String
 pub fn EvalError::to_cell(Self) -> @value.Cell

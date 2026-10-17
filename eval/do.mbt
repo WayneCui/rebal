@@ -4,6 +4,7 @@
 pub fn run(env : Env, source : String) -> @value.Cell raise EvalError {
   eval(env, load(env, source)) catch {
     EvalError::Returned(_) => raise EvalError::NoReturn
+    EvalError::Broken => raise EvalError::NoBreak
     error => raise error
   }
 }
@@ -265,6 +266,14 @@ fn apply(
     perform_either(env, args[0], args[1], args[2])
   } else if func.code() == native_return {
     raise EvalError::Returned(args[0])
+  } else if func.code() == native_while {
+    perform_while(env, args[0], args[1])
+  } else if func.code() == native_until {
+    perform_until(env, args[0])
+  } else if func.code() == native_loop {
+    perform_loop(env, args[0], args[1])
+  } else if func.code() == native_break {
+    raise EvalError::Broken
   } else {
     raise EvalError::Cannot("function")
   }

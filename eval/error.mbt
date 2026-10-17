@@ -10,6 +10,10 @@ pub(all) suberror EvalError {
   Returned(@value.Cell)
   /// `return` reached the top of `run` with no function to leave.
   NoReturn
+  /// Leaves the innermost loop. Loops catch it; everyone else re-raises it.
+  Broken
+  /// `break` reached `run` with no loop to leave.
+  NoBreak
 }
 
 ///|
@@ -24,6 +28,8 @@ pub fn EvalError::to_cell(self : EvalError) -> @value.Cell {
     InvalidPath(text) => ("invalid-path", text)
     Returned(_) => ("return", "return")
     NoReturn => ("return", "return")
+    Broken => ("break", "break")
+    NoBreak => ("break", "break")
   }
   @value.Error(@value.ErrorValue::make(id, arg, ""))
 }
@@ -39,5 +45,7 @@ pub fn EvalError::id(self : EvalError) -> String {
     InvalidPath(_) => "invalid-path"
     Returned(_) => "return"
     NoReturn => "return"
+    Broken => "break"
+    NoBreak => "break"
   }
 }

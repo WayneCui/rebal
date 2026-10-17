@@ -86,6 +86,18 @@ let native_either : Int = 26
 let native_return : Int = 27
 
 ///|
+let native_while : Int = 28
+
+///|
+let native_until : Int = 29
+
+///|
+let native_loop : Int = 30
+
+///|
+let native_break : Int = 31
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -118,6 +130,10 @@ pub fn Env::new() -> Env {
   define_native(env, "if", 2, false, native_if)
   define_native(env, "either", 3, false, native_either)
   define_native(env, "return", 1, false, native_return)
+  define_native(env, "while", 2, false, native_while)
+  define_native(env, "until", 1, false, native_until)
+  define_native(env, "loop", 2, false, native_loop)
+  define_native(env, "break", 0, false, native_break)
   install(env, "unset!", @value.Type(@value.Unset))
   install(env, "none!", @value.Type(@value.None))
   install(env, "logic!", @value.Type(@value.Logic))

@@ -124,6 +124,7 @@ fn perform_try(env : Env, cell : @value.Cell) -> @value.Cell raise EvalError {
       series.datatype() == @value.Paren =>
       eval(env, cell) catch {
         EvalError::Returned(value) => raise EvalError::Returned(value)
+        EvalError::Broken => raise EvalError::Broken
         error => error.to_cell()
       }
     _ => cell
