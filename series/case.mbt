@@ -132,19 +132,16 @@ pub fn dehex(cell : @value.Cell) -> @value.Cell? {
 
 ///|
 pub fn enhex(cell : @value.Cell) -> @value.Cell? {
-  map_text(cell, fn(codes) {
-    let next : Array[Int] = []
-    for code in codes {
-      if plain_code(code) {
-        next.push(code)
-      } else {
-        next.push('%'.to_int())
-        next.push(hex_digit_code(code / 16))
-        next.push(hex_digit_code(code % 16))
-      }
-    }
-    next
-  })
+  let uri = match cell {
+    @value.Seq(series, _) =>
+      series.datatype() == @value.File || series.datatype() == @value.Url
+    _ => false
+  }
+  let binary = match cell {
+    @value.Seq(series, _) => series.datatype() == @value.Binary
+    _ => false
+  }
+  map_codes(cell, fn(codes) { encode_hex(codes, uri, binary) })
 }
 
 ///|
@@ -263,6 +260,78 @@ fn upper_code(code : Int) -> Int {
   } else {
     code
   }
+}
+
+///|
+fn encode_hex(codes : Array[Int], uri : Bool, binary : Bool) -> Array[Int] {
+  let next : Array[Int] = []
+  for code in codes {
+    let bytes = if binary { [code] } else { utf8_codes(code) }
+    for byte in bytes {
+      if stays_plain(byte, uri) {
+        next.push(byte)
+      } else {
+        next.push('%'.to_int())
+        next.push(hex_digit_code(byte / 16))
+        next.push(hex_digit_code(byte % 16))
+      }
+    }
+  }
+  next
+}
+
+///|
+fn utf8_codes(code : Int) -> Array[Int] {
+  let bytes : Array[Int] = []
+  if code < 0x80 {
+    bytes.push(code)
+  } else if code < 0x800 {
+    bytes.push(0xC0 + code / 64)
+    bytes.push(0x80 + code % 64)
+  } else if code < 0x10000 {
+    bytes.push(0xE0 + code / 4096)
+    bytes.push(0x80 + code / 64 % 64)
+    bytes.push(0x80 + code % 64)
+  } else {
+    bytes.push(0xF0 + code / 262144)
+    bytes.push(0x80 + code / 4096 % 64)
+    bytes.push(0x80 + code / 64 % 64)
+    bytes.push(0x80 + code % 64)
+  }
+  bytes
+}
+
+///|
+fn stays_plain(code : Int, uri : Bool) -> Bool {
+  if plain_code(code) || component_mark(code) {
+    true
+  } else {
+    uri && uri_mark(code)
+  }
+}
+
+///|
+fn component_mark(code : Int) -> Bool {
+  code == '!'.to_int() ||
+  code == '\''.to_int() ||
+  code == '('.to_int() ||
+  code == ')'.to_int() ||
+  code == '*'.to_int()
+}
+
+///|
+fn uri_mark(code : Int) -> Bool {
+  code == ';'.to_int() ||
+  code == ','.to_int() ||
+  code == '/'.to_int() ||
+  code == '?'.to_int() ||
+  code == ':'.to_int() ||
+  code == '@'.to_int() ||
+  code == '&'.to_int() ||
+  code == '='.to_int() ||
+  code == '+'.to_int() ||
+  code == '$'.to_int() ||
+  code == '#'.to_int()
 }
 
 ///|
