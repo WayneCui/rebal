@@ -19,3 +19,21 @@ test "dirize adds a slash and undirize removes one, without changing the source"
   )
   assert_true(@eval.run(env, "(type? copy %foo) = file!") is @value.Logic(true))
 }
+
+///|
+test "exists? returns the file type and size? returns the length" {
+  let env = @eval.Env::new()
+  @eval.run(env, "write %/tmp/rebal-exists.txt {ab}") |> ignore
+  assert_true(
+    @eval.run(env, "(exists? %/tmp/rebal-exists.txt) = 'file")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(size? %/tmp/rebal-exists.txt) = 2") is @value.Logic(true),
+  )
+  assert_true(@eval.run(env, "(exists? %/tmp/) = 'dir") is @value.Logic(true))
+  assert_true(
+    @eval.run(env, "(exists? %/tmp/rebal-no-such-exists.txt) = none")
+    is @value.Logic(true),
+  )
+}
