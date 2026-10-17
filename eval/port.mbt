@@ -145,6 +145,8 @@ fn run_scheme(
     dir_actor(env, action, port, extra)
   } else if name == "tcp" {
     tcp_actor(env, action, port, extra)
+  } else if name == "udp" {
+    udp_actor(env, action, port, extra)
   } else {
     let _ = (env, action, port, extra)
     raise EvalError::Cannot("port")

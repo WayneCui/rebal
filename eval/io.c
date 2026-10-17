@@ -785,3 +785,120 @@ int32_t rebal_tcp_echo(void) {
   pthread_detach(thread);
   return (int32_t)ntohs(addr.sin_port);
 }
+
+static int32_t rebal_udp_status = 0;
+
+int32_t rebal_udp_code(void) { return rebal_udp_status; }
+
+static int rebal_udp_socket(void) {
+  return socket(AF_INET, SOCK_DGRAM, 0);
+}
+
+int32_t rebal_udp_connect(moonbit_string_t host, int32_t host_len, int32_t port) {
+  rebal_udp_status = 1;
+  char *name = rebal_to_utf8(host, host_len);
+  if (name == NULL || port < 1 || port > 65535) {
+    free(name);
+    return -1;
+  }
+  int fd = rebal_udp_socket();
+  if (fd < 0) {
+    free(name);
+    return -1;
+  }
+  struct sockaddr_in addr;
+  memset(&addr, 0, sizeof(addr));
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons((uint16_t)port);
+  if (inet_pton(AF_INET, name, &addr.sin_addr) != 1 ||
+      connect(fd, (struct sockaddr *)&addr, sizeof(addr)) != 0) {
+    free(name);
+    close(fd);
+    return -1;
+  }
+  free(name);
+  rebal_udp_status = 0;
+  return fd;
+}
+
+int32_t rebal_udp_send(int32_t fd, moonbit_string_t text, int32_t text_len) {
+  rebal_udp_status = 1;
+  char *body = rebal_to_utf8(text, text_len);
+  if (body == NULL || fd < 0) {
+    free(body);
+    return 1;
+  }
+  size_t len = strlen(body);
+  ssize_t n = send(fd, body, len, 0);
+  free(body);
+  if (n < 0 || (size_t)n != len) {
+    return 1;
+  }
+  rebal_udp_status = 0;
+  return 0;
+}
+
+moonbit_string_t rebal_udp_recv(int32_t fd) {
+  rebal_udp_status = 1;
+  char *buf = malloc(65535);
+  if (buf == NULL || fd < 0) {
+    free(buf);
+    return moonbit_make_string(0, 0);
+  }
+  ssize_t n = recv(fd, buf, 65535, 0);
+  if (n < 0) {
+    free(buf);
+    return moonbit_make_string(0, 0);
+  }
+  int32_t units = rebal_utf8_units((unsigned char *)buf, (size_t)n);
+  if (units < 0) {
+    free(buf);
+    return moonbit_make_string(0, 0);
+  }
+  moonbit_string_t text = moonbit_make_string(units, 0);
+  rebal_fill_utf16(text, (unsigned char *)buf, (size_t)n);
+  free(buf);
+  rebal_udp_status = 0;
+  return text;
+}
+
+static void *rebal_udp_echo_main(void *arg) {
+  int fd = (int)(intptr_t)arg;
+  char buf[2048];
+  struct sockaddr_in peer;
+  socklen_t peer_len = sizeof(peer);
+  ssize_t n = recvfrom(fd, buf, sizeof(buf), 0, (struct sockaddr *)&peer, &peer_len);
+  if (n > 0) {
+    sendto(fd, buf, (size_t)n, 0, (struct sockaddr *)&peer, peer_len);
+  }
+  close(fd);
+  return NULL;
+}
+
+int32_t rebal_udp_echo(void) {
+  int fd = rebal_udp_socket();
+  if (fd < 0) {
+    return -1;
+  }
+  struct sockaddr_in addr;
+  memset(&addr, 0, sizeof(addr));
+  addr.sin_family = AF_INET;
+  addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+  addr.sin_port = 0;
+  if (bind(fd, (struct sockaddr *)&addr, sizeof(addr)) != 0) {
+    close(fd);
+    return -1;
+  }
+  socklen_t len = sizeof(addr);
+  if (getsockname(fd, (struct sockaddr *)&addr, &len) != 0) {
+    close(fd);
+    return -1;
+  }
+  pthread_t thread;
+  if (pthread_create(&thread, NULL, rebal_udp_echo_main, (void *)(intptr_t)fd) != 0) {
+    close(fd);
+    return -1;
+  }
+  pthread_detach(thread);
+  return (int32_t)ntohs(addr.sin_port);
+}

@@ -24,6 +24,8 @@ pub fn set_browser(String) -> Unit
 
 pub fn tcp_echo() -> Int
 
+pub fn udp_echo() -> Int
+
 pub fn write_file(String, String) -> Unit raise EvalError
 
 // Errors
