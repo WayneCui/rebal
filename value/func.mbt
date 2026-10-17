@@ -59,12 +59,16 @@ pub fn Func::frame(self : Func) -> Frame {
 
 ///|
 pub struct ErrorValue {
-  id : Int
+  id : String
   arg1 : String
   near : String
 }
 
 ///|
-pub fn ErrorValue::make(id : Int, arg1 : String, near : String) -> ErrorValue {
+pub fn ErrorValue::make(
+  id : String,
+  arg1 : String,
+  near : String,
+) -> ErrorValue {
   { id, arg1, near, }
 }

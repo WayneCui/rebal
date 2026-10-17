@@ -1,3 +1,7 @@
-// Becomes `import { "rebal/eval" }` when do is available.
+import {
+  "moonbitlang/core/env",
+  "rebal/eval",
+  "rebal/mold",
+}
 
 pkgtype(kind: "executable")

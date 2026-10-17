@@ -24,6 +24,7 @@ pub(all) suberror EvalError {
   InvalidPath(String)
 }
 pub fn EvalError::id(Self) -> String
+pub fn EvalError::to_cell(Self) -> @value.Cell
 
 // Types and methods
 pub struct Env {

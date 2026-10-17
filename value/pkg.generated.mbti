@@ -60,11 +60,11 @@ pub fn Datatype::equal(Self, Self) -> Bool
 pub fn Datatype::not_equal(Self, Self) -> Bool
 
 pub struct ErrorValue {
-  id : Int
+  id : String
   arg1 : String
   near : String
 }
-pub fn ErrorValue::make(Int, String, String) -> Self
+pub fn ErrorValue::make(String, String, String) -> Self
 
 pub struct Frame {
   slots : Array[Cell]

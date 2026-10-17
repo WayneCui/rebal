@@ -239,6 +239,14 @@ fn apply(
     reduce_block(env, args[0])
   } else if func.code() == native_do {
     perform_do(env, args[0])
+  } else if func.code() == native_mold {
+    from_action(@action.mold(args[0]))
+  } else if func.code() == native_form {
+    from_action(@action.form(args[0]))
+  } else if func.code() == native_type {
+    @value.Type(args[0].datatype())
+  } else if func.code() == native_try {
+    perform_try(env, args[0])
   } else {
     raise EvalError::Cannot("function")
   }

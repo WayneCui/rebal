@@ -80,4 +80,13 @@ test "reduce evaluates expressions and drops unset" {
     _ => fail("reduce")
   }
   assert_true(@eval.run(env, "reduce none") is @value.None)
+  match @eval.run(@eval.Env::new(), "try [missing]") {
+    @value.Error(error) => {
+      assert_eq(error.id, "no-value")
+      assert_eq(error.arg1, "missing")
+    }
+    _ => fail("try")
+  }
+  assert_true(@eval.run(env, "length? form \"ab\"") is @value.Integer(2L))
+  assert_true(@eval.run(env, "length? mold \"ab\"") is @value.Integer(4L))
 }

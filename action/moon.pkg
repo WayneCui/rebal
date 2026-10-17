@@ -1,4 +1,5 @@
 import {
+  "rebal/mold",
   "rebal/series",
   "rebal/value",
 }

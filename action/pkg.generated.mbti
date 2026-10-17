@@ -16,9 +16,13 @@ pub fn find(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn first(@value.Cell) -> Result[@value.Cell, ActionError]
 
+pub fn form(@value.Cell) -> Result[@value.Cell, ActionError]
+
 pub fn insert(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn length(@value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn mold(@value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn multiply(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 

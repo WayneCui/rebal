@@ -53,6 +53,18 @@ let native_reduce : Int = 15
 let native_do : Int = 16
 
 ///|
+let native_mold : Int = 17
+
+///|
+let native_form : Int = 18
+
+///|
+let native_type : Int = 19
+
+///|
+let native_try : Int = 20
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -74,7 +86,32 @@ pub fn Env::new() -> Env {
   define_native(env, "make", 2, false, native_make)
   define_native(env, "reduce", 1, false, native_reduce)
   define_native(env, "do", 1, false, native_do)
+  define_native(env, "mold", 1, false, native_mold)
+  define_native(env, "form", 1, false, native_form)
+  define_native(env, "type?", 1, false, native_type)
+  define_native(env, "try", 1, false, native_try)
+  install(env, "unset!", @value.Type(@value.Unset))
+  install(env, "none!", @value.Type(@value.None))
+  install(env, "logic!", @value.Type(@value.Logic))
+  install(env, "integer!", @value.Type(@value.Integer))
+  install(env, "decimal!", @value.Type(@value.Decimal))
+  install(env, "char!", @value.Type(@value.Char))
+  install(env, "word!", @value.Type(@value.Word))
+  install(env, "set-word!", @value.Type(@value.SetWord))
+  install(env, "get-word!", @value.Type(@value.GetWord))
+  install(env, "lit-word!", @value.Type(@value.LitWord))
+  install(env, "refinement!", @value.Type(@value.Refinement))
+  install(env, "string!", @value.Type(@value.String))
+  install(env, "binary!", @value.Type(@value.Binary))
+  install(env, "block!", @value.Type(@value.Block))
+  install(env, "paren!", @value.Type(@value.Paren))
+  install(env, "path!", @value.Type(@value.Path))
+  install(env, "set-path!", @value.Type(@value.SetPath))
+  install(env, "datatype!", @value.Type(@value.Datatype))
+  install(env, "function!", @value.Type(@value.Function))
+  install(env, "op!", @value.Type(@value.Op))
   install(env, "object!", @value.Type(@value.Object))
+  install(env, "error!", @value.Type(@value.Error))
   env
 }
 

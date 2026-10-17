@@ -113,6 +113,19 @@ fn lookup_word(
 }
 
 ///|
+/// Evaluates a block. A failure inside it comes back as `error!`.
+fn perform_try(env : Env, cell : @value.Cell) -> @value.Cell {
+  match cell {
+    @value.Seq(series, _) if series.datatype() == @value.Block ||
+      series.datatype() == @value.Paren =>
+      eval(env, cell) catch {
+        error => error.to_cell()
+      }
+    _ => cell
+  }
+}
+
+///|
 /// Evaluates each expression. Unset results are left out. `none` stays `none`.
 fn reduce_block(env : Env, cell : @value.Cell) -> @value.Cell raise EvalError {
   match cell {

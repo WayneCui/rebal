@@ -18,6 +18,12 @@ test "do returns the last expression" {
   assert_true(@eval.run(env, "a: 1 + 2 a") is @value.Integer(3L))
   assert_true(@eval.run(env, "1") is @value.Integer(1L))
   assert_true(@eval.run(env, "(1 + 2) * 3") is @value.Integer(9L))
+  // evaluation-test.r3:39 do-8, :42 do-9
+  assert_true(
+    @eval.run(env, "1 + length? mold append [1] #\"t\"") is @value.Integer(9L),
+  )
+  let typed = @eval.run(env, "type? first [a]")
+  assert_true(typed.equal(@eval.run(env, "word!")))
   assert_true(@eval.run(env, "1 + length? [1 2]") is @value.Integer(3L))
   assert_true(@eval.run(env, "length? append [1] 2") is @value.Integer(2L))
   match @eval.run(env, "first [[a]]") {
