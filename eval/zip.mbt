@@ -30,17 +30,6 @@ fn zip_compress(
 }
 
 ///|
-/// `decompress binary 'zip` returns `[name [none crc data] ...]`.
-/// Only the store method is accepted.
-fn zip_decompress(data : @value.Cell) -> @value.Cell raise EvalError {
-  match data {
-    @value.Seq(series, index) if series.datatype() == @value.Binary =>
-      zip_block(bytes_from(series, index))
-    _ => raise EvalError::Cannot("decompress")
-  }
-}
-
-///|
 fn zip_items(spec : @value.Cell) -> Array[@value.Cell] raise EvalError {
   match spec {
     @value.Seq(series, index) if series.datatype() == @value.Block => {

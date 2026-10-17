@@ -112,3 +112,52 @@ test "compress/level 0 stores the bytes without shrinking them" {
   }
   assert_true(bad)
 }
+
+///|
+test "compress/part and decompress/size limit the bytes" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "data: {test test test} (decompress compress/part data 'zlib 4 'zlib) = #{74657374}",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "data: {test test test} (decompress compress/part skip data 5 'zlib 4 'zlib) = #{74657374}",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "data: {test test test} (decompress compress/part tail data 'zlib -4 'zlib) = #{74657374}",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "bin: compress {test} 'zlib (decompress/size bin 'zlib 4) = #{74657374}",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "bin: compress {test} 'zlib (decompress/part bin 'zlib length? bin) = #{74657374}",
+    )
+    is @value.Logic(true),
+  )
+  let short = try {
+    @eval.run(env, "decompress/size compress {test} 'zlib 'zlib 3") |> ignore
+    false
+  } catch {
+    error => error.id() == "cannot"
+  }
+  assert_true(short)
+  let cut = try {
+    @eval.run(env, "decompress/part compress {test} 'zlib 'zlib 2") |> ignore
+    false
+  } catch {
+    error => error.id() == "cannot"
+  }
+  assert_true(cut)
+}

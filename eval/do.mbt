@@ -217,6 +217,7 @@ fn call(
     func.code() != native_make_dir &&
     func.code() != native_confirm &&
     func.code() != native_compress &&
+    func.code() != native_decompress &&
     func.code() != native_encloak &&
     func.code() != native_decloak &&
     func.code() != native_dehex &&
@@ -230,8 +231,10 @@ fn call(
     func.arity() + 1
   } else if func.code() == native_confirm && named(env, active, "with") {
     func.arity() + 1
-  } else if func.code() == native_compress && named(env, active, "level") {
-    func.arity() + 1
+  } else if func.code() == native_compress {
+    func.arity() + compress_extra(env, active)
+  } else if func.code() == native_decompress {
+    func.arity() + decompress_extra(env, active)
   } else if func.code() == native_dehex && named(env, active, "escape") {
     func.arity() + 1
   } else if func.code() == native_enhex {
@@ -285,6 +288,8 @@ fn call(
     (perform_confirm(env, args, active), cursor)
   } else if func.code() == native_compress {
     (perform_compress(env, args, active), cursor)
+  } else if func.code() == native_decompress {
+    (perform_decompress(env, args, active), cursor)
   } else if func.code() == native_encloak {
     (perform_encloak(env, args[0], args[1], active), cursor)
   } else if func.code() == native_decloak {
@@ -312,6 +317,30 @@ fn named(env : Env, active : Array[Int], spelling : String) -> Bool {
     }
   }
   found
+}
+
+///|
+fn compress_extra(env : Env, active : Array[Int]) -> Int {
+  let mut extra = 0
+  if named(env, active, "part") {
+    extra = extra + 1
+  }
+  if named(env, active, "level") {
+    extra = extra + 1
+  }
+  extra
+}
+
+///|
+fn decompress_extra(env : Env, active : Array[Int]) -> Int {
+  let mut extra = 0
+  if named(env, active, "part") {
+    extra = extra + 1
+  }
+  if named(env, active, "size") {
+    extra = extra + 1
+  }
+  extra
 }
 
 ///|
@@ -627,8 +656,6 @@ fn apply(
     perform_enbase(args[0], args[1])
   } else if func.code() == native_debase {
     perform_debase(args[0], args[1])
-  } else if func.code() == native_decompress {
-    perform_decompress(env, args[0], args[1])
   } else {
     raise EvalError::Cannot("function")
   }
