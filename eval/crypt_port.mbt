@@ -33,6 +33,10 @@ priv struct CryptSlot {
   mut ccm_aad : Int
   mut ccm_iv : Array[Int]
   mut ccm_reset : Bool
+  mut gcm : Bool
+  mut gcm_iv : Array[Int]
+  mut gcm_run : GcmRun
+  mut gcm_reset : Bool
   mut iv_ready : Bool
   mut iv : Array[Int]
   mut rounds : Array[Int]
@@ -91,6 +95,7 @@ fn crypt_open(env : Env, port : @value.Cell) -> @value.Cell raise EvalError {
               kind.3,
               kind.4,
               kind.5,
+              kind.6,
             )
             value.set_handle(handle)
             errdefer (if !value.is_open() {
@@ -230,6 +235,9 @@ fn crypt_set_direction(
   if slot.ccm {
     slot.ccm_reset = true
   }
+  if slot.gcm {
+    slot.gcm_reset = true
+  }
 }
 
 ///|
@@ -247,6 +255,7 @@ fn crypt_set_algorithm(
           slot.chacha = kind.3
           slot.poly = kind.4
           slot.ccm = kind.5
+          slot.gcm = kind.6
           slot.key_ready = false
           slot.rounds = []
           slot.cam_enc = []
@@ -262,40 +271,42 @@ fn crypt_set_algorithm(
 }
 
 ///|
-/// Key length, CBC, Camellia, ChaCha20, ChaCha20-Poly1305, then AES-CCM.
-fn cipher_kind(name : String) -> (Int, Bool, Bool, Bool, Bool, Bool)? {
+/// Key length, CBC, Camellia, ChaCha20, Poly1305, CCM, then GCM.
+fn cipher_kind(name : String) -> (Int, Bool, Bool, Bool, Bool, Bool, Bool)? {
   if name == "aes-128-ecb" {
-    Some((16, false, false, false, false, false))
+    Some((16, false, false, false, false, false, false))
   } else if name == "aes-192-ecb" {
-    Some((24, false, false, false, false, false))
+    Some((24, false, false, false, false, false, false))
   } else if name == "aes-256-ecb" {
-    Some((32, false, false, false, false, false))
+    Some((32, false, false, false, false, false, false))
   } else if name == "aes-128-cbc" {
-    Some((16, true, false, false, false, false))
+    Some((16, true, false, false, false, false, false))
   } else if name == "aes-192-cbc" {
-    Some((24, true, false, false, false, false))
+    Some((24, true, false, false, false, false, false))
   } else if name == "aes-256-cbc" {
-    Some((32, true, false, false, false, false))
+    Some((32, true, false, false, false, false, false))
   } else if name == "camellia-128-ecb" {
-    Some((16, false, true, false, false, false))
+    Some((16, false, true, false, false, false, false))
   } else if name == "camellia-128-cbc" {
-    Some((16, true, true, false, false, false))
+    Some((16, true, true, false, false, false, false))
   } else if name == "camellia-192-ecb" {
-    Some((24, false, true, false, false, false))
+    Some((24, false, true, false, false, false, false))
   } else if name == "camellia-192-cbc" {
-    Some((24, true, true, false, false, false))
+    Some((24, true, true, false, false, false, false))
   } else if name == "camellia-256-ecb" {
-    Some((32, false, true, false, false, false))
+    Some((32, false, true, false, false, false, false))
   } else if name == "camellia-256-cbc" {
-    Some((32, true, true, false, false, false))
+    Some((32, true, true, false, false, false, false))
   } else if name == "chacha20" {
-    Some((32, false, false, true, false, false))
+    Some((32, false, false, true, false, false, false))
   } else if name == "chacha20-poly1305" {
-    Some((32, false, false, false, true, false))
+    Some((32, false, false, false, true, false, false))
   } else if name == "aes-128-ccm" {
-    Some((16, false, false, false, false, true))
+    Some((16, false, false, false, false, true, false))
   } else if name == "aes-256-ccm" {
-    Some((32, false, false, false, false, true))
+    Some((32, false, false, false, false, true, false))
+  } else if name == "aes-128-gcm" {
+    Some((16, false, false, false, false, false, true))
   } else {
     None
   }
@@ -319,6 +330,9 @@ fn crypt_set_iv(slot : CryptSlot, value : @value.Cell) -> Unit raise EvalError {
       if slot.ccm {
         ccm_set_iv(slot, [])
       }
+      if slot.gcm {
+        gcm_set_iv(slot, [])
+      }
     }
     @value.Seq(series, index) if series.datatype() == @value.Binary => {
       let bytes = bytes_from(series, index)
@@ -338,6 +352,9 @@ fn crypt_set_iv(slot : CryptSlot, value : @value.Cell) -> Unit raise EvalError {
       if slot.ccm && bytes.length() > 0 {
         ccm_set_iv(slot, bytes)
       }
+      if slot.gcm && bytes.length() > 0 {
+        gcm_set_iv(slot, bytes)
+      }
     }
     _ => raise EvalError::Cannot("modify")
   }
@@ -349,6 +366,10 @@ fn crypt_update(port : @value.Cell) -> @value.Cell raise EvalError {
   let slot = crypt_slot(port)
   if slot.poly {
     poly_finish(slot)
+    return port
+  }
+  if slot.gcm {
+    gcm_finish_port(slot)
     return port
   }
   if slot.pending.length() > 0 {
@@ -404,6 +425,10 @@ fn crypt_absorb(slot : CryptSlot, bytes : Array[Int]) -> Unit raise EvalError {
     ccm_absorb(slot, bytes)
     return
   }
+  if slot.gcm {
+    gcm_absorb(slot, bytes)
+    return
+  }
   for byte in bytes {
     slot.pending.push(byte)
     if slot.pending.length() == 16 {
@@ -427,6 +452,9 @@ fn install_key(slot : CryptSlot, key : Array[Int]) -> Unit raise EvalError {
   } else if slot.ccm {
     slot.rounds = aes_rounds(key)
     slot.ccm_reset = true
+  } else if slot.gcm {
+    slot.rounds = aes_rounds(key)
+    slot.gcm_reset = true
   } else if slot.camellia && slot.key_len == 16 {
     slot.cam_enc = camellia128_subkeys(key)
     slot.cam_dec = camellia128_decrypt_keys(slot.cam_enc)
@@ -848,6 +876,81 @@ fn same_bytes(left : Array[Int], right : Array[Int]) -> Bool {
 }
 
 ///|
+/// The first write, when `aad-length` is set, is additional data. Later
+/// writes are the message. `update` appends the tag.
+fn gcm_absorb(slot : CryptSlot, bytes : Array[Int]) -> Unit raise EvalError {
+  if bytes.length() == 0 {
+    return
+  }
+  gcm_prepare(slot)
+  let run = slot.gcm_run
+  if run.phase == 0 {
+    if bytes.length() < slot.ccm_aad {
+      raise EvalError::Cannot("write")
+    }
+    gcm_aad(run, slice_from(bytes, 0, slot.ccm_aad))
+    run.phase = 1
+    let rest = slice_from(bytes, slot.ccm_aad, bytes.length() - slot.ccm_aad)
+    if rest.length() == 0 {
+      return
+    }
+    chacha_emit(slot, gcm_data(run, slot.rounds, rest, slot.encrypting))
+  } else {
+    chacha_emit(slot, gcm_data(run, slot.rounds, bytes, slot.encrypting))
+  }
+}
+
+///|
+fn gcm_prepare(slot : CryptSlot) -> Unit raise EvalError {
+  if slot.gcm_reset {
+    gcm_start(slot.gcm_run, slot.rounds, slot.gcm_iv)
+    slot.output = []
+    slot.pending = []
+    slot.gcm_reset = false
+    if slot.ccm_aad == 0 {
+      slot.gcm_run.phase = 1
+    }
+  }
+}
+
+///|
+fn gcm_finish_port(slot : CryptSlot) -> Unit raise EvalError {
+  if !slot.key_ready {
+    raise EvalError::Cannot("update")
+  }
+  let run = slot.gcm_run
+  if run.done {
+    return
+  }
+  if slot.gcm_reset {
+    gcm_prepare(slot)
+  }
+  let tag_len = slot.ccm_tag
+  if tag_len == 0 {
+    run.done = true
+    return
+  }
+  if tag_len < 4 || tag_len > 16 {
+    raise EvalError::Cannot("update")
+  }
+  chacha_emit(slot, gcm_tag(run, tag_len))
+  run.done = true
+}
+
+///|
+fn gcm_set_iv(slot : CryptSlot, bytes : Array[Int]) -> Unit {
+  let iv : Array[Int] = []
+  let count = if bytes.length() > 16 { 16 } else { bytes.length() }
+  let mut index = 0
+  while index < count {
+    iv.push(bytes[index])
+    index = index + 1
+  }
+  slot.gcm_iv = iv
+  slot.gcm_reset = true
+}
+
+///|
 fn crypt_alloc(
   decrypting : Bool,
   key_len : Int,
@@ -856,6 +959,7 @@ fn crypt_alloc(
   chacha : Bool,
   poly : Bool,
   ccm : Bool,
+  gcm : Bool,
 ) -> Int {
   let mut index = 0
   let mut found = -1
@@ -875,11 +979,12 @@ fn crypt_alloc(
       chacha,
       poly,
       ccm,
+      gcm,
     )
     found
   } else {
     let slot = crypt_fresh(
-      decrypting, key_len, cbc, camellia, chacha, poly, ccm,
+      decrypting, key_len, cbc, camellia, chacha, poly, ccm, gcm,
     )
     crypts.slots.push(slot)
     crypts.slots.length() - 1
@@ -895,6 +1000,7 @@ fn crypt_fresh(
   chacha : Bool,
   poly : Bool,
   ccm : Bool,
+  gcm : Bool,
 ) -> CryptSlot {
   {
     live: true,
@@ -928,6 +1034,10 @@ fn crypt_fresh(
     ccm_aad: 0,
     ccm_iv: ccm_zeros(),
     ccm_reset: true,
+    gcm,
+    gcm_iv: [],
+    gcm_run: gcm_new(),
+    gcm_reset: true,
     iv_ready: false,
     iv: [],
     rounds: [],
@@ -946,6 +1056,7 @@ fn crypt_reset(
   chacha : Bool,
   poly : Bool,
   ccm : Bool,
+  gcm : Bool,
 ) -> Unit {
   slot.live = true
   slot.encrypting = !decrypting
@@ -958,10 +1069,14 @@ fn crypt_reset(
   slot.chacha = chacha
   slot.poly = poly
   slot.ccm = ccm
+  slot.gcm = gcm
   slot.ccm_tag = 0
   slot.ccm_aad = 0
   slot.ccm_iv = ccm_zeros()
   slot.ccm_reset = true
+  slot.gcm_iv = []
+  slot.gcm_run = gcm_new()
+  slot.gcm_reset = true
   chacha_blank(slot)
   poly_blank(slot)
   slot.iv_ready = false
@@ -1128,6 +1243,9 @@ fn crypt_use_iv(slot : CryptSlot, value : @value.Cell) -> Unit raise EvalError {
       if slot.ccm {
         ccm_set_iv(slot, [])
       }
+      if slot.gcm {
+        gcm_set_iv(slot, [])
+      }
     }
     @value.Seq(series, index) if series.datatype() == @value.Binary => {
       let bytes = bytes_from(series, index)
@@ -1146,6 +1264,9 @@ fn crypt_use_iv(slot : CryptSlot, value : @value.Cell) -> Unit raise EvalError {
       }
       if slot.ccm && bytes.length() > 0 {
         ccm_set_iv(slot, bytes)
+      }
+      if slot.gcm && bytes.length() > 0 {
+        gcm_set_iv(slot, bytes)
       }
     }
     _ => raise EvalError::Cannot("open")

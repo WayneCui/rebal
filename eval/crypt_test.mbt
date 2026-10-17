@@ -373,10 +373,33 @@ test "crypt aes-256-ccm encrypts without a tag" {
 }
 
 ///|
+test "crypt aes-128-gcm authenticates the record" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "port: open crypt://aes-128-gcm\nmodify port 'key #{C0C1C2C3C4C5C6C7C8C9CACBCCCDCECF}\nmodify port 'iv #{00000003020100A0A1A2A3A4A5}\nmodify port 'tag-length 16\nmodify port 'aad-length 13\nwrite port #{00000000000000011703030528}\nwrite port #{DEADBEAFDEADBEAF}\ncipher: read port\ntag: take port\nmodify port 'direction 'decrypt\nwrite port #{00000000000000011703030528}\nwrite port cipher\nplain: read port\n(reduce [cipher tag plain take port]) = reduce [#{E647A20A318C2C9D} #{BF0C5A7A09E536B0234153A2E0EE010A} #{DEADBEAFDEADBEAF} tag]",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "port: open crypt://aes-128-gcm\nmodify port 'key #{C0C1C2C3C4C5C6C7C8C9CACBCCCDCECF}\nmodify port 'iv #{00000003020100A0A1A2A3A4A5}\nmodify port 'tag-length 16\nmodify port 'aad-length 4\nwrite port #{decafe00}\nwrite port #{DEADBEAF}\nwrite port #{DEADBEAF}\ncipher: read port\ntag: take port\nmodify port 'direction 'decrypt\nwrite port #{decafe00}\nwrite port cipher\n(reduce [cipher tag read port take port]) = reduce [#{E647A20A318C2C9D} #{834EDE070B5E17D8030223ADD27ACED1} #{DEADBEAFDEADBEAF} tag]",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "port: open crypt://aes-128-gcm\nmodify port 'key #{90929a4b0ac65b350ad1591611fe4829}\nmodify port 'iv #{5a8aa485c316e9403aff859fbb}\nplain: #{4bfe4e35784f0a65b545477e5e2f4bae0e1e6fa717eaf2cb}\ncipher: take write port plain\nmodify port 'direction 'decrypt\nback: take write port cipher\n(reduce [cipher back]) = reduce [#{F67D24DEA38559C1AAF75406642EB0D3EE83F18A10E321BF} plain]",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "crypt rejects a cipher that is not wired yet" {
   let env = @eval.Env::new()
   let missing = try {
-    @eval.run(env, "open crypt://aes-128-gcm") |> ignore
+    @eval.run(env, "open crypt://aes-128-cfb") |> ignore
     false
   } catch {
     error =>
