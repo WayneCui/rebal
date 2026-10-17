@@ -24,7 +24,11 @@ pub fn run(Env, String) -> @value.Cell raise EvalError
 
 pub fn set_browser(String) -> Unit
 
+pub fn set_tls_verify(Bool) -> Unit
+
 pub fn tcp_echo() -> Int
+
+pub fn tls_serve() -> Int
 
 pub fn udp_echo() -> Int
 

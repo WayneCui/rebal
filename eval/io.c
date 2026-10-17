@@ -18,7 +18,7 @@ static int32_t rebal_status = 0;
 
 int32_t rebal_io_status(void) { return rebal_status; }
 
-static char *rebal_to_utf8(const uint16_t *src, int32_t len) {
+char *rebal_to_utf8(const uint16_t *src, int32_t len) {
   if (len < 0) {
     len = 0;
   }
@@ -44,7 +44,7 @@ static char *rebal_to_utf8(const uint16_t *src, int32_t len) {
   return buf;
 }
 
-static int32_t rebal_utf8_units(const unsigned char *data, size_t size) {
+int32_t rebal_utf8_units(const unsigned char *data, size_t size) {
   size_t i = 0;
   int32_t units = 0;
   while (i < size) {
@@ -84,7 +84,7 @@ static int32_t rebal_utf8_units(const unsigned char *data, size_t size) {
   return units;
 }
 
-static void rebal_fill_utf16(
+void rebal_fill_utf16(
   uint16_t *dst,
   const unsigned char *data,
   size_t size

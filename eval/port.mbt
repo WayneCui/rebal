@@ -149,6 +149,8 @@ fn run_scheme(
     udp_actor(env, action, port, extra)
   } else if name == "http" {
     http_actor(env, action, port, extra)
+  } else if name == "tls" {
+    tls_actor(env, action, port, extra)
   } else {
     let _ = (env, action, port, extra)
     raise EvalError::Cannot("port")

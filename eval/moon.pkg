@@ -8,5 +8,5 @@ import {
 }
 
 options(
-  "native-stub": [ "io.c" ],
+  "native-stub": [ "io.c", "tls.c" ],
 )
