@@ -593,6 +593,8 @@ fn apply(
     perform_enbase(args[0], args[1])
   } else if func.code() == native_debase {
     perform_debase(args[0], args[1])
+  } else if func.code() == native_checksum {
+    perform_checksum(env, args[0], args[1])
   } else {
     raise EvalError::Cannot("function")
   }
