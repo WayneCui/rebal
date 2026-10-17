@@ -335,6 +335,16 @@ int32_t rebal_make_dir(moonbit_string_t path, int32_t path_len) {
   return failed ? 1 : 0;
 }
 
+int32_t rebal_remove_dir(moonbit_string_t path, int32_t path_len) {
+  char *cpath = rebal_to_utf8(path, path_len);
+  if (cpath == NULL) {
+    return 1;
+  }
+  int failed = rmdir(cpath) != 0;
+  free(cpath);
+  return failed ? 1 : 0;
+}
+
 static int32_t rebal_cwd_status = 0;
 
 int32_t rebal_cwd_code(void) { return rebal_cwd_status; }

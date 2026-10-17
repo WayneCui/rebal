@@ -7,12 +7,21 @@ extern "C" fn c_list_dir(path : String, path_len : Int) -> String = "rebal_list_
 extern "C" fn c_make_dir(path : String, path_len : Int) -> Int = "rebal_make_dir"
 
 ///|
+#borrow(path)
+extern "C" fn c_remove_dir(path : String, path_len : Int) -> Int = "rebal_remove_dir"
+
+///|
 pub fn make_dir(path : String) -> Unit raise EvalError {
   if c_make_dir(path, path.length()) == 0 {
     ()
   } else {
     raise EvalError::Cannot("access")
   }
+}
+
+///|
+fn remove_made_dir(path : String) -> Unit {
+  c_remove_dir(path, path.length()) |> ignore
 }
 
 ///|
