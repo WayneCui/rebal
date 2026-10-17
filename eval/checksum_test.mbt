@@ -1,4 +1,24 @@
 ///|
+test "checksum crc24 mixes the length into the first byte" {
+  let env = @eval.Env::new()
+  assert_true(@eval.run(env, "(checksum {} 'crc24) = 0") is @value.Logic(true))
+  assert_true(
+    @eval.run(env, "(checksum {a} 'crc24) = 9657536") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(checksum {abc} 'crc24) = 1664899") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(checksum {123456789} 'crc24) = 12110625")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(checksum #{616263} 'crc24) = 1664899")
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "checksum crc32 matches the signed 32-bit residue" {
   let env = @eval.Env::new()
   assert_true(@eval.run(env, "(checksum {} 'crc32) = 0") is @value.Logic(true))

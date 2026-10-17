@@ -1,6 +1,6 @@
 ///|
-/// CRC-32, Adler-32, MD5, SHA-1, SHA-256, SHA-384, or SHA-512.
-/// The two CRCs are signed 32-bit integers. The hashes are raw digests.
+/// CRC-24, CRC-32, Adler-32, MD5, SHA-1, SHA-256, SHA-384, or SHA-512.
+/// The CRCs are integers. The hashes are raw digests.
 fn perform_checksum(
   env : Env,
   data : @value.Cell,
@@ -9,6 +9,7 @@ fn perform_checksum(
   let word = as_word(kind, "checksum")
   let bytes = payload_bytes(data, "checksum")
   match env.symbols.canon(word.sym()) {
+    "crc24" => @value.Integer(crc24(bytes))
     "crc32" => @value.Integer(crc32(bytes))
     "adler32" => @value.Integer(adler32(bytes))
     "sha1" => binary_cell(sha1(bytes))
@@ -18,6 +19,45 @@ fn perform_checksum(
     "sha512" => binary_cell(sha512(bytes))
     _ => raise EvalError::Cannot("checksum")
   }
+}
+
+///|
+fn crc24(bytes : Array[Int]) -> Int64 {
+  if bytes.length() == 0 {
+    return 0L
+  }
+  let table = crc24_table()
+  let mut crc = bytes.length().to_int64() + bytes[0].to_int64()
+  for byte in bytes {
+    let index = (((crc >> 16) ^ byte.to_int64()) & 0xFFL).to_int()
+    crc = ((crc << 8) & 0xFFFFFFL) ^ table[index]
+  }
+  crc
+}
+
+///|
+fn crc24_table() -> Array[Int64] {
+  let table : Array[Int64] = []
+  for ch in 0..<256 {
+    table.push(crc24_entry(ch))
+  }
+  table
+}
+
+///|
+fn crc24_entry(ch : Int) -> Int64 {
+  let mut data = ch.to_int64() << 16
+  let mut accum = 0L
+  for _ in 0..<8 {
+    let mixed = (data ^ accum) & 0x800000L
+    if mixed != 0L {
+      accum = ((accum << 1) ^ 0x864CFBL) & 0xFFFFFFL
+    } else {
+      accum = (accum << 1) & 0xFFFFFFL
+    }
+    data = (data << 1) & 0xFFFFFFL
+  }
+  accum
 }
 
 ///|
