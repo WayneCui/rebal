@@ -4,6 +4,8 @@ package "rebal/value"
 // Values
 pub fn snap_seconds(Double) -> Double
 
+pub fn text_series(Datatype) -> Bool
+
 pub fn valid_date(Int, Int, Int) -> Bool
 
 // Errors

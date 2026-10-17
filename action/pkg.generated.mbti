@@ -66,6 +66,8 @@ pub fn insert(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn intersect(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
+pub fn last(@value.Cell) -> Result[@value.Cell, ActionError]
+
 pub fn length(@value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn lesser(@value.Cell, @value.Cell) -> Result[Bool, ActionError]

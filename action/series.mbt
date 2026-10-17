@@ -158,6 +158,29 @@ fn length_series(series : @value.Cell) -> Result[@value.Cell, ActionError] {
 }
 
 ///|
+/// `last` is `pick` of the length. An empty series is `none`.
+pub fn last(series : @value.Cell) -> Result[@value.Cell, ActionError] {
+  match series {
+    @value.Pair(_, y) => Ok(@value.Integer(y))
+    @value.Tuple(parts) =>
+      if parts.length() == 0 {
+        Err(Cannot("last"))
+      } else {
+        Ok(@value.Integer(parts[parts.length() - 1].to_int64()))
+      }
+    _ =>
+      if is_series(series) {
+        match @series.length(series) {
+          Some(n) => Ok(@series.pick(series, n))
+          None => Err(Cannot("last"))
+        }
+      } else {
+        Err(Cannot("last"))
+      }
+  }
+}
+
+///|
 /// `first` is `pick` of 1. An empty series is `none`.
 pub fn first(series : @value.Cell) -> Result[@value.Cell, ActionError] {
   match series {
@@ -200,8 +223,8 @@ fn is_series(cell : @value.Cell) -> Bool {
   datatype == @value.Paren ||
   datatype == @value.Path ||
   datatype == @value.SetPath ||
-  datatype == @value.String ||
-  datatype == @value.Binary
+  datatype == @value.Binary ||
+  @value.text_series(datatype)
 }
 
 ///|

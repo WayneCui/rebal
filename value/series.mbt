@@ -248,7 +248,7 @@ pub fn Series::copy_from(self : Series, index : Int) -> Series {
       out
     }
     Text(xs) => {
-      let out = Series::text()
+      let out = Series::text_of(self.datatype)
       for i in start..<xs.length() {
         out.push_code(xs[i]) |> ignore
       }

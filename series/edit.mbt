@@ -115,31 +115,37 @@ pub fn trim(cell : @value.Cell) -> @value.Cell? {
 
 ///|
 fn drop_at(series : @value.Series, index : Int) -> Unit {
-  match series.datatype() {
-    @value.String => series.remove_code(index) |> ignore
-    @value.Binary => series.remove_byte(index) |> ignore
-    _ => series.remove_item(index) |> ignore
+  let datatype = series.datatype()
+  if @value.text_series(datatype) {
+    series.remove_code(index) |> ignore
+  } else if datatype is @value.Binary {
+    series.remove_byte(index) |> ignore
+  } else {
+    series.remove_item(index) |> ignore
   }
 }
 
 ///|
 fn pull(series : @value.Series, index : Int) -> @value.Cell {
-  match series.datatype() {
-    @value.String =>
-      match series.remove_code(index) {
-        Some(code) => @value.Char(code)
-        None => @value.None
-      }
-    @value.Binary =>
-      match series.remove_byte(index) {
-        Some(byte) => @value.Integer(byte.to_int().to_int64())
-        None => @value.None
-      }
-    _ =>
-      match series.remove_item(index) {
-        Some(cell) => cell
-        None => @value.None
-      }
+  let datatype = series.datatype()
+  if @value.text_series(datatype) {
+    match series.remove_code(index) {
+      Some(code) => @value.Char(code)
+      None => @value.None
+    }
+  } else {
+    match datatype {
+      @value.Binary =>
+        match series.remove_byte(index) {
+          Some(byte) => @value.Integer(byte.to_int().to_int64())
+          None => @value.None
+        }
+      _ =>
+        match series.remove_item(index) {
+          Some(cell) => cell
+          None => @value.None
+        }
+    }
   }
 }
 

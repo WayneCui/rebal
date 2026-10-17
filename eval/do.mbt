@@ -314,6 +314,8 @@ fn apply(
     from_action(@action.length(args[0]))
   } else if func.code() == native_first {
     from_action(@action.first(args[0]))
+  } else if func.code() == native_last {
+    from_action(@action.last(args[0]))
   } else if func.code() == native_copy {
     from_action(@action.copy(args[0]))
   } else if func.code() == native_insert {

@@ -92,17 +92,20 @@ pub fn pick(cell : @value.Cell, n : Int) -> @value.Cell {
             Some(value) => value
             None => @value.None
           }
-        @value.String =>
-          match series.code(pos) {
-            Some(code) => @value.Char(code)
-            None => @value.None
-          }
         @value.Binary =>
           match series.byte_at(pos) {
             Some(byte) => @value.Integer(byte.to_int64())
             None => @value.None
           }
-        _ => @value.None
+        datatype =>
+          if @value.text_series(datatype) {
+            match series.code(pos) {
+              Some(code) => @value.Char(code)
+              None => @value.None
+            }
+          } else {
+            @value.None
+          }
       }
     }
     None => @value.None

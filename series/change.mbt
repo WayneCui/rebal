@@ -33,8 +33,8 @@ fn splice(series : @value.Series, index : Int, value : @value.Cell) -> Int? {
           series.insert_item(index + i, span[i]) |> ignore
         }
         Some(span.length())
-      } else if series.datatype() == @value.String &&
-        source.datatype() == @value.String {
+      } else if @value.text_series(series.datatype()) &&
+        @value.text_series(source.datatype()) {
         let span = code_span(source, source_index)
         for i in 0..<span.length() {
           series.insert_code(index + i, span[i]) |> ignore
@@ -50,7 +50,7 @@ fn splice(series : @value.Series, index : Int, value : @value.Cell) -> Int? {
 ///|
 fn splice_one(series : @value.Series, index : Int, value : @value.Cell) -> Int? {
   match (series.datatype(), value) {
-    (@value.String, @value.Char(code)) =>
+    (datatype, @value.Char(code)) if @value.text_series(datatype) =>
       if series.insert_code(index, code) {
         Some(1)
       } else {
@@ -94,12 +94,16 @@ pub fn append(cell : @value.Cell, value : @value.Cell) -> @value.Cell? {
 pub fn remove(cell : @value.Cell) -> @value.Cell? {
   match view(cell) {
     Some((series, index)) => {
-      let removed = match series.datatype() {
-        @value.String => series.remove_code(index) is Some(_)
-        @value.Binary => series.remove_byte(index) is Some(_)
-        @value.Block | @value.Paren | @value.Path | @value.SetPath =>
-          series.remove_item(index) is Some(_)
-        _ => false
+      let datatype = series.datatype()
+      let removed = if @value.text_series(datatype) {
+        series.remove_code(index) is Some(_)
+      } else {
+        match datatype {
+          @value.Binary => series.remove_byte(index) is Some(_)
+          @value.Block | @value.Paren | @value.Path | @value.SetPath =>
+            series.remove_item(index) is Some(_)
+          _ => false
+        }
       }
       if removed {
         Some(@value.Seq(series, index))

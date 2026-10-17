@@ -41,4 +41,13 @@ pub(all) enum Datatype {
 } derive(Eq)
 
 ///|
+/// Character series: string, and the any-string types stored the same way.
+pub fn text_series(datatype : Datatype) -> Bool {
+  match datatype {
+    String | File | Email | Url | Tag | Issue => true
+    _ => false
+  }
+}
+
+///|
 pub extend Datatype with Eq::{not_equal, equal}
