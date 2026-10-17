@@ -132,6 +132,11 @@ pub fn dehex(cell : @value.Cell) -> @value.Cell? {
 
 ///|
 pub fn enhex(cell : @value.Cell) -> @value.Cell? {
+  enhex_with(cell, false)
+}
+
+///|
+pub fn enhex_with(cell : @value.Cell, plus : Bool) -> @value.Cell? {
   let uri = match cell {
     @value.Seq(series, _) =>
       series.datatype() == @value.File || series.datatype() == @value.Url
@@ -141,7 +146,7 @@ pub fn enhex(cell : @value.Cell) -> @value.Cell? {
     @value.Seq(series, _) => series.datatype() == @value.Binary
     _ => false
   }
-  map_codes(cell, fn(codes) { encode_hex(codes, uri, binary) })
+  map_codes(cell, fn(codes) { encode_hex(codes, uri, binary, plus) })
 }
 
 ///|
@@ -263,12 +268,19 @@ fn upper_code(code : Int) -> Int {
 }
 
 ///|
-fn encode_hex(codes : Array[Int], uri : Bool, binary : Bool) -> Array[Int] {
+fn encode_hex(
+  codes : Array[Int],
+  uri : Bool,
+  binary : Bool,
+  plus : Bool,
+) -> Array[Int] {
   let next : Array[Int] = []
   for code in codes {
     let bytes = if binary { [code] } else { utf8_codes(code) }
     for byte in bytes {
-      if stays_plain(byte, uri) {
+      if plus && byte == ' '.to_int() {
+        next.push('+'.to_int())
+      } else if stays_plain(byte, uri) && !(plus && byte == '+'.to_int()) {
         next.push(byte)
       } else {
         next.push('%'.to_int())

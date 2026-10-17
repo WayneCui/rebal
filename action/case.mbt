@@ -39,6 +39,11 @@ pub fn enhex(cell : @value.Cell) -> Result[@value.Cell, ActionError] {
 }
 
 ///|
+pub fn enhex_uri(cell : @value.Cell) -> Result[@value.Cell, ActionError] {
+  changed_text(cell, "enhex", fn(value) { @series.enhex_with(value, true) })
+}
+
+///|
 fn changed_text(
   cell : @value.Cell,
   name : String,

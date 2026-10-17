@@ -218,7 +218,8 @@ fn call(
     func.code() != native_confirm &&
     func.code() != native_compress &&
     func.code() != native_encloak &&
-    func.code() != native_decloak {
+    func.code() != native_decloak &&
+    func.code() != native_enhex {
     raise EvalError::Cannot("func")
   }
   let args : Array[@value.Cell] = []
@@ -280,6 +281,8 @@ fn call(
     (perform_encloak(env, args[0], args[1], active), cursor)
   } else if func.code() == native_decloak {
     (perform_decloak(env, args[0], args[1], active), cursor)
+  } else if func.code() == native_enhex {
+    (perform_enhex(env, args[0], active), cursor)
   } else if func.code() == 0 {
     (call_user(env, func, args, active), cursor)
   } else {
@@ -566,8 +569,6 @@ fn apply(
     from_action(@action.entab(args[0]))
   } else if func.code() == native_dehex {
     from_action(@action.dehex(args[0]))
-  } else if func.code() == native_enhex {
-    from_action(@action.enhex(args[0]))
   } else if func.code() == native_parse {
     perform_parse(env, args[0], args[1])
   } else if func.code() == native_load {
