@@ -360,3 +360,54 @@ test "parse collect and keep" {
   }
   assert_true(bare)
 }
+
+///|
+test "parse datatype rules" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(env, "(parse [1 a] [integer! word!]) = true")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse [1 a] [word!]) = false") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse [a] [integer! | word!]) = true")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse [[1]] [block!]) = true") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "(parse [1 a 2] [collect [some [keep integer! | skip]]]) = [1 2]",
+    )
+    is @value.Logic(true),
+  )
+  let text = try {
+    @eval.run(env, "parse {a} [char!]") |> ignore
+    false
+  } catch {
+    error => error.id() == "cannot"
+  }
+  assert_true(text)
+  assert_true(
+    @eval.run(env, "n: 3 (parse {aaa} [n #\"a\" end]) = true")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "r: [integer!] (parse [1] [r end]) = true")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse {abc} [a: skip a {abc}]) = true")
+    is @value.Logic(true),
+  )
+  let missing = try {
+    @eval.run(env, "parse [1] [missing]") |> ignore
+    false
+  } catch {
+    error => error.id() == "no-value"
+  }
+  assert_true(missing)
+}

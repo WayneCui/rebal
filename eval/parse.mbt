@@ -169,6 +169,8 @@ fn match_seq(
         } else {
           match rule {
             @value.Integer(n) => counted(env, input, pos, rules, cursor, end, n)
+            @value.Sym(kind, _) if kind == @value.Word =>
+              match_word(env, input, pos, rules, cursor, end, rule)
             _ =>
               match match_one(env, input, pos, rule) {
                 Some(next) =>
@@ -418,9 +420,15 @@ fn one_step(
       } else if is_command(rule) {
         raise EvalError::Cannot("parse")
       } else {
-        match match_one(env, input, pos, rule) {
-          Some(next) => Some((next, cursor + 1))
-          None => None
+        let value = fetched_rule(env, rule)
+        match value {
+          @value.Seq(series, index) if physical_equal(series, input) =>
+            Some((clamped(input, index), cursor + 1))
+          _ =>
+            match match_one(env, input, pos, value) {
+              Some(next) => Some((next, cursor + 1))
+              None => None
+            }
         }
       }
     None => raise EvalError::Cannot("parse")
@@ -678,7 +686,7 @@ fn collect_rule(
     target = Some(capture_name(rules.item(at + 1)))
     at = at + 2
   }
-  let stop = rule_extent(rules, at, end)
+  let stop = rule_extent(env, rules, at, end)
   open_collect(env, target)
   let matched = match_seq(env, input, pos, rules, at, stop)
   close_collect()
@@ -710,7 +718,7 @@ fn keep_rule(
       match_seq(env, input, pos, rules, at + 1, end)
     }
     _ => {
-      let stop = rule_extent(rules, at, end)
+      let stop = rule_extent(env, rules, at, end)
       match match_seq(env, input, pos, rules, at, stop) {
         Some(next) => {
           keep_span(input, pos, next, pick)
@@ -820,7 +828,65 @@ fn keep_block() -> @value.Series raise EvalError {
 }
 
 ///|
+fn match_word(
+  env : Env,
+  input : @value.Series,
+  pos : Int,
+  rules : @value.Series,
+  cursor : Int,
+  end : Int,
+  rule : @value.Cell,
+) -> Int? raise EvalError {
+  if is_word(Some(rule), "end") {
+    match match_one(env, input, pos, rule) {
+      Some(next) => match_seq(env, input, next, rules, cursor + 1, end)
+      None => None
+    }
+  } else {
+    let value = fetched_rule(env, rule)
+    match value {
+      @value.Integer(n) => counted(env, input, pos, rules, cursor, end, n)
+      @value.Seq(series, index) if physical_equal(series, input) =>
+        match_seq(env, input, clamped(input, index), rules, cursor + 1, end)
+      _ =>
+        match match_one(env, input, pos, value) {
+          Some(next) => match_seq(env, input, next, rules, cursor + 1, end)
+          None => None
+        }
+    }
+  }
+}
+
+///|
+fn fetched_rule(env : Env, rule : @value.Cell) -> @value.Cell raise EvalError {
+  match rule {
+    @value.Sym(kind, lexeme) if kind == @value.Word =>
+      match quiet(env, lexeme) {
+        Some(value) =>
+          match value {
+            @value.Unset => raise EvalError::NoValue(lexeme.spelling())
+            _ => value
+          }
+        None => raise EvalError::NoValue(lexeme.spelling())
+      }
+    _ => rule
+  }
+}
+
+///|
+fn clamped(input : @value.Series, index : Int) -> Int {
+  if index < 0 {
+    0
+  } else if index > input.length() {
+    input.length()
+  } else {
+    index
+  }
+}
+
+///|
 fn rule_extent(
+  env : Env,
   rules : @value.Series,
   cursor : Int,
   limit : Int,
@@ -837,27 +903,27 @@ fn rule_extent(
         is_word(Some(rule), "ahead") ||
         is_word(Some(rule), "and") ||
         is_word(Some(rule), "remove") {
-        rule_extent(rules, cursor + 1, limit)
+        rule_extent(env, rules, cursor + 1, limit)
       } else if is_word(Some(rule), "keep") {
         let at = if is_word(rules.item(cursor + 1), "pick") {
           cursor + 2
         } else {
           cursor + 1
         }
-        rule_extent(rules, at, limit)
+        rule_extent(env, rules, at, limit)
       } else if is_word(Some(rule), "collect") {
         let at = if is_word(rules.item(cursor + 1), "set") {
           cursor + 3
         } else {
           cursor + 1
         }
-        rule_extent(rules, at, limit)
+        rule_extent(env, rules, at, limit)
       } else if is_word(Some(rule), "change") {
-        value_extent(rules, rule_extent(rules, cursor + 1, limit), limit)
+        value_extent(rules, rule_extent(env, rules, cursor + 1, limit), limit)
       } else if is_word(Some(rule), "insert") {
         value_extent(rules, cursor + 1, limit)
       } else if is_word(Some(rule), "copy") || is_word(Some(rule), "set") {
-        rule_extent(rules, cursor + 2, limit)
+        rule_extent(env, rules, cursor + 2, limit)
       } else if is_word(Some(rule), "quote") ||
         is_word(Some(rule), "to") ||
         is_word(Some(rule), "thru") ||
@@ -874,8 +940,19 @@ fn rule_extent(
               Some(@value.Integer(_)) => cursor + 2
               _ => cursor + 1
             }
-            rule_extent(rules, at, limit)
+            rule_extent(env, rules, at, limit)
           }
+          @value.Sym(kind, lexeme) if kind == @value.Word =>
+            match quiet(env, lexeme) {
+              Some(@value.Integer(_)) => {
+                let at = match rules.item(cursor + 1) {
+                  Some(@value.Integer(_)) => cursor + 2
+                  _ => cursor + 1
+                }
+                rule_extent(env, rules, at, limit)
+              }
+              _ => cursor + 1
+            }
           _ => cursor + 1
         }
       }
@@ -948,6 +1025,21 @@ fn match_one(
           Some(pos + 1)
         } else {
           None
+        }
+      @value.Type(datatype) =>
+        if input.datatype() == @value.String ||
+          input.datatype() == @value.Binary {
+          raise EvalError::Cannot("parse")
+        } else {
+          match input.item(pos) {
+            Some(item) =>
+              if item.datatype() == datatype {
+                Some(pos + 1)
+              } else {
+                None
+              }
+            None => None
+          }
         }
       @value.Seq(source, source_index) =>
         if source.datatype() == @value.Block {
