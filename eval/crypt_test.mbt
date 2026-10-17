@@ -458,6 +458,18 @@ test "crypt aes-128-ccm matches the first RFC 3610 packet" {
 }
 
 ///|
+test "crypt aes-192-ccm authenticates a 24-byte key" {
+  // crypt-port-ccm-test.r3, NIST VTT AES-192, first packet.
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "port: open crypt://aes-192-ccm\nmodify port 'key #{11fd45743d946e6d37341fec49947e8c70482494a8f07fcc}\nmodify port 'iv #{c6aeebcb146cfafaae66f78aab}\nmodify port 'tag-length 4\nmodify port 'aad-length 32\nwrite port #{7dc8c52144a7cb65b3e5a846e8fd7eae37bf6996c299b56e49144ebf43a1770fee7e6075ba52846de5d6254959a18affc4faf59c8ef63489}\n(take port) = #{137d9da59baf5cbfd46620c5f298fc766de10ac68e774edf1f2c5bad}",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "crypt rejects a cipher that is not wired yet" {
   let env = @eval.Env::new()
   let missing = try {
