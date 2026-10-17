@@ -145,7 +145,7 @@ fn directory_file(path : @value.Cell) -> @value.Cell raise EvalError {
 ///|
 fn directory_kind(env : Env, path : @value.Cell) -> String {
   try {
-    match perform_query(env, path) {
+    match perform_query(env, path, None) {
       @value.Object(frame) =>
         match frame_field(env, frame, "type") {
           Some(@value.Sym(_, lexeme)) => lexeme.spelling()

@@ -38,6 +38,51 @@ pub fn RsaKey::from_private(
 }
 
 ///|
+/// Diffie-Hellman parameters. The prime is at least 128 bits, and the
+/// generator is a smaller positive integer.
+pub struct DhKey {
+  p : Array[Int]
+  g : Array[Int]
+}
+
+///|
+pub fn DhKey::new(p : Array[Int], g : Array[Int]) -> DhKey? {
+  if magnitude_bits(p) >= 128 && magnitude_bits(g) >= 1 && less_magnitude(g, p) {
+    Some({ p, g, })
+  } else {
+    None
+  }
+}
+
+///|
+pub fn DhKey::same(self : DhKey, other : DhKey) -> Bool {
+  same_bytes(self.p, other.p) && same_bytes(self.g, other.g)
+}
+
+///|
+pub(all) enum HandleValue {
+  Rsa(RsaKey)
+  Dhm(DhKey)
+}
+
+///|
+pub fn HandleValue::same(self : HandleValue, other : HandleValue) -> Bool {
+  match (self, other) {
+    (Rsa(a), Rsa(b)) => a.same(b)
+    (Dhm(a), Dhm(b)) => a.same(b)
+    _ => false
+  }
+}
+
+///|
+pub fn HandleValue::kind(self : HandleValue) -> String {
+  match self {
+    Rsa(_) => "rsa"
+    Dhm(_) => "dhm"
+  }
+}
+
+///|
 pub fn RsaKey::same(self : RsaKey, other : RsaKey) -> Bool {
   same_bytes(self.n, other.n) &&
   same_bytes(self.e, other.e) &&

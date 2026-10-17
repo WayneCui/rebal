@@ -275,6 +275,11 @@ fn call(
       cursor = next
     }
   }
+  if func.code() == native_query && query_field_follows(series, cursor) {
+    let (arg, next) = do_next_at(env, series, cursor)
+    args.push(arg)
+    cursor = next
+  }
   if func.code() == native_find {
     (perform_find(env, args, active), cursor)
   } else if func.code() == native_sort {
@@ -319,6 +324,17 @@ fn call(
     (call_user(env, func, args, active), cursor)
   } else {
     (apply(env, func, args), cursor)
+  }
+}
+
+///|
+/// A handle query may name one field. A port query stops after its target,
+/// so the next path or assignment stays in the surrounding expression.
+fn query_field_follows(series : @value.Series, cursor : Int) -> Bool {
+  match series.item(cursor) {
+    Some(@value.Sym(kind, _)) =>
+      kind == @value.Word || kind == @value.LitWord || kind == @value.GetWord
+    _ => false
   }
 }
 
@@ -674,7 +690,8 @@ fn apply(
   } else if func.code() == native_write {
     perform_write(env, args[0], args[1])
   } else if func.code() == native_query {
-    perform_query(env, args[0])
+    let field = if args.length() > 1 { Some(args[1]) } else { None }
+    perform_query(env, args[0], field)
   } else if func.code() == native_wait {
     perform_wait(args[0])
   } else if func.code() == native_browse {

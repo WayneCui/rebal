@@ -15,6 +15,8 @@ fn decode_ssh_key(
         rsa_private_handle(env, pem.bytes)
       } else if pem.label == "PRIVATE KEY" {
         pkcs8_private_handle(env, pem.bytes)
+      } else if pem.label == "DH PARAMETERS" {
+        dh_handle(env, pem.bytes)
       } else {
         raise EvalError::Caused("no-codec", "ssh-key")
       }
@@ -44,7 +46,7 @@ fn rsa_handle(bytes : Array[Int]) -> @value.Cell raise EvalError {
     Some(parts) =>
       if latin_text(parts.0) == "ssh-rsa" {
         match @value.RsaKey::new(parts.2, parts.1) {
-          Some(key) => @value.Handle(key)
+          Some(key) => @value.Handle(@value.HandleValue::Rsa(key))
           None => raise EvalError::Caused("no-codec", "ssh-key")
         }
       } else {
@@ -125,6 +127,46 @@ fn rsa_encryption_id(body : @value.Cell) -> Bool {
 }
 
 ///|
+/// `DH PARAMETERS`: the prime, then the generator.
+fn dh_handle(env : Env, bytes : Array[Int]) -> @value.Cell raise EvalError {
+  match dh_numbers(env, bytes) {
+    Some(parts) =>
+      match @value.DhKey::new(parts.0, parts.1) {
+        Some(key) => @value.Handle(@value.HandleValue::Dhm(key))
+        None => raise EvalError::Caused("no-codec", "ssh-key")
+      }
+    None => raise EvalError::Caused("no-codec", "ssh-key")
+  }
+}
+
+///|
+fn dh_numbers(
+  env : Env,
+  bytes : Array[Int],
+) -> (Array[Int], Array[Int])? raise EvalError {
+  match block_items(decode_der(env, binary_cell(bytes))) {
+    Some(outer) =>
+      if outer.length() >= 2 && word_named(outer[0], "sequence") {
+        match block_items(outer[1]) {
+          Some(items) =>
+            match integer_bytes(items, 1) {
+              None => None
+              Some(prime) =>
+                match integer_bytes(items, 3) {
+                  None => None
+                  Some(generator) => Some((prime, generator))
+                }
+            }
+          None => None
+        }
+      } else {
+        None
+      }
+    None => None
+  }
+}
+
+///|
 /// PKCS#1 `RSA PRIVATE KEY`: version, modulus, exponent, then `d`, `p`, and `q`.
 fn rsa_private_handle(
   env : Env,
@@ -143,7 +185,7 @@ fn rsa_private_handle(
     Some(parts) =>
       match
         @value.RsaKey::from_private(parts.0, parts.1, parts.2, parts.3, parts.4) {
-        Some(key) => @value.Handle(key)
+        Some(key) => @value.Handle(@value.HandleValue::Rsa(key))
         None => raise EvalError::Caused("no-codec", "ssh-key")
       }
     None => raise EvalError::Caused("no-codec", "ssh-key")

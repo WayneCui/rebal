@@ -22,7 +22,7 @@ pub(all) enum Cell {
   Map(MapValue)
   Module(ModuleValue)
   Port(PortValue)
-  Handle(RsaKey)
+  Handle(HandleValue)
 }
 
 ///|

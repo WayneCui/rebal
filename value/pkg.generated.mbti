@@ -51,7 +51,7 @@ pub(all) enum Cell {
   Map(MapValue)
   Module(ModuleValue)
   Port(PortValue)
-  Handle(RsaKey)
+  Handle(HandleValue)
 }
 pub fn Cell::datatype(Self) -> Datatype
 pub fn Cell::equal(Self, Self) -> Bool
@@ -123,6 +123,13 @@ pub fn DateValue::time(Self) -> Double?
 pub fn DateValue::year(Self) -> Int
 pub fn DateValue::zone(Self) -> Int?
 
+pub struct DhKey {
+  p : Array[Int]
+  g : Array[Int]
+}
+pub fn DhKey::new(Array[Int], Array[Int]) -> Self?
+pub fn DhKey::same(Self, Self) -> Bool
+
 pub struct ErrorValue {
   id : String
   arg1 : String
@@ -171,6 +178,13 @@ pub fn Func::params(Self) -> Array[Int]
 pub fn Func::refine_args(Self) -> Array[Array[Int]]
 pub fn Func::refines(Self) -> Array[Int]
 pub fn Func::types(Self) -> Array[Array[Datatype]]
+
+pub(all) enum HandleValue {
+  Rsa(RsaKey)
+  Dhm(DhKey)
+}
+pub fn HandleValue::kind(Self) -> String
+pub fn HandleValue::same(Self, Self) -> Bool
 
 pub struct Lexeme {
   sym : Int

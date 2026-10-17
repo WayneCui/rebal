@@ -63,9 +63,40 @@ fn perform_write(
 }
 
 ///|
-fn perform_query(env : Env, spec : @value.Cell) -> @value.Cell raise EvalError {
-  let port = ready_port(env, spec, "query")
-  dispatch_port(env, "query", port, None)
+fn perform_query(
+  env : Env,
+  spec : @value.Cell,
+  field : @value.Cell?,
+) -> @value.Cell raise EvalError {
+  match spec {
+    @value.Handle(handle) => query_handle(env, handle, field)
+    _ => {
+      let port = ready_port(env, spec, "query")
+      dispatch_port(env, "query", port, None)
+    }
+  }
+}
+
+///|
+/// `query handle 'type` returns the handle's kind word.
+fn query_handle(
+  env : Env,
+  handle : @value.HandleValue,
+  field : @value.Cell?,
+) -> @value.Cell raise EvalError {
+  match field {
+    Some(cell) =>
+      if word_is(env, cell, "type") {
+        let spelling = handle.kind()
+        @value.Sym(
+          @value.Word,
+          @value.Lexeme::make(env.symbols.intern(spelling), spelling),
+        )
+      } else {
+        raise EvalError::Cannot("query")
+      }
+    None => raise EvalError::Cannot("query")
+  }
 }
 
 ///|
