@@ -312,6 +312,8 @@ fn cipher_kind(name : String) -> (Int, Bool, Bool, Bool, Bool, Bool, Bool)? {
     Some((24, false, false, false, false, true, false))
   } else if name == "aes-256-ccm" {
     Some((32, false, false, false, false, true, false))
+  } else if name == "camellia-128-ccm" {
+    Some((16, false, true, false, false, true, false))
   } else if name == "aes-128-gcm" {
     Some((16, false, false, false, false, false, true))
   } else {
@@ -456,6 +458,9 @@ fn install_key(slot : CryptSlot, key : Array[Int]) -> Unit raise EvalError {
   } else if slot.poly {
     slot.poly_key = key
     poly_reset(slot)
+  } else if slot.ccm && slot.camellia {
+    slot.cam_enc = camellia128_subkeys(key)
+    slot.ccm_reset = true
   } else if slot.ccm {
     slot.rounds = aes_rounds(key)
     slot.ccm_reset = true
@@ -805,6 +810,7 @@ fn ccm_absorb(slot : CryptSlot, bytes : Array[Int]) -> Unit raise EvalError {
   let body = slice_from(bytes, aad_len, body_len)
   let (out, tag) = ccm_message(
     slot.rounds,
+    slot.cam_enc,
     slot.ccm_iv,
     aad,
     body,

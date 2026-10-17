@@ -470,6 +470,17 @@ test "crypt aes-192-ccm authenticates a 24-byte key" {
 }
 
 ///|
+test "crypt camellia-128-ccm matches the first RFC 5528 packet" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "port: open crypt://camellia-128-ccm\nmodify port 'key #{C0C1C2C3C4C5C6C7C8C9CACBCCCDCECF}\nmodify port 'iv #{00000003020100A0A1A2A3A4A5}\nmodify port 'tag-length 8\nmodify port 'aad-length 8\nwrite port #{000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E}\n(take port) = #{BA737185E719310492F38A5F1251DA55FAFBC949848A0DFCAECE746B3DB9AD}",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "crypt rejects a cipher that is not wired yet" {
   let env = @eval.Env::new()
   let missing = try {
