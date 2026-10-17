@@ -14,6 +14,10 @@ pub(all) suberror EvalError {
   Broken
   /// `break` reached `run` with no loop to leave.
   NoBreak
+  /// Starts the next pass of the innermost loop.
+  Continued
+  /// `continue` reached `run` with no loop to resume.
+  NoContinue
 }
 
 ///|
@@ -30,6 +34,8 @@ pub fn EvalError::to_cell(self : EvalError) -> @value.Cell {
     NoReturn => ("return", "return")
     Broken => ("break", "break")
     NoBreak => ("break", "break")
+    Continued => ("continue", "continue")
+    NoContinue => ("continue", "continue")
   }
   @value.Error(@value.ErrorValue::make(id, arg, ""))
 }
@@ -47,5 +53,7 @@ pub fn EvalError::id(self : EvalError) -> String {
     NoReturn => "return"
     Broken => "break"
     NoBreak => "break"
+    Continued => "continue"
+    NoContinue => "continue"
   }
 }

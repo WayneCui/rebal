@@ -5,6 +5,7 @@ pub fn run(env : Env, source : String) -> @value.Cell raise EvalError {
   eval(env, load(env, source)) catch {
     EvalError::Returned(_) => raise EvalError::NoReturn
     EvalError::Broken => raise EvalError::NoBreak
+    EvalError::Continued => raise EvalError::NoContinue
     error => raise error
   }
 }
@@ -274,6 +275,10 @@ fn apply(
     perform_loop(env, args[0], args[1])
   } else if func.code() == native_break {
     raise EvalError::Broken
+  } else if func.code() == native_foreach {
+    perform_foreach(env, args[0], args[1], args[2])
+  } else if func.code() == native_continue {
+    raise EvalError::Continued
   } else {
     raise EvalError::Cannot("function")
   }

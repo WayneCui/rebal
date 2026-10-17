@@ -125,6 +125,7 @@ fn perform_try(env : Env, cell : @value.Cell) -> @value.Cell raise EvalError {
       eval(env, cell) catch {
         EvalError::Returned(value) => raise EvalError::Returned(value)
         EvalError::Broken => raise EvalError::Broken
+        EvalError::Continued => raise EvalError::Continued
         error => error.to_cell()
       }
     _ => cell

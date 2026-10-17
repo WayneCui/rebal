@@ -14,6 +14,28 @@ test "while until and loop repeat until they stop" {
 }
 
 ///|
+test "foreach binds one word and continue skips one step" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(env, "x: 0 foreach 'n [1 2 3] [x: x + n] x") is @value.Integer(6L),
+  )
+  assert_true(
+    @eval.run(env, "x: 0 foreach 'n [1 2 3] [if n = 2 [continue] x: x + n] x")
+    is @value.Integer(4L),
+  )
+  assert_true(
+    @eval.run(env, "foreach 'n [1 2 3] [if n = 2 [break]]") is @value.None,
+  )
+  let escaped = try {
+    @eval.run(@eval.Env::new(), "continue") |> ignore
+    false
+  } catch {
+    error => error.id() == "continue"
+  }
+  assert_true(escaped)
+}
+
+///|
 test "break leaves the innermost loop and return leaves the function" {
   let env = @eval.Env::new()
   assert_true(

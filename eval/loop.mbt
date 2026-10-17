@@ -13,14 +13,22 @@ fn eval_block(
 }
 
 ///|
-/// Runs the block. `break` stops the loop and yields `none`. `return` keeps going out.
+priv enum BodyEnd {
+  Done(@value.Cell)
+  Stop
+  Skip
+}
+
+///|
+/// Runs the block. `break` stops the loop. `continue` asks for another pass.
 fn eval_body(
   env : Env,
   cell : @value.Cell,
   name : String,
-) -> @value.Cell? raise EvalError {
-  Some(eval_block(env, cell, name)) catch {
-    EvalError::Broken => None
+) -> BodyEnd raise EvalError {
+  Done(eval_block(env, cell, name)) catch {
+    EvalError::Broken => Stop
+    EvalError::Continued => Skip
     error => raise error
   }
 }
@@ -43,11 +51,12 @@ fn perform_while(
       running = false
     } else {
       match eval_body(env, body, "while") {
-        None => {
+        Stop => {
           kept = @value.Cell::None
           running = false
         }
-        Some(value) => kept = value
+        Skip => ()
+        Done(value) => kept = value
       }
     }
   }
@@ -61,11 +70,12 @@ fn perform_until(env : Env, body : @value.Cell) -> @value.Cell raise EvalError {
   let mut running = true
   while running {
     match eval_body(env, body, "until") {
-      None => {
+      Stop => {
         result = @value.Cell::None
         running = false
       }
-      Some(value) =>
+      Skip => ()
+      Done(value) =>
         if value is @value.Cell::Unset {
           raise EvalError::Cannot("until")
         } else if is_false(value) {
@@ -90,11 +100,12 @@ fn perform_loop(
   let mut kept = @value.Cell::None
   while left > 0L {
     match eval_body(env, body, "loop") {
-      None => {
+      Stop => {
         kept = @value.Cell::None
         left = 0L
       }
-      Some(value) => {
+      Skip => left = left - 1L
+      Done(value) => {
         kept = value
         left = left - 1L
       }
@@ -110,4 +121,114 @@ fn loop_count(cell : @value.Cell) -> Int64 raise EvalError {
     @value.Decimal(n) => n.to_int64()
     _ => raise EvalError::Cannot("loop")
   }
+}
+
+///|
+/// Sets one word to each value of a block or string, then evaluates the body.
+fn perform_foreach(
+  env : Env,
+  word : @value.Cell,
+  data : @value.Cell,
+  body : @value.Cell,
+) -> @value.Cell raise EvalError {
+  match word {
+    @value.Sym(_, lexeme) => {
+      let frame = @value.Frame::new()
+      let slot = frame.ensure(lexeme.sym())
+      let bound = match copied_block(body) {
+        Some(series) => {
+          @bind.bind(@value.Seq(series, 0), frame) |> ignore
+          @value.Seq(series, 0)
+        }
+        None => raise EvalError::Cannot("foreach")
+      }
+      walk_foreach(env, frame, slot, data, bound)
+    }
+    _ => raise EvalError::Cannot("foreach")
+  }
+}
+
+///|
+fn walk_foreach(
+  env : Env,
+  frame : @value.Frame,
+  slot : Int,
+  data : @value.Cell,
+  body : @value.Cell,
+) -> @value.Cell raise EvalError {
+  match data {
+    @value.Seq(series, index) if series.datatype() == @value.Block =>
+      foreach_items(env, frame, slot, series, index, body)
+    @value.Seq(series, index) if series.datatype() == @value.String =>
+      foreach_chars(env, frame, slot, series, index, body)
+    _ => raise EvalError::Cannot("foreach")
+  }
+}
+
+///|
+fn foreach_items(
+  env : Env,
+  frame : @value.Frame,
+  slot : Int,
+  series : @value.Series,
+  index : Int,
+  body : @value.Cell,
+) -> @value.Cell raise EvalError {
+  let mut cursor = if index < 0 { 0 } else { index }
+  let mut kept = @value.Cell::None
+  let mut running = true
+  while running && cursor < series.length() {
+    match series.item(cursor) {
+      Some(item) => {
+        frame.set(slot, item.snapshot())
+        match eval_body(env, body, "foreach") {
+          Stop => {
+            kept = @value.Cell::None
+            running = false
+          }
+          Skip => cursor = cursor + 1
+          Done(value) => {
+            kept = value
+            cursor = cursor + 1
+          }
+        }
+      }
+      None => running = false
+    }
+  }
+  kept
+}
+
+///|
+fn foreach_chars(
+  env : Env,
+  frame : @value.Frame,
+  slot : Int,
+  series : @value.Series,
+  index : Int,
+  body : @value.Cell,
+) -> @value.Cell raise EvalError {
+  let mut cursor = if index < 0 { 0 } else { index }
+  let mut kept = @value.Cell::None
+  let mut running = true
+  while running && cursor < series.length() {
+    match series.code(cursor) {
+      Some(code) => {
+        frame.set(slot, @value.Char(code))
+        match eval_body(env, body, "foreach") {
+          Stop => {
+            kept = @value.Cell::None
+            running = false
+          }
+          Skip => cursor = cursor + 1
+          Done(value) => {
+            kept = value
+            cursor = cursor + 1
+          }
+        }
+      }
+      None => running = false
+    }
+  }
+  kept
 }

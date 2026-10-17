@@ -98,6 +98,12 @@ let native_loop : Int = 30
 let native_break : Int = 31
 
 ///|
+let native_foreach : Int = 32
+
+///|
+let native_continue : Int = 33
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -134,6 +140,8 @@ pub fn Env::new() -> Env {
   define_native(env, "until", 1, false, native_until)
   define_native(env, "loop", 2, false, native_loop)
   define_native(env, "break", 0, false, native_break)
+  define_native(env, "foreach", 3, false, native_foreach)
+  define_native(env, "continue", 0, false, native_continue)
   install(env, "unset!", @value.Type(@value.Unset))
   install(env, "none!", @value.Type(@value.None))
   install(env, "logic!", @value.Type(@value.Logic))

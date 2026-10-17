@@ -26,6 +26,8 @@ pub(all) suberror EvalError {
   NoReturn
   Broken
   NoBreak
+  Continued
+  NoContinue
 }
 pub fn EvalError::id(Self) -> String
 pub fn EvalError::to_cell(Self) -> @value.Cell
