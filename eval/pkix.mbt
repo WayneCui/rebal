@@ -18,6 +18,12 @@ fn perform_decode(
     @value.Sym(_, lexeme) => env.symbols.canon(lexeme.sym())
     _ => raise EvalError::Cannot("decode")
   }
+  if kind == "utc-time" {
+    if binary {
+      raise EvalError::Cannot("decode")
+    }
+    return decode_utc_time(args[1])
+  }
   if kind != "pkix" {
     raise EvalError::Cannot("access")
   }
