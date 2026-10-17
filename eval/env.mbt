@@ -410,6 +410,9 @@ let native_wrap : Int = 134
 let native_last : Int = 135
 
 ///|
+let native_suffix_q : Int = 136
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -424,6 +427,7 @@ pub fn Env::new() -> Env {
   define_native(env, "length?", 1, false, native_length)
   define_native(env, "first", 1, false, native_first)
   define_native(env, "last", 1, false, native_last)
+  define_native(env, "suffix?", 1, false, native_suffix_q)
   define_native(env, "copy", 1, false, native_copy)
   define_native(env, "insert", 2, false, native_insert)
   define_native(env, "remove", 1, false, native_remove)
