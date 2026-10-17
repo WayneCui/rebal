@@ -310,6 +310,8 @@ fn apply(
     from_action(@action.remove(args[0]))
   } else if func.code() == native_func {
     build_func(env, args[0], args[1], false)
+  } else if func.code() == native_function {
+    perform_function(env, args[0], args[1])
   } else if func.code() == native_closure {
     build_func(env, args[0], args[1], true)
   } else if func.code() == native_does {
