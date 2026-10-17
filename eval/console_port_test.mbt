@@ -43,4 +43,31 @@ test "console port reads a line and writes formed text" {
   )
   let written = @eval.console_written()
   assert_eq(written[asked:].to_owned(), "name? ")
+  @eval.push_console("yes")
+  assert_true(@eval.run(env, "(confirm \"ok? \") = true") is @value.Logic(true))
+  @eval.push_console("NO")
+  assert_true(
+    @eval.run(env, "(confirm \"ok? \") = false") is @value.Logic(true),
+  )
+  @eval.push_console("maybe")
+  assert_true(@eval.run(env, "(confirm \"ok? \") = none") is @value.Logic(true))
+  @eval.push_console("yep")
+  assert_true(
+    @eval.run(env, "(confirm/with \"go? \" \"ye\") = true")
+    is @value.Logic(true),
+  )
+  @eval.push_console("no")
+  assert_true(
+    @eval.run(
+      env, "(confirm/with \"go? \" [[\"y\" \"yes\"] [\"n\" \"no\"]]) = false",
+    )
+    is @value.Logic(true),
+  )
+  let bad = try {
+    @eval.run(env, "confirm/with \"q\" [1 2 3]") |> ignore
+    false
+  } catch {
+    error => error.id() == "invalid-arg"
+  }
+  assert_true(bad)
 }

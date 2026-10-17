@@ -214,12 +214,15 @@ fn call(
     func.code() != native_call &&
     func.code() != native_now &&
     func.code() != native_clean_path &&
-    func.code() != native_make_dir {
+    func.code() != native_make_dir &&
+    func.code() != native_confirm {
     raise EvalError::Cannot("func")
   }
   let args : Array[@value.Cell] = []
   let mut cursor = index
   let count = if func.code() == native_find && named(env, active, "part") {
+    func.arity() + 1
+  } else if func.code() == native_confirm && named(env, active, "with") {
     func.arity() + 1
   } else if func.code() == native_call {
     func.arity() + call_extra(env, active)
@@ -264,6 +267,8 @@ fn call(
     (perform_input(), cursor)
   } else if func.code() == native_ask {
     (perform_ask(args[0]), cursor)
+  } else if func.code() == native_confirm {
+    (perform_confirm(env, args, active), cursor)
   } else if func.code() == 0 {
     (call_user(env, func, args, active), cursor)
   } else {
