@@ -5,6 +5,7 @@ pub struct PortValue {
   spec : Frame
   scheme : Frame
   name : String
+  mut opened : Bool
 }
 
 ///|
@@ -13,5 +14,15 @@ pub fn PortValue::make(
   scheme : Frame,
   name : String,
 ) -> PortValue {
-  { spec, scheme, name, }
+  { spec, scheme, name, opened: false, }
+}
+
+///|
+pub fn PortValue::set_opened(self : PortValue, flag : Bool) -> Unit {
+  self.opened = flag
+}
+
+///|
+pub fn PortValue::is_open(self : PortValue) -> Bool {
+  self.opened
 }

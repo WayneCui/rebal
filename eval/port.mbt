@@ -46,7 +46,7 @@ fn perform_close(env : Env, spec : @value.Cell) -> @value.Cell raise EvalError {
 
 ///|
 fn perform_read(env : Env, spec : @value.Cell) -> @value.Cell raise EvalError {
-  let port = as_port(env, spec, "read")
+  let port = ready_port(env, spec, "read")
   dispatch_port(env, "read", port, None)
 }
 
@@ -56,14 +56,39 @@ fn perform_write(
   spec : @value.Cell,
   value : @value.Cell,
 ) -> @value.Cell raise EvalError {
-  let port = as_port(env, spec, "write")
+  let port = ready_port(env, spec, "write")
   dispatch_port(env, "write", port, Some(value))
 }
 
 ///|
 fn perform_query(env : Env, spec : @value.Cell) -> @value.Cell raise EvalError {
-  let port = as_port(env, spec, "query")
+  let port = ready_port(env, spec, "query")
   dispatch_port(env, "query", port, None)
+}
+
+///|
+/// A port must already be open. A file or url is opened for this one call.
+fn ready_port(
+  env : Env,
+  spec : @value.Cell,
+  action : String,
+) -> @value.Cell raise EvalError {
+  match spec {
+    @value.Port(value) =>
+      if value.is_open() {
+        spec
+      } else {
+        raise EvalError::Cannot("port")
+      }
+    _ => {
+      let port = as_port(env, spec, action)
+      match port {
+        @value.Port(value) => value.set_opened(true)
+        _ => ()
+      }
+      port
+    }
+  }
 }
 
 ///|
@@ -106,8 +131,109 @@ fn run_scheme(
   port : @value.Cell,
   extra : @value.Cell?,
 ) -> @value.Cell raise EvalError {
-  let _ = (env, name, action, port, extra)
-  raise EvalError::Cannot("port")
+  if name == "file" {
+    file_actor(env, action, port, extra)
+  } else {
+    let _ = (env, action, port, extra)
+    raise EvalError::Cannot("port")
+  }
+}
+
+///|
+fn file_actor(
+  env : Env,
+  action : String,
+  port : @value.Cell,
+  extra : @value.Cell?,
+) -> @value.Cell raise EvalError {
+  match action {
+    "open" => {
+      match port {
+        @value.Port(value) => value.set_opened(true)
+        _ => ()
+      }
+      port
+    }
+    "close" => {
+      match port {
+        @value.Port(value) => value.set_opened(false)
+        _ => ()
+      }
+      port
+    }
+    "read" => read_text_port(env, port)
+    "write" =>
+      match extra {
+        Some(value) => write_text_port(env, port, value)
+        None => raise EvalError::Cannot("write")
+      }
+    "query" => query_text_port(env, port)
+    _ => raise EvalError::Cannot("port")
+  }
+}
+
+///|
+fn read_text_port(env : Env, port : @value.Cell) -> @value.Cell raise EvalError {
+  text_series(read_file(port_path(env, port)))
+}
+
+///|
+fn write_text_port(
+  env : Env,
+  port : @value.Cell,
+  value : @value.Cell,
+) -> @value.Cell raise EvalError {
+  let text = match value {
+    @value.Seq(series, index) if series.datatype() == @value.String =>
+      text_from(series, index)
+    _ => @mold.mold_text(value)
+  }
+  write_file(port_path(env, port), text)
+  port
+}
+
+///|
+fn query_text_port(
+  env : Env,
+  port : @value.Cell,
+) -> @value.Cell raise EvalError {
+  let path = port_path(env, port)
+  let text = read_file(path)
+  let info = @value.Frame::new()
+  put_field(env, info, "name", port_ref(env, port))
+  put_field(env, info, "size", @value.Integer(text.length().to_int64()))
+  put_field(env, info, "type", word_cell(env, "file"))
+  @value.Object(info)
+}
+
+///|
+fn port_path(env : Env, port : @value.Cell) -> String raise EvalError {
+  match port_ref(env, port) {
+    @value.Seq(series, index) if series.datatype() == @value.File =>
+      text_from(series, index)
+    _ => raise EvalError::Cannot("port")
+  }
+}
+
+///|
+fn port_ref(env : Env, port : @value.Cell) -> @value.Cell raise EvalError {
+  match port {
+    @value.Port(value) =>
+      match frame_field(env, value.spec, "ref") {
+        Some(cell) => cell
+        None => raise EvalError::Cannot("port")
+      }
+    _ => raise EvalError::Cannot("port")
+  }
+}
+
+///|
+fn text_series(text : String) -> @value.Cell {
+  let series = @value.Series::text()
+  for char in text {
+    series.push_code(char.to_int()) |> ignore
+  }
+  @value.Seq(series, 0)
 }
 
 ///|

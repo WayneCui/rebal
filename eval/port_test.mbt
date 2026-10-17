@@ -26,7 +26,7 @@ test "ports dispatch by scheme before any scheme is installed" {
     is @value.Logic(true),
   )
   let missing = try {
-    @eval.run(env, "open %a") |> ignore
+    @eval.run(env, "open make port! [scheme: 'zzz]") |> ignore
     false
   } catch {
     error =>
