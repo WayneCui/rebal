@@ -5,6 +5,7 @@ pub(all) enum Cell {
   Logic(Bool)
   Integer(Int64)
   Decimal(Double)
+  Percent(Double)
   Char(Int)
   Sym(Datatype, Lexeme)
   Seq(Series, Int)
@@ -22,6 +23,7 @@ pub fn Cell::datatype(self : Cell) -> Datatype {
     Logic(_) => Logic
     Integer(_) => Integer
     Decimal(_) => Decimal
+    Percent(_) => Percent
     Char(_) => Char
     Sym(datatype, _) => datatype
     Seq(series, _) => series.datatype()

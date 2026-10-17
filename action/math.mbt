@@ -38,6 +38,21 @@ fn combine(
       Ok(@value.Decimal(on_decimal(x, y.to_double())))
     (@value.Decimal(x), @value.Decimal(y)) =>
       Ok(@value.Decimal(on_decimal(x, y)))
-    _ => Err(Cannot(name))
+    (@value.Percent(x), @value.Percent(y)) =>
+      Ok(@value.Percent(on_decimal(x, y)))
+    _ =>
+      match (as_double(left), as_double(right)) {
+        (Some(x), Some(y)) => Ok(@value.Decimal(on_decimal(x, y)))
+        _ => Err(Cannot(name))
+      }
+  }
+}
+
+///|
+fn as_double(cell : @value.Cell) -> Double? {
+  match cell {
+    @value.Integer(n) => Some(n.to_double())
+    @value.Decimal(n) | @value.Percent(n) => Some(n)
+    _ => None
   }
 }

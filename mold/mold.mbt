@@ -43,6 +43,7 @@ fn write_cell(
       @value.Logic(false) => buf.write_string("false")
       @value.Integer(n) => buf.write_string(n.to_string())
       @value.Decimal(n) => buf.write_string(decimal_text(n))
+      @value.Percent(n) => buf.write_string(percent_text(n))
       @value.Char(code) => write_char_value(buf, code, molded)
       @value.Sym(datatype, lexeme) =>
         write_word(buf, datatype, lexeme.spelling())
@@ -293,6 +294,24 @@ fn hex_digit(value : Int) -> Char {
 }
 
 ///|
+fn percent_text(value : Double) -> String {
+  let text = (value * 100.0).to_string()
+  let mut expo = false
+  for char in text {
+    if char == 'e' || char == 'E' {
+      expo = true
+    }
+  }
+  if !expo &&
+    text.length() >= 2 &&
+    text[text.length() - 2:text.length()].to_owned() == ".0" {
+    text[0:text.length() - 2].to_owned() + "%"
+  } else {
+    text + "%"
+  }
+}
+
+///|
 fn decimal_text(value : Double) -> String {
   let text = value.to_string()
   let mut dotted = false
@@ -316,6 +335,7 @@ pub fn type_name(datatype : @value.Datatype) -> String {
     @value.Logic => "logic!"
     @value.Integer => "integer!"
     @value.Decimal => "decimal!"
+    @value.Percent => "percent!"
     @value.Char => "char!"
     @value.Word => "word!"
     @value.SetWord => "set-word!"

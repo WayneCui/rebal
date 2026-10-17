@@ -30,9 +30,9 @@ fn Lexer::number(self : Lexer) -> Result[@value.Cell, ScanError] {
     Some('.') =>
       match self.chars.get(self.pos + 1) {
         Some(char) if is_digit(char) => self.decimal(sign, whole)
-        _ => finish_integer(sign, whole, 10)
+        _ => self.percent_suffix(finish_integer(sign, whole, 10))
       }
-    _ => finish_integer(sign, whole, 10)
+    _ => self.percent_suffix(finish_integer(sign, whole, 10))
   }
 }
 
@@ -46,10 +46,11 @@ fn Lexer::base_integer(
     None => Err(Invalid("integer"))
     Some(base) =>
       if base == 0UL {
-        finish_integer(1L, self.digits(16), 16)
+        self.percent_suffix(finish_integer(1L, self.digits(16), 16))
       } else if base == 2UL || base == 8UL || base == 10UL || base == 16UL {
         match self.strict_digits(base.to_int()) {
-          Ok(digits) => finish_integer(1L, digits, base.to_int())
+          Ok(digits) =>
+            self.percent_suffix(finish_integer(1L, digits, base.to_int()))
           Err(error) => Err(error)
         }
       } else {
@@ -91,7 +92,29 @@ fn Lexer::decimal(
     value = value + digit.to_double() * place
     place = place / 10.0
   }
-  Ok(@value.Cell::Decimal(value * sign.to_double()))
+  self.percent_suffix(Ok(@value.Cell::Decimal(value * sign.to_double())))
+}
+
+///|
+fn Lexer::percent_suffix(
+  self : Lexer,
+  cell : Result[@value.Cell, ScanError],
+) -> Result[@value.Cell, ScanError] {
+  match cell {
+    Ok(value) =>
+      match self.peek() {
+        Some('%') => {
+          self.bump() |> ignore
+          match value {
+            @value.Integer(n) => Ok(@value.Percent(n.to_double() / 100.0))
+            @value.Decimal(n) => Ok(@value.Percent(n / 100.0))
+            _ => Ok(value)
+          }
+        }
+        _ => Ok(value)
+      }
+    Err(error) => Err(error)
+  }
 }
 
 ///|

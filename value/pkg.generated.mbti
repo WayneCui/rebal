@@ -17,6 +17,7 @@ pub(all) enum Cell {
   Logic(Bool)
   Integer(Int64)
   Decimal(Double)
+  Percent(Double)
   Char(Int)
   Sym(Datatype, Lexeme)
   Seq(Series, Int)
@@ -38,6 +39,7 @@ pub(all) enum Datatype {
   Logic
   Integer
   Decimal
+  Percent
   Char
   Word
   SetWord

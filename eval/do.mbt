@@ -390,6 +390,8 @@ fn apply(
     perform_throw(args[0], args[1])
   } else if func.code() == native_compose {
     perform_compose(env, args[0])
+  } else if func.code() == native_to {
+    perform_to(args[0], args[1])
   } else {
     raise EvalError::Cannot("function")
   }

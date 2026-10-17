@@ -5,6 +5,7 @@ pub(all) enum Datatype {
   Logic
   Integer
   Decimal
+  Percent
   Char
   Word
   SetWord

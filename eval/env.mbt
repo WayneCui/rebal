@@ -209,6 +209,9 @@ let native_throw : Int = 67
 let native_compose : Int = 68
 
 ///|
+let native_to : Int = 69
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -282,11 +285,13 @@ pub fn Env::new() -> Env {
   define_native(env, "catch", 2, false, native_catch)
   define_native(env, "throw", 2, false, native_throw)
   define_native(env, "compose", 1, false, native_compose)
+  define_native(env, "to", 2, false, native_to)
   install(env, "unset!", @value.Type(@value.Unset))
   install(env, "none!", @value.Type(@value.None))
   install(env, "logic!", @value.Type(@value.Logic))
   install(env, "integer!", @value.Type(@value.Integer))
   install(env, "decimal!", @value.Type(@value.Decimal))
+  install(env, "percent!", @value.Type(@value.Percent))
   install(env, "char!", @value.Type(@value.Char))
   install(env, "word!", @value.Type(@value.Word))
   install(env, "set-word!", @value.Type(@value.SetWord))

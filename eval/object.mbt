@@ -7,6 +7,9 @@ fn make_value(
   match datatype {
     @value.Type(@value.Object) => make_object(env, spec)
     @value.Type(@value.Op) => make_op(spec)
+    @value.Type(@value.Percent) => to_percent(spec, true)
+    @value.Type(@value.Decimal) => decimal_from(spec)
+    @value.Type(@value.Integer) => integer_from(spec)
     _ => raise EvalError::Cannot("make")
   }
 }
