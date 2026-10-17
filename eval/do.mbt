@@ -589,6 +589,10 @@ fn apply(
     perform_browse(args[0])
   } else if func.code() == native_wildcard {
     perform_wildcard(env, args[0], args[1])
+  } else if func.code() == native_enbase {
+    perform_enbase(args[0], args[1])
+  } else if func.code() == native_debase {
+    perform_debase(args[0], args[1])
   } else {
     raise EvalError::Cannot("function")
   }
