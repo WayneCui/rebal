@@ -139,6 +139,40 @@ test "crypt update pads a short AES block with zeros" {
 }
 
 ///|
+test "crypt opens from a spec object" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "p: make port! [scheme: 'crypt algorithm: 'aes-128-cbc]\np/spec/algorithm = 'aes-128-cbc",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "port: open make port! [scheme: 'crypt algorithm: 'aes-128-cbc key: #{2B7E151628AED2A6ABF7158809CF4F3C} init-vector: #{000102030405060708090A0B0C0D0E0F}]\n(read write port #{6BC1BEE22E409F96E93D7E117393172A}) = #{7649ABAC8119B246CEE98E9B12E9197D}",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "port: open make port! [scheme: 'crypt algorithm: 'aes-128-ecb direction: 'decrypt key: #{000102030405060708090A0B0C0D0E0F}]\n(read write port #{69C4E0D86A7B0430D8CDB78070B4C55A}) = #{00112233445566778899AABBCCDDEEFF}",
+    )
+    is @value.Logic(true),
+  )
+  let missing = try {
+    @eval.run(env, "open make port! [scheme: 'crypt]") |> ignore
+    false
+  } catch {
+    error =>
+      match error.to_cell() {
+        @value.Error(err) => err.id == "cannot" && err.arg1 == "open"
+        _ => false
+      }
+  }
+  assert_true(missing)
+}
+
+///|
 test "crypt rejects a cipher that is not wired yet" {
   let env = @eval.Env::new()
   let missing = try {

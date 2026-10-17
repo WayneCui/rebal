@@ -54,11 +54,16 @@ fn crypt_open(env : Env, port : @value.Cell) -> @value.Cell raise EvalError {
       if value.is_open() {
         raise EvalError::Cannot("open")
       } else {
-        let (algorithm, direction) = crypt_target(port_url(env, value))
+        let (algorithm, direction) = crypt_choice(env, value)
         match cipher_kind(algorithm) {
           Some(kind) => {
             let handle = crypt_alloc(direction == "decrypt", kind.0, kind.1)
             value.set_handle(handle)
+            errdefer (if !value.is_open() {
+              crypt_drop(handle)
+              value.set_handle(-1)
+            })
+            crypt_take_spec(env, value)
             value.set_opened(true)
             port
           }
@@ -415,17 +420,138 @@ fn crypt_at(handle : Int) -> CryptSlot raise EvalError {
 }
 
 ///|
-fn port_url(env : Env, port : @value.PortValue) -> String raise EvalError {
-  match frame_field(env, port.spec, "ref") {
+/// Copies the crypt fields of a `make port!` object onto the port spec.
+fn note_crypt_spec(
+  env : Env,
+  from : @value.Frame,
+  port : @value.Cell,
+) -> Unit raise EvalError {
+  match port {
+    @value.Port(value) => {
+      copy_spec_field(env, from, value.spec, "algorithm")
+      copy_spec_field(env, from, value.spec, "direction")
+      copy_spec_field(env, from, value.spec, "key")
+      copy_spec_field(env, from, value.spec, "init-vector")
+      copy_spec_field(env, from, value.spec, "iv")
+    }
+    _ => ()
+  }
+}
+
+///|
+fn copy_spec_field(
+  env : Env,
+  from : @value.Frame,
+  into : @value.Frame,
+  spelling : String,
+) -> Unit raise EvalError {
+  match frame_field(env, from, spelling) {
+    Some(cell) => put_field(env, into, spelling, cell)
+    None => ()
+  }
+}
+
+///|
+/// URL host wins over `algorithm`. A `#decrypt` fragment wins over `direction`.
+fn crypt_choice(
+  env : Env,
+  port : @value.PortValue,
+) -> (String, String) raise EvalError {
+  let url = match frame_field(env, port.spec, "ref") {
     Some(@value.Seq(series, index)) if series.datatype() == @value.Url =>
-      text_from(series, index)
+      Some(crypt_target(text_from(series, index)))
+    _ => None
+  }
+  let algorithm = match url {
+    Some((host, _)) => host
+    None =>
+      match spec_word(env, port.spec, "algorithm") {
+        Some(name) => name
+        None => raise EvalError::Cannot("open")
+      }
+  }
+  let direction = match url {
+    Some((_, Some(fragment))) => fragment
+    _ => spec_direction(env, port.spec)
+  }
+  (algorithm, direction)
+}
+
+///|
+fn spec_direction(env : Env, frame : @value.Frame) -> String raise EvalError {
+  match spec_word(env, frame, "direction") {
+    Some(name) =>
+      if name == "encrypt" || name == "decrypt" {
+        name
+      } else {
+        raise EvalError::Cannot("open")
+      }
+    None => "encrypt"
+  }
+}
+
+///|
+fn spec_word(env : Env, frame : @value.Frame, spelling : String) -> String? {
+  match frame_field(env, frame, spelling) {
+    Some(@value.Sym(_, lexeme)) => Some(lexeme.spelling().to_lower())
+    _ => None
+  }
+}
+
+///|
+fn crypt_take_spec(env : Env, port : @value.PortValue) -> Unit raise EvalError {
+  let slot = crypt_at(port.handle())
+  match frame_field(env, port.spec, "key") {
+    Some(cell) => crypt_use_key(slot, cell)
+    None => ()
+  }
+  match frame_field(env, port.spec, "init-vector") {
+    Some(cell) => crypt_use_iv(slot, cell)
+    None =>
+      match frame_field(env, port.spec, "iv") {
+        Some(cell) => crypt_use_iv(slot, cell)
+        None => ()
+      }
+  }
+}
+
+///|
+fn crypt_use_key(slot : CryptSlot, value : @value.Cell) -> Unit raise EvalError {
+  match value {
+    @value.None => ()
+    @value.Seq(series, index) if series.datatype() == @value.Binary => {
+      let key = bytes_from(series, index)
+      if key.length() != slot.key_len {
+        raise EvalError::Cannot("open")
+      }
+      slot.rounds = aes_rounds(key)
+      slot.key_ready = true
+      slot.pending = []
+    }
+    _ => raise EvalError::Cannot("open")
+  }
+}
+
+///|
+fn crypt_use_iv(slot : CryptSlot, value : @value.Cell) -> Unit raise EvalError {
+  match value {
+    @value.None => ()
+    @value.Seq(series, index) if series.datatype() == @value.Binary =>
+      if slot.cbc {
+        let bytes = bytes_from(series, index)
+        if bytes.length() != 16 {
+          raise EvalError::Cannot("open")
+        }
+        slot.iv = bytes
+        slot.iv_ready = true
+      }
     _ => raise EvalError::Cannot("open")
   }
 }
 
 ///|
 /// Host is the algorithm. The fragment, when present, is `encrypt` or `decrypt`.
-fn crypt_target(text : String) -> (String, String) raise EvalError {
+fn crypt_target(text : String) -> (String, String?) raise EvalError {
   let mut colon = -1
   let mut index = 0
   while index < text.length() && colon < 0 {
@@ -454,11 +580,11 @@ fn crypt_target(text : String) -> (String, String) raise EvalError {
     raise EvalError::Cannot("open")
   }
   if end == text.length() {
-    (host, "encrypt")
+    (host, None)
   } else {
     let fragment = text[end + 1:text.length()].to_owned().to_lower()
     if fragment == "encrypt" || fragment == "decrypt" {
-      (host, fragment)
+      (host, Some(fragment))
     } else {
       raise EvalError::Cannot("open")
     }

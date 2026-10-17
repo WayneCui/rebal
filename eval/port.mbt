@@ -269,7 +269,12 @@ fn port_from_object(
             Some(cell) => cell
             None => @value.None
           }
-          build_port(env, lexeme.spelling().to_lower(), target)
+          let name = lexeme.spelling().to_lower()
+          let port = build_port(env, name, target)
+          if name == "crypt" {
+            note_crypt_spec(env, frame, port)
+          }
+          port
         }
         _ => raise EvalError::Cannot("make")
       }
