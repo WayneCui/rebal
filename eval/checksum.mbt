@@ -1,5 +1,5 @@
 ///|
-/// CRC-24, CRC-32, Adler-32, MD5, SHA-1, SHA-256, SHA-384, or SHA-512.
+/// CRC-24, CRC-32, Adler-32, MD5, SHA-1, SHA-256, SHA-384, SHA-512, or SHA-3.
 /// The CRCs are integers. The hashes are raw digests.
 /// `/with` is HMAC. `/part` limits the input.
 fn perform_checksum(
@@ -14,16 +14,20 @@ fn perform_checksum(
   match key {
     Some(raw) => binary_cell(hmac(raw, bytes, name))
     None =>
-      match name {
-        "crc24" => @value.Integer(crc24(bytes))
-        "crc32" => @value.Integer(crc32(bytes))
-        "adler32" => @value.Integer(adler32(bytes))
-        "sha1" => binary_cell(sha1(bytes))
-        "md5" => binary_cell(md5(bytes))
-        "sha256" => binary_cell(sha256(bytes))
-        "sha384" => binary_cell(sha384(bytes))
-        "sha512" => binary_cell(sha512(bytes))
-        _ => raise EvalError::Cannot("checksum")
+      match sha3_of(name, bytes) {
+        Some(digest) => binary_cell(digest)
+        None =>
+          match name {
+            "crc24" => @value.Integer(crc24(bytes))
+            "crc32" => @value.Integer(crc32(bytes))
+            "adler32" => @value.Integer(adler32(bytes))
+            "sha1" => binary_cell(sha1(bytes))
+            "md5" => binary_cell(md5(bytes))
+            "sha256" => binary_cell(sha256(bytes))
+            "sha384" => binary_cell(sha384(bytes))
+            "sha512" => binary_cell(sha512(bytes))
+            _ => raise EvalError::Cannot("checksum")
+          }
       }
   }
 }
@@ -58,7 +62,7 @@ fn hmac(
   message : Array[Int],
   name : String,
 ) -> Array[Int] raise EvalError {
-  let block = if name == "sha384" || name == "sha512" { 128 } else { 64 }
+  let block = hmac_block(name)
   let folded = if key.length() > block { digest_of(name, key) } else { key }
   let ipad : Array[Int] = []
   let opad : Array[Int] = []
@@ -73,13 +77,34 @@ fn hmac(
 
 ///|
 fn digest_of(name : String, bytes : Array[Int]) -> Array[Int] raise EvalError {
-  match name {
-    "sha1" => sha1(bytes)
-    "md5" => md5(bytes)
-    "sha256" => sha256(bytes)
-    "sha384" => sha384(bytes)
-    "sha512" => sha512(bytes)
-    _ => raise EvalError::Cannot("checksum")
+  match sha3_of(name, bytes) {
+    Some(digest) => digest
+    None =>
+      match name {
+        "sha1" => sha1(bytes)
+        "md5" => md5(bytes)
+        "sha256" => sha256(bytes)
+        "sha384" => sha384(bytes)
+        "sha512" => sha512(bytes)
+        _ => raise EvalError::Cannot("checksum")
+      }
+  }
+}
+
+///|
+fn hmac_block(name : String) -> Int {
+  if name == "sha384" || name == "sha512" {
+    128
+  } else if name == "sha3-224" {
+    144
+  } else if name == "sha3-256" {
+    136
+  } else if name == "sha3-384" {
+    104
+  } else if name == "sha3-512" {
+    72
+  } else {
+    64
   }
 }
 

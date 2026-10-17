@@ -249,3 +249,52 @@ test "checksum/part limits the hashed bytes" {
     is @value.Logic(true),
   )
 }
+
+///|
+test "checksum sha3 is the keccak digest" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "(checksum {} 'sha3-256) = #{A7FFC6F8BF1ED76651C14756A061D662F580FF4DE43B49FA82D80A4B80F8434A}",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "(checksum {abc} 'sha3-256) = #{3A985DA74FE225B2045C172D6BD390BD855F086E3E9D525B46BFE24511431532}",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "(checksum {} 'sha3-224) = #{6B4E03423667DBB73B6E15454F0EB1ABD4597F9A1B078E3F5B5A6BC7}",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "(checksum {} 'sha3-384) = #{0C63A75B845E4F7D01107D852E4C2485C51A50AAAA94FC61995E71BBEE983A2AC3713831264ADB47FB6BD1E058D5F004}",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "(checksum {} 'sha3-512) = #{A69F73CCA23A9AC5C8B567DC185A756E97C982164FE25859E0D1DCC1475C80A615B2123AF1F5F94C11E3E9402C3AC558F500199D95B6D3E301758586281DCD26}",
+    )
+    is @value.Logic(true),
+  )
+  let mut sample = ""
+  for _ in 0..<200 {
+    sample = sample + "a"
+  }
+  let source = "(checksum {" +
+    sample +
+    "} 'sha3-256) = #{CCE34485BAF2BF2ACA99B94833892A4F52896D3D153F7B840CC4F9FE695F1387}"
+  assert_true(@eval.run(env, source) is @value.Logic(true))
+  assert_true(
+    @eval.run(
+      env, "(checksum/with {Hello world} 'sha3-256 {mykey}) = #{02ADB5D864627ABC6E9B8D323FB7BF515A03B5C09D3C66DA64974B03B991A57C}",
+    )
+    is @value.Logic(true),
+  )
+}
