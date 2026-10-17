@@ -248,6 +248,24 @@ let native_min : Int = 80
 let native_max : Int = 81
 
 ///|
+let native_round : Int = 82
+
+///|
+let native_random : Int = 83
+
+///|
+let native_complement : Int = 84
+
+///|
+let native_shift : Int = 85
+
+///|
+let native_shift_left : Int = 86
+
+///|
+let native_shift_right : Int = 87
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -334,6 +352,12 @@ pub fn Env::new() -> Env {
   define_native(env, "zero?", 1, false, native_zero)
   define_native(env, "min", 2, false, native_min)
   define_native(env, "max", 2, false, native_max)
+  define_native(env, "round", 1, false, native_round)
+  define_native(env, "random", 1, false, native_random)
+  define_native(env, "complement", 1, false, native_complement)
+  define_native(env, "shift", 2, false, native_shift)
+  define_native(env, "<<", 2, true, native_shift_left)
+  define_native(env, ">>", 2, true, native_shift_right)
   install(env, "unset!", @value.Type(@value.Unset))
   install(env, "none!", @value.Type(@value.None))
   install(env, "logic!", @value.Type(@value.Logic))

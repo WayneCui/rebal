@@ -16,6 +16,8 @@ pub fn at(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn back(@value.Cell) -> Result[@value.Cell, ActionError]
 
+pub fn complement(@value.Cell) -> Result[@value.Cell, ActionError]
+
 pub fn copy(@value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn divide(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
@@ -78,9 +80,19 @@ pub fn positive_q(@value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn power(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
+pub fn random(@value.Cell) -> Result[@value.Cell, ActionError]
+
 pub fn remainder(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn remove(@value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn round(@value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn shift(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn shift_left(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn shift_right(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn skip(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 

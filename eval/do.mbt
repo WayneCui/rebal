@@ -416,6 +416,18 @@ fn apply(
     from_action(@action.minimum(args[0], args[1]))
   } else if func.code() == native_max {
     from_action(@action.maximum(args[0], args[1]))
+  } else if func.code() == native_round {
+    from_action(@action.round(args[0]))
+  } else if func.code() == native_random {
+    from_action(@action.random(args[0]))
+  } else if func.code() == native_complement {
+    from_action(@action.complement(args[0]))
+  } else if func.code() == native_shift {
+    from_action(@action.shift(args[0], args[1]))
+  } else if func.code() == native_shift_left {
+    from_action(@action.shift_left(args[0], args[1]))
+  } else if func.code() == native_shift_right {
+    from_action(@action.shift_right(args[0], args[1]))
   } else {
     raise EvalError::Cannot("function")
   }
