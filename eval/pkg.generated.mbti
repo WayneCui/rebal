@@ -28,6 +28,8 @@ pub(all) suberror EvalError {
   NoBreak
   Continued
   NoContinue
+  Thrown(String, @value.Cell)
+  NoThrow(String)
 }
 pub fn EvalError::id(Self) -> String
 pub fn EvalError::to_cell(Self) -> @value.Cell

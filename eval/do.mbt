@@ -350,6 +350,8 @@ fn apply(
     perform_catch(env, args[0], args[1])
   } else if func.code() == native_throw {
     perform_throw(args[0], args[1])
+  } else if func.code() == native_compose {
+    perform_compose(env, args[0])
   } else {
     raise EvalError::Cannot("function")
   }
