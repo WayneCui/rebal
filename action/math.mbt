@@ -46,11 +46,41 @@ fn combine(
       Ok(@value.Pair(on_int(x, n), on_int(y, n)))
     (@value.Integer(n), @value.Pair(x, y)) =>
       Ok(@value.Pair(on_int(n, x), on_int(n, y)))
+    (@value.Tuple(left), @value.Tuple(right)) =>
+      combine_tuple(left, right, name, on_int)
     _ =>
       match (as_double(left), as_double(right)) {
         (Some(x), Some(y)) => Ok(@value.Decimal(on_decimal(x, y)))
         _ => Err(Cannot(name))
       }
+  }
+}
+
+///|
+fn combine_tuple(
+  left : Array[Int],
+  right : Array[Int],
+  name : String,
+  on_int : (Int64, Int64) -> Int64,
+) -> Result[@value.Cell, ActionError] {
+  if left.length() != right.length() || left.length() == 0 {
+    Err(Cannot(name))
+  } else {
+    let out : Array[Int] = []
+    let mut bad = false
+    for i in 0..<left.length() {
+      let value = on_int(left[i].to_int64(), right[i].to_int64())
+      if value < 0L || value > 255L {
+        bad = true
+      } else {
+        out.push(value.to_int())
+      }
+    }
+    if bad {
+      Err(Cannot(name))
+    } else {
+      Ok(@value.Tuple(out))
+    }
   }
 }
 

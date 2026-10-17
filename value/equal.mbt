@@ -20,6 +20,7 @@ fn equal_at(left : Cell, right : Cell, depth : Int) -> Bool {
       (Decimal(a), Decimal(b)) => a == b
       (Percent(a), Percent(b)) => a == b
       (Pair(a, b), Pair(c, d)) => a == c && b == d
+      (Tuple(a), Tuple(b)) => tuple_same(a, b)
       (Char(a), Char(b)) => a == b
       (Sym(_, a), Sym(_, b)) => a.sym == b.sym
       (Seq(a, ai), Seq(b, bi)) =>
@@ -77,6 +78,21 @@ fn series_equal(
       }
       _ => false
     }
+  }
+}
+
+///|
+fn tuple_same(left : Array[Int], right : Array[Int]) -> Bool {
+  if left.length() != right.length() {
+    false
+  } else {
+    let mut ok = true
+    for i in 0..<left.length() {
+      if left[i] != right[i] {
+        ok = false
+      }
+    }
+    ok
   }
 }
 

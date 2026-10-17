@@ -45,6 +45,32 @@ fn to_pair(spec : @value.Cell) -> @value.Cell raise EvalError {
 }
 
 ///|
+fn to_tuple(spec : @value.Cell) -> @value.Cell raise EvalError {
+  match spec {
+    @value.Tuple(parts) => @value.Tuple(parts)
+    @value.Seq(series, index) if series.datatype() == @value.Block => {
+      let parts : Array[Int] = []
+      let mut cursor = index
+      let mut bad = false
+      while cursor < series.length() && !bad {
+        match series.item(cursor) {
+          Some(@value.Integer(n)) if n >= 0L && n <= 255L =>
+            parts.push(n.to_int())
+          _ => bad = true
+        }
+        cursor = cursor + 1
+      }
+      if bad || parts.length() < 3 || parts.length() > 12 {
+        raise EvalError::Cannot("make")
+      } else {
+        @value.Tuple(parts)
+      }
+    }
+    _ => raise EvalError::Cannot("make")
+  }
+}
+
+///|
 fn perform_to(
   datatype : @value.Cell,
   spec : @value.Cell,
@@ -54,6 +80,7 @@ fn perform_to(
     @value.Type(@value.Decimal) => decimal_from(spec)
     @value.Type(@value.Integer) => integer_from(spec)
     @value.Type(@value.Pair) => to_pair(spec)
+    @value.Type(@value.Tuple) => to_tuple(spec)
     _ => raise EvalError::Cannot("to")
   }
 }

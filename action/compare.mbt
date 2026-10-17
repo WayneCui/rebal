@@ -156,6 +156,21 @@ fn series_order(
 }
 
 ///|
+fn tuple_order(left : Array[Int], right : Array[Int]) -> Int? {
+  if left.length() != right.length() {
+    None
+  } else {
+    let mut found = 0
+    for i in 0..<left.length() {
+      if found == 0 {
+        found = cmp_int(left[i], right[i])
+      }
+    }
+    Some(found)
+  }
+}
+
+///|
 fn number_order(left : @value.Cell, right : @value.Cell) -> Int? {
   match (left, right) {
     (@value.Integer(x), @value.Integer(y)) => Some(cmp_int64(x, y))
@@ -168,6 +183,7 @@ fn number_order(left : @value.Cell, right : @value.Cell) -> Int? {
       } else {
         Some(cmp_int64(y, b))
       }
+    (@value.Tuple(left), @value.Tuple(right)) => tuple_order(left, right)
     _ =>
       match (as_double(left), as_double(right)) {
         (Some(x), Some(y)) if left.datatype() == @value.Percent ||

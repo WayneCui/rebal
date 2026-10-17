@@ -49,6 +49,7 @@ fn write_cell(
         buf.write_char('x')
         buf.write_string(y.to_string())
       }
+      @value.Tuple(parts) => write_tuple(buf, parts)
       @value.Char(code) => write_char_value(buf, code, molded)
       @value.Sym(datatype, lexeme) =>
         write_word(buf, datatype, lexeme.spelling())
@@ -299,6 +300,18 @@ fn hex_digit(value : Int) -> Char {
 }
 
 ///|
+fn write_tuple(buf : StringBuilder, parts : Array[Int]) -> Unit {
+  let mut index = 0
+  for part in parts {
+    if index > 0 {
+      buf.write_char('.')
+    }
+    buf.write_string(part.to_string())
+    index = index + 1
+  }
+}
+
+///|
 fn percent_text(value : Double) -> String {
   let text = (value * 100.0).to_string()
   let mut expo = false
@@ -342,6 +355,7 @@ pub fn type_name(datatype : @value.Datatype) -> String {
     @value.Decimal => "decimal!"
     @value.Percent => "percent!"
     @value.Pair => "pair!"
+    @value.Tuple => "tuple!"
     @value.Char => "char!"
     @value.Word => "word!"
     @value.SetWord => "set-word!"

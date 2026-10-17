@@ -92,7 +92,69 @@ fn Lexer::decimal(
     value = value + digit.to_double() * place
     place = place / 10.0
   }
-  self.percent_suffix(Ok(@value.Cell::Decimal(value * sign.to_double())))
+  if sign < 0L {
+    self.percent_suffix(Ok(@value.Cell::Decimal(value * sign.to_double())))
+  } else if self.tuple_more() {
+    self.tuple_value(whole, frac)
+  } else {
+    self.percent_suffix(Ok(@value.Cell::Decimal(value * sign.to_double())))
+  }
+}
+
+///|
+fn Lexer::tuple_more(self : Lexer) -> Bool {
+  match self.peek() {
+    Some('.') =>
+      match self.chars.get(self.pos + 1) {
+        Some(char) => is_digit(char)
+        None => false
+      }
+    _ => false
+  }
+}
+
+///|
+fn Lexer::tuple_value(
+  self : Lexer,
+  whole : Array[Int],
+  frac : Array[Int],
+) -> Result[@value.Cell, ScanError] {
+  match (byte_component(whole), byte_component(frac)) {
+    (Some(first), Some(second)) => {
+      let parts : Array[Int] = [first, second]
+      let mut bad = false
+      while !bad && self.tuple_more() {
+        self.bump() |> ignore
+        match byte_component(self.digits(10)) {
+          Some(part) => parts.push(part)
+          None => bad = true
+        }
+      }
+      if bad || parts.length() > 12 {
+        Err(Invalid("tuple"))
+      } else {
+        Ok(@value.Tuple(parts))
+      }
+    }
+    _ => Err(Invalid("tuple"))
+  }
+}
+
+///|
+fn byte_component(digits : Array[Int]) -> Int? {
+  if digits.length() == 0 || digits.length() > 3 {
+    None
+  } else {
+    let mut value = 0
+    for digit in digits {
+      value = value * 10 + digit
+    }
+    if value > 255 {
+      None
+    } else {
+      Some(value)
+    }
+  }
 }
 
 ///|

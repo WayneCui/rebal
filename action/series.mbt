@@ -48,6 +48,12 @@ pub fn pick(
         Some(2) => Ok(@value.Integer(y))
         _ => Err(Cannot("pick"))
       }
+    @value.Tuple(parts) =>
+      match fit_int(index) {
+        Some(n) if n >= 1 && n <= parts.length() =>
+          Ok(@value.Integer(parts[n - 1].to_int64()))
+        _ => Err(Cannot("pick"))
+      }
     _ =>
       if is_series(series) {
         match fit_int(index) {
@@ -73,6 +79,12 @@ pub fn length(series : @value.Cell) -> Result[@value.Cell, ActionError] {
 pub fn first(series : @value.Cell) -> Result[@value.Cell, ActionError] {
   match series {
     @value.Pair(x, _) => Ok(@value.Integer(x))
+    @value.Tuple(parts) =>
+      if parts.length() == 0 {
+        Err(Cannot("first"))
+      } else {
+        Ok(@value.Integer(parts[0].to_int64()))
+      }
     _ =>
       if is_series(series) {
         Ok(@series.pick(series, 1))
