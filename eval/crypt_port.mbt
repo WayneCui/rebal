@@ -235,6 +235,8 @@ fn cipher_kind(name : String) -> (Int, Bool, Bool)? {
     Some((32, true, false))
   } else if name == "camellia-128-ecb" {
     Some((16, false, true))
+  } else if name == "camellia-128-cbc" {
+    Some((16, true, true))
   } else if name == "camellia-192-ecb" {
     Some((24, false, true))
   } else if name == "camellia-256-ecb" {
@@ -340,31 +342,35 @@ fn install_key(slot : CryptSlot, key : Array[Int]) -> Unit raise EvalError {
 
 ///|
 fn crypt_block(slot : CryptSlot) -> Array[Int] raise EvalError {
-  if slot.camellia {
-    let keys = if slot.encrypting { slot.cam_enc } else { slot.cam_dec }
-    if slot.key_len == 16 {
-      camellia128_crypt(keys, slot.pending)
-    } else {
-      camellia192_crypt(keys, slot.pending)
-    }
-  } else if !slot.cbc {
-    if slot.encrypting {
-      aes_encrypt(slot.rounds, slot.pending)
-    } else {
-      aes_decrypt(slot.rounds, slot.pending)
-    }
+  if !slot.cbc {
+    raw_block(slot, slot.pending)
   } else if !slot.iv_ready {
     raise EvalError::Cannot("write")
   } else if slot.encrypting {
     let mixed = chain_xor(slot.pending, slot.iv)
-    let out = aes_encrypt(slot.rounds, mixed)
+    let out = raw_block(slot, mixed)
     slot.iv = copy_block(out)
     out
   } else {
-    let plain = aes_decrypt(slot.rounds, slot.pending)
+    let plain = raw_block(slot, slot.pending)
     let out = chain_xor(plain, slot.iv)
     slot.iv = copy_block(slot.pending)
     out
+  }
+}
+
+///|
+fn raw_block(slot : CryptSlot, block : Array[Int]) -> Array[Int] {
+  if slot.camellia && slot.key_len == 16 {
+    let keys = if slot.encrypting { slot.cam_enc } else { slot.cam_dec }
+    camellia128_crypt(keys, block)
+  } else if slot.camellia {
+    let keys = if slot.encrypting { slot.cam_enc } else { slot.cam_dec }
+    camellia192_crypt(keys, block)
+  } else if slot.encrypting {
+    aes_encrypt(slot.rounds, block)
+  } else {
+    aes_decrypt(slot.rounds, block)
   }
 }
 
