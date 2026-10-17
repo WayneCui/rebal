@@ -16,7 +16,7 @@ test "compress and decompress round-trip zlib" {
     is @value.Logic(true),
   )
   let other = try {
-    @eval.run(env, "compress {a} 'gzip") |> ignore
+    @eval.run(env, "compress {a} 'br") |> ignore
     false
   } catch {
     error => error.id() == "cannot"
@@ -45,6 +45,31 @@ test "compress and decompress round-trip raw deflate" {
   assert_true(
     @eval.run(
       env, "(decompress compress {test test test} 'deflate 'deflate) = #{7465737420746573742074657374}",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
+test "compress and decompress round-trip gzip" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(env, "(pick compress {abc} 'gzip 1) = 31") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(pick compress {abc} 'gzip 2) = 139") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(decompress compress {abc} 'gzip 'gzip) = #{616263}")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(decompress compress {} 'gzip 'gzip) = #{}")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "(decompress compress {test test test} 'gzip 'gzip) = #{7465737420746573742074657374}",
     )
     is @value.Logic(true),
   )

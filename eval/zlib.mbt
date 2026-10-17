@@ -19,7 +19,7 @@ extern "C" fn c_zlib_decompress(
 ) -> String = "rebal_zlib_decompress"
 
 ///|
-/// Compresses a string or a binary. The method word is `zlib` or `deflate`.
+/// Compresses a string or a binary. The method word is `zlib`, `deflate`, or `gzip`.
 fn perform_compress(
   env : Env,
   data : @value.Cell,
@@ -35,7 +35,7 @@ fn perform_compress(
 }
 
 ///|
-/// Decompresses a zlib or raw deflate binary.
+/// Decompresses a zlib, raw deflate, or gzip binary.
 fn perform_decompress(
   env : Env,
   data : @value.Cell,
@@ -65,6 +65,7 @@ fn press_window(
   match env.symbols.canon(word.sym()) {
     "zlib" => 15
     "deflate" => -15
+    "gzip" => 31
     _ => raise EvalError::Cannot(action)
   }
 }
