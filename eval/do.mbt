@@ -224,7 +224,8 @@ fn call(
     func.code() != native_enhex &&
     func.code() != native_checksum &&
     func.code() != native_enbase &&
-    func.code() != native_debase {
+    func.code() != native_debase &&
+    func.code() != native_decode {
     raise EvalError::Cannot("func")
   }
   let args : Array[@value.Cell] = []
@@ -312,6 +313,8 @@ fn call(
     (perform_enbase(env, args, active), cursor)
   } else if func.code() == native_debase {
     (perform_debase(env, args, active), cursor)
+  } else if func.code() == native_decode {
+    (perform_decode(env, args, active), cursor)
   } else if func.code() == 0 {
     (call_user(env, func, args, active), cursor)
   } else {
