@@ -12,15 +12,21 @@ pub fn append(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn copy(@value.Cell) -> Result[@value.Cell, ActionError]
 
+pub fn equal(@value.Cell, @value.Cell) -> Bool
+
 pub fn find(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn first(@value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn form(@value.Cell) -> Result[@value.Cell, ActionError]
 
+pub fn greater(@value.Cell, @value.Cell) -> Result[Bool, ActionError]
+
 pub fn insert(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn length(@value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn lesser(@value.Cell, @value.Cell) -> Result[Bool, ActionError]
 
 pub fn mold(@value.Cell) -> Result[@value.Cell, ActionError]
 

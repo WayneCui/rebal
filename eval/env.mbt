@@ -65,6 +65,18 @@ let native_type : Int = 19
 let native_try : Int = 20
 
 ///|
+let native_equal : Int = 21
+
+///|
+let native_not_equal : Int = 22
+
+///|
+let native_lesser : Int = 23
+
+///|
+let native_greater : Int = 24
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -90,6 +102,10 @@ pub fn Env::new() -> Env {
   define_native(env, "form", 1, false, native_form)
   define_native(env, "type?", 1, false, native_type)
   define_native(env, "try", 1, false, native_try)
+  define_native(env, "=", 2, true, native_equal)
+  define_native(env, "<>", 2, true, native_not_equal)
+  define_native(env, "<", 2, true, native_lesser)
+  define_native(env, ">", 2, true, native_greater)
   install(env, "unset!", @value.Type(@value.Unset))
   install(env, "none!", @value.Type(@value.None))
   install(env, "logic!", @value.Type(@value.Logic))

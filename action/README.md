@@ -1,6 +1,6 @@
 # action
 
-按数据类型分派的动作：`+`、`-`、`*`、`append`、`find`、`pick`、`length?`、`first`、`copy`、`insert`、`remove`、`mold`、`form`。
+按数据类型分派的动作：`+`、`-`、`*`、`=`、`<>`、`<`、`>`、`append`、`find`、`pick`、`length?`、`first`、`copy`、`insert`、`remove`、`mold`、`form`。
 
 ## 不变量
 

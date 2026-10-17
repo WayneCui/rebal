@@ -247,8 +247,26 @@ fn apply(
     @value.Type(args[0].datatype())
   } else if func.code() == native_try {
     perform_try(env, args[0])
+  } else if func.code() == native_equal {
+    @value.Logic(@action.equal(args[0], args[1]))
+  } else if func.code() == native_not_equal {
+    @value.Logic(!@action.equal(args[0], args[1]))
+  } else if func.code() == native_lesser {
+    logic_order(@action.lesser(args[0], args[1]))
+  } else if func.code() == native_greater {
+    logic_order(@action.greater(args[0], args[1]))
   } else {
     raise EvalError::Cannot("function")
+  }
+}
+
+///|
+fn logic_order(
+  result : Result[Bool, @action.ActionError],
+) -> @value.Cell raise EvalError {
+  match result {
+    Ok(flag) => @value.Logic(flag)
+    Err(_) => raise EvalError::Cannot("compare")
   }
 }
 
