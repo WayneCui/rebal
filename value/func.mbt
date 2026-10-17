@@ -1,6 +1,7 @@
 ///|
 pub struct Func {
   params : Array[Int]
+  types : Array[Array[Datatype]]
   body : Series
   infix : Bool
   code : Int
@@ -11,11 +12,12 @@ pub struct Func {
 /// `code` 0 evaluates `body` in `frame`. Any other code is a native action.
 pub fn Func::make(
   params : Array[Int],
+  types : Array[Array[Datatype]],
   body : Series,
   infix : Bool,
   frame : Frame,
 ) -> Func {
-  { params, body, infix, code: 0, frame, }
+  { params, types, body, infix, code: 0, frame, }
 }
 
 ///|
@@ -24,7 +26,14 @@ pub fn Func::native(arity : Int, infix : Bool, code : Int) -> Func {
   for _ in 0..<arity {
     params.push(0)
   }
-  { params, body: Series::block(), infix, code, frame: Frame::new(), }
+  {
+    params,
+    types: [],
+    body: Series::block(),
+    infix,
+    code,
+    frame: Frame::new(),
+  }
 }
 
 ///|
@@ -45,6 +54,11 @@ pub fn Func::code(self : Func) -> Int {
 ///|
 pub fn Func::params(self : Func) -> Array[Int] {
   self.params
+}
+
+///|
+pub fn Func::types(self : Func) -> Array[Array[Datatype]] {
+  self.types
 }
 
 ///|

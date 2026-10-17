@@ -79,6 +79,7 @@ pub fn Frame::set(Self, Int, Cell) -> Unit
 
 pub struct Func {
   params : Array[Int]
+  types : Array[Array[Datatype]]
   body : Series
   infix : Bool
   code : Int
@@ -89,9 +90,10 @@ pub fn Func::body(Self) -> Series
 pub fn Func::code(Self) -> Int
 pub fn Func::frame(Self) -> Frame
 pub fn Func::is_infix(Self) -> Bool
-pub fn Func::make(Array[Int], Series, Bool, Frame) -> Self
+pub fn Func::make(Array[Int], Array[Array[Datatype]], Series, Bool, Frame) -> Self
 pub fn Func::native(Int, Bool, Int) -> Self
 pub fn Func::params(Self) -> Array[Int]
+pub fn Func::types(Self) -> Array[Array[Datatype]]
 
 pub struct Lexeme {
   sym : Int
