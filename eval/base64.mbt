@@ -1,11 +1,17 @@
 ///|
 /// Turns a string or a binary into base-64, base-16, or base-2 text.
+/// `/part` limits how many characters or bytes are encoded.
 fn perform_enbase(
-  value : @value.Cell,
-  base : @value.Cell,
+  env : Env,
+  args : Array[@value.Cell],
+  active : Array[Int],
 ) -> @value.Cell raise EvalError {
-  let bytes = payload_bytes(value, "enbase")
-  match coding_base(base) {
+  let bytes = ranged_payload(
+    args[0],
+    base_part(env, args, active, "enbase"),
+    "enbase",
+  )
+  match coding_base(args[1]) {
     Some(64) => text_series(encode_base64(bytes))
     Some(16) => text_series(encode_base16(bytes))
     Some(2) => text_series(encode_base2(bytes))
@@ -14,24 +20,42 @@ fn perform_enbase(
 }
 
 ///|
-/// Turns base-64, base-16, or base-2 text back into a binary. Spaces and line breaks are skipped.
+/// Turns base-64, base-16, or base-2 text back into a binary.
+/// Spaces and line breaks are skipped. `/part` limits the input.
 fn perform_debase(
-  value : @value.Cell,
-  base : @value.Cell,
+  env : Env,
+  args : Array[@value.Cell],
+  active : Array[Int],
 ) -> @value.Cell raise EvalError {
-  let text = match value {
-    @value.Seq(series, index) if @value.text_series(series.datatype()) =>
-      text_from(series, index)
-    @value.Seq(series, index) if series.datatype() == @value.Binary =>
-      latin_text(bytes_from(series, index))
-    _ => raise EvalError::Cannot("debase")
-  }
-  match coding_base(base) {
+  let text = latin_text(
+    ranged_payload(args[0], base_part(env, args, active, "debase"), "debase"),
+  )
+  match coding_base(args[1]) {
     Some(64) => binary_cell(decode_base64(text))
     Some(16) => binary_cell(decode_base16(text))
     Some(2) => binary_cell(decode_base2(text))
     _ => raise EvalError::Cannot("debase")
   }
+}
+
+///|
+fn base_part(
+  env : Env,
+  args : Array[@value.Cell],
+  active : Array[Int],
+  action : String,
+) -> Int? raise EvalError {
+  let mut part : Int? = None
+  let mut cursor = 2
+  for sym in active {
+    if env.symbols.canon(sym) == "part" {
+      part = Some(part_count(args[0], args[cursor], action))
+      cursor = cursor + 1
+    } else {
+      raise EvalError::Cannot(action)
+    }
+  }
+  part
 }
 
 ///|

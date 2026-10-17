@@ -222,7 +222,9 @@ fn call(
     func.code() != native_decloak &&
     func.code() != native_dehex &&
     func.code() != native_enhex &&
-    func.code() != native_checksum {
+    func.code() != native_checksum &&
+    func.code() != native_enbase &&
+    func.code() != native_debase {
     raise EvalError::Cannot("func")
   }
   let args : Array[@value.Cell] = []
@@ -241,6 +243,10 @@ fn call(
     func.arity() + enhex_extra(env, active)
   } else if func.code() == native_checksum {
     func.arity() + checksum_extra(env, active)
+  } else if func.code() == native_enbase && named(env, active, "part") {
+    func.arity() + 1
+  } else if func.code() == native_debase && named(env, active, "part") {
+    func.arity() + 1
   } else if func.code() == native_call {
     func.arity() + call_extra(env, active)
   } else if func.code() == 0 {
@@ -300,6 +306,10 @@ fn call(
     (perform_dehex(env, args, active), cursor)
   } else if func.code() == native_checksum {
     (perform_checksum(env, args, active), cursor)
+  } else if func.code() == native_enbase {
+    (perform_enbase(env, args, active), cursor)
+  } else if func.code() == native_debase {
+    (perform_debase(env, args, active), cursor)
   } else if func.code() == 0 {
     (call_user(env, func, args, active), cursor)
   } else {
@@ -664,10 +674,6 @@ fn apply(
     perform_browse(args[0])
   } else if func.code() == native_wildcard {
     perform_wildcard(env, args[0], args[1])
-  } else if func.code() == native_enbase {
-    perform_enbase(args[0], args[1])
-  } else if func.code() == native_debase {
-    perform_debase(args[0], args[1])
   } else {
     raise EvalError::Cannot("function")
   }

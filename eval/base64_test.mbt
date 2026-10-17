@@ -90,3 +90,27 @@ test "enbase and debase round-trip base 2" {
   }
   assert_true(short)
 }
+
+///|
+test "enbase/part and debase/part limit the input" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(env, "(enbase/part {foobar} 64 3) = enbase {foo} 64")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(enbase/part tail {foobar} 16 -3) = enbase {bar} 16")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(debase/part {Zm9vYmFy} 64 4) = #{666F6F}")
+    is @value.Logic(true),
+  )
+  let other = try {
+    @eval.run(env, "enbase/url {f} 64") |> ignore
+    false
+  } catch {
+    error => error.id() == "cannot"
+  }
+  assert_true(other)
+}
