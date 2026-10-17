@@ -106,11 +106,19 @@ pub fn entab(cell : @value.Cell) -> @value.Cell? {
 
 ///|
 pub fn dehex(cell : @value.Cell) -> @value.Cell? {
+  dehex_with(cell, '%'.to_int(), false)
+}
+
+///|
+/// `escape` is the mark before two hex digits. `/uri` turns `+` into a space,
+/// or `_` when the mark is `=`.
+pub fn dehex_with(cell : @value.Cell, escape : Int, uri : Bool) -> @value.Cell? {
+  let space = if escape == '='.to_int() { '_'.to_int() } else { '+'.to_int() }
   map_codes(cell, fn(codes) {
     let next : Array[Int] = []
     let mut cursor = 0
     while cursor < codes.length() {
-      if codes[cursor] == '%'.to_int() && cursor + 2 < codes.length() {
+      if codes[cursor] == escape && cursor + 2 < codes.length() {
         match (hex_value(codes[cursor + 1]), hex_value(codes[cursor + 2])) {
           (Some(high), Some(low)) => {
             next.push(high * 16 + low)
@@ -121,6 +129,9 @@ pub fn dehex(cell : @value.Cell) -> @value.Cell? {
             cursor = cursor + 1
           }
         }
+      } else if uri && codes[cursor] == space {
+        next.push(' '.to_int())
+        cursor = cursor + 1
       } else {
         next.push(codes[cursor])
         cursor = cursor + 1

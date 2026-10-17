@@ -26,6 +26,8 @@ pub fn copy(@value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn dehex(@value.Cell) -> Result[@value.Cell, ActionError]
 
+pub fn dehex_with(@value.Cell, Int, Bool) -> Result[@value.Cell, ActionError]
+
 pub fn deline(@value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn detab(@value.Cell) -> Result[@value.Cell, ActionError]

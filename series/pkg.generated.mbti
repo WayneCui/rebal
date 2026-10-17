@@ -18,6 +18,8 @@ pub fn copy(@value.Cell) -> @value.Cell?
 
 pub fn dehex(@value.Cell) -> @value.Cell?
 
+pub fn dehex_with(@value.Cell, Int, Bool) -> @value.Cell?
+
 pub fn deline(@value.Cell) -> @value.Cell?
 
 pub fn detab(@value.Cell) -> @value.Cell?

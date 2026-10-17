@@ -219,6 +219,7 @@ fn call(
     func.code() != native_compress &&
     func.code() != native_encloak &&
     func.code() != native_decloak &&
+    func.code() != native_dehex &&
     func.code() != native_enhex {
     raise EvalError::Cannot("func")
   }
@@ -229,6 +230,8 @@ fn call(
   } else if func.code() == native_confirm && named(env, active, "with") {
     func.arity() + 1
   } else if func.code() == native_compress && named(env, active, "level") {
+    func.arity() + 1
+  } else if func.code() == native_dehex && named(env, active, "escape") {
     func.arity() + 1
   } else if func.code() == native_call {
     func.arity() + call_extra(env, active)
@@ -283,6 +286,8 @@ fn call(
     (perform_decloak(env, args[0], args[1], active), cursor)
   } else if func.code() == native_enhex {
     (perform_enhex(env, args[0], active), cursor)
+  } else if func.code() == native_dehex {
+    (perform_dehex(env, args, active), cursor)
   } else if func.code() == 0 {
     (call_user(env, func, args, active), cursor)
   } else {
@@ -567,8 +572,6 @@ fn apply(
     from_action(@action.detab(args[0]))
   } else if func.code() == native_entab {
     from_action(@action.entab(args[0]))
-  } else if func.code() == native_dehex {
-    from_action(@action.dehex(args[0]))
   } else if func.code() == native_parse {
     perform_parse(env, args[0], args[1])
   } else if func.code() == native_load {

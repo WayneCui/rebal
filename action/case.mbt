@@ -30,7 +30,18 @@ pub fn entab(cell : @value.Cell) -> Result[@value.Cell, ActionError] {
 
 ///|
 pub fn dehex(cell : @value.Cell) -> Result[@value.Cell, ActionError] {
-  changed_text(cell, "dehex", fn(value) { @series.dehex(value) })
+  dehex_with(cell, '%'.to_int(), false)
+}
+
+///|
+pub fn dehex_with(
+  cell : @value.Cell,
+  escape : Int,
+  uri : Bool,
+) -> Result[@value.Cell, ActionError] {
+  changed_text(cell, "dehex", fn(value) {
+    @series.dehex_with(value, escape, uri)
+  })
 }
 
 ///|
