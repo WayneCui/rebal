@@ -345,6 +345,23 @@ test "crypt chacha20-poly1305 seals a tls record" {
 }
 
 ///|
+test "crypt aes-128-ccm appends the tag on write" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "port: open crypt://aes-128-ccm\nmodify port 'key #{C0C1C2C3C4C5C6C7C8C9CACBCCCDCECF}\nmodify port 'iv #{00000003020100A0A1A2A3A4A5}\nmodify port 'tag-length 8\nmodify port 'aad-length 8\nwrite port #{0102030405060708DEADBEAFDEADBEAF}\ncipher: take port\nmodify port 'direction 'decrypt\nwrite port #{01020304050607088E28233EB366D372A7B0AA6A5A3DD56D}\n(reduce [cipher take port]) = reduce [#{8E28233EB366D372A7B0AA6A5A3DD56D} #{DEADBEAFDEADBEAF}]",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "port: open crypt://aes-128-ccm\nmodify port 'key #{90929a4b0ac65b350ad1591611fe4829}\nmodify port 'iv #{5a8aa485c316e9403aff859fbb}\nplain: #{4bfe4e35784f0a65b545477e5e2f4bae0e1e6fa717eaf2cb}\ncipher: take write port plain\nmodify port 'direction 'decrypt\nback: take write port cipher\n(reduce [cipher back]) = reduce [#{a16a2e741f1cd9717285b6d882c1fc53655e9773761ad697} plain]",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "crypt rejects a cipher that is not wired yet" {
   let env = @eval.Env::new()
   let missing = try {
