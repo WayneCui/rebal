@@ -37,4 +37,10 @@ test "decode crt reads the Google authority certificate" {
     )
     is @value.Logic(true),
   )
+  assert_true(
+    @eval.run(
+      env, "(cert/extensions/subjectAltName) = reduce [false [{www.google.com}]]",
+    )
+    is @value.Logic(true),
+  )
 }

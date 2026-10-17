@@ -209,10 +209,9 @@ fn append_extension(
         if cursor + 1 < items.length() &&
           word_is(env, items[cursor], "octet_string") {
           block.push_item(name) |> ignore
-          let value = list_block([
-            @value.Logic(critical),
-            extension_value(env, items[cursor + 1]),
-          ])
+          let decoded = extension_value(env, items[cursor + 1])
+          let shown = subject_names(env, name, decoded)
+          let value = list_block([@value.Logic(critical), shown])
           block.push_item(value) |> ignore
         }
       }
@@ -229,8 +228,67 @@ fn critical_flag(cell : @value.Cell) -> Bool {
 }
 
 ///|
-/// An octet that opens with SEQUENCE is decoded. The name is not rewritten:
-/// the codec's `extKeyUsage` arm does not match `extendedKeyUsage`.
+/// `subjectAltName` keeps each leading dNSName as a string.
+/// The codec's `extKeyUsage` arm does not match `extendedKeyUsage`.
+fn subject_names(
+  env : Env,
+  name : @value.Cell,
+  decoded : @value.Cell,
+) -> @value.Cell {
+  let alt = match name {
+    @value.Sym(_, lexeme) => env.symbols.canon(lexeme.sym()) == "subjectaltname"
+    _ => false
+  }
+  if alt {
+    match dns_names(env, decoded) {
+      Some(names) => names
+      None => decoded
+    }
+  } else {
+    decoded
+  }
+}
+
+///|
+fn dns_names(env : Env, decoded : @value.Cell) -> @value.Cell? {
+  match block_items(decoded) {
+    Some(items) =>
+      if items.length() >= 2 && word_is(env, items[0], "sequence") {
+        Some(leading_dns(env, items[1]))
+      } else {
+        None
+      }
+    None => None
+  }
+}
+
+///|
+fn leading_dns(env : Env, body : @value.Cell) -> @value.Cell {
+  let block = @value.Series::block()
+  match block_items(body) {
+    Some(items) => {
+      let mut index = 0
+      let mut reading = true
+      while reading && index + 1 < items.length() {
+        if word_is(env, items[index], "cs2") {
+          match binary_of(items[index + 1]) {
+            Some(bytes) =>
+              block.push_item(text_series(latin_text(bytes))) |> ignore
+            None => reading = false
+          }
+          index = index + 2
+        } else {
+          reading = false
+        }
+      }
+    }
+    None => ()
+  }
+  @value.Seq(block, 0)
+}
+
+///|
+/// An octet that opens with SEQUENCE is decoded.
 fn extension_value(
   env : Env,
   cell : @value.Cell,
