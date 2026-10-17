@@ -2,12 +2,17 @@
 /// `decode 'ssh-key`. An `ssh-rsa` blob becomes `#(handle! rsa)`.
 /// Anything else is the codec dispatcher's `no-codec` error: the Rebol
 /// decoder returns `none`, and `decode` turns that into an error.
-fn decode_ssh_key(value : @value.Cell) -> @value.Cell raise EvalError {
+fn decode_ssh_key(
+  env : Env,
+  value : @value.Cell,
+) -> @value.Cell raise EvalError {
   let bytes = payload_bytes(value, "decode")
   match read_pem(latin_text(bytes)) {
     Some(pem) =>
       if pem.label == "SSH2 PUBLIC KEY" {
         rsa_handle(pem.bytes)
+      } else if pem.label == "RSA PRIVATE KEY" {
+        rsa_private_handle(env, pem.bytes)
       } else {
         raise EvalError::Caused("no-codec", "ssh-key")
       }
@@ -44,6 +49,77 @@ fn rsa_handle(bytes : Array[Int]) -> @value.Cell raise EvalError {
         raise EvalError::Caused("no-codec", "ssh-key")
       }
     None => raise EvalError::Caused("no-codec", "ssh-key")
+  }
+}
+
+///|
+/// PKCS#1 `RSA PRIVATE KEY`: version, modulus, exponent, then `d`, `p`, and `q`.
+fn rsa_private_handle(
+  env : Env,
+  bytes : Array[Int],
+) -> @value.Cell raise EvalError {
+  let numbers = match block_items(decode_der(env, binary_cell(bytes))) {
+    Some(outer) =>
+      if outer.length() >= 2 && word_named(outer[0], "sequence") {
+        private_numbers(outer[1])
+      } else {
+        None
+      }
+    None => None
+  }
+  match numbers {
+    Some(parts) =>
+      match
+        @value.RsaKey::from_private(parts.0, parts.1, parts.2, parts.3, parts.4) {
+        Some(key) => @value.Handle(key)
+        None => raise EvalError::Caused("no-codec", "ssh-key")
+      }
+    None => raise EvalError::Caused("no-codec", "ssh-key")
+  }
+}
+
+///|
+fn private_numbers(
+  body : @value.Cell,
+) -> (Array[Int], Array[Int], Array[Int], Array[Int], Array[Int])? {
+  match block_items(body) {
+    Some(items) =>
+      if items.length() >= 12 {
+        match integer_bytes(items, 3) {
+          None => None
+          Some(n) =>
+            match integer_bytes(items, 5) {
+              None => None
+              Some(e) =>
+                match integer_bytes(items, 7) {
+                  None => None
+                  Some(d) =>
+                    match integer_bytes(items, 9) {
+                      None => None
+                      Some(p) =>
+                        match integer_bytes(items, 11) {
+                          None => None
+                          Some(q) => Some((n, e, d, p, q))
+                        }
+                    }
+                }
+            }
+        }
+      } else {
+        None
+      }
+    None => None
+  }
+}
+
+///|
+fn integer_bytes(items : Array[@value.Cell], slot : Int) -> Array[Int]? {
+  if slot < 1 || slot >= items.length() {
+    None
+  } else if word_named(items[slot - 1], "integer") {
+    binary_of(items[slot])
+  } else {
+    None
   }
 }
 

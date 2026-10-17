@@ -221,7 +221,11 @@ pub fn PortValue::set_opened(Self, Bool) -> Unit
 pub struct RsaKey {
   n : Array[Int]
   e : Array[Int]
+  d : Array[Int]
+  p : Array[Int]
+  q : Array[Int]
 }
+pub fn RsaKey::from_private(Array[Int], Array[Int], Array[Int], Array[Int], Array[Int]) -> Self?
 pub fn RsaKey::new(Array[Int], Array[Int]) -> Self?
 pub fn RsaKey::same(Self, Self) -> Bool
 

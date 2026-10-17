@@ -46,6 +46,8 @@ fn perform_load(env : Env, source : @value.Cell) -> @value.Cell raise EvalError 
       Some(pem) => pem_block(env, pem)
       None => @value.None
     }
+  } else if key_file(source) {
+    decode_ssh_key(env, text_series(read_file(loaded_path(source))))
   } else {
     singular(drop_header(load(env, source_text(source))))
   }
@@ -61,6 +63,20 @@ fn pkix_file(source : @value.Cell) -> Bool raise EvalError {
           let name = text_from(suffix, index).to_lower()
           name == ".pem" || name == ".ssh" || name == ".certsigningrequest"
         }
+        _ => false
+      }
+    _ => false
+  }
+}
+
+///|
+/// %.key is an SSH key, as in codec-ssh-key.reb.
+fn key_file(source : @value.Cell) -> Bool raise EvalError {
+  match source {
+    @value.Seq(series, _) if series.datatype() == @value.File =>
+      match perform_suffix(source) {
+        @value.Seq(suffix, index) =>
+          text_from(suffix, index).to_lower() == ".key"
         _ => false
       }
     _ => false

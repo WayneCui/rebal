@@ -46,7 +46,7 @@ fn perform_decode(
     if binary {
       raise EvalError::Cannot("decode")
     }
-    return decode_ssh_key(args[1])
+    return decode_ssh_key(env, args[1])
   }
   if kind != "pkix" {
     raise EvalError::Cannot("access")
