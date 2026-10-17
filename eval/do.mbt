@@ -215,7 +215,8 @@ fn call(
     func.code() != native_now &&
     func.code() != native_clean_path &&
     func.code() != native_make_dir &&
-    func.code() != native_confirm {
+    func.code() != native_confirm &&
+    func.code() != native_compress {
     raise EvalError::Cannot("func")
   }
   let args : Array[@value.Cell] = []
@@ -223,6 +224,8 @@ fn call(
   let count = if func.code() == native_find && named(env, active, "part") {
     func.arity() + 1
   } else if func.code() == native_confirm && named(env, active, "with") {
+    func.arity() + 1
+  } else if func.code() == native_compress && named(env, active, "level") {
     func.arity() + 1
   } else if func.code() == native_call {
     func.arity() + call_extra(env, active)
@@ -269,6 +272,8 @@ fn call(
     (perform_ask(args[0]), cursor)
   } else if func.code() == native_confirm {
     (perform_confirm(env, args, active), cursor)
+  } else if func.code() == native_compress {
+    (perform_compress(env, args, active), cursor)
   } else if func.code() == 0 {
     (call_user(env, func, args, active), cursor)
   } else {
@@ -595,8 +600,6 @@ fn apply(
     perform_debase(args[0], args[1])
   } else if func.code() == native_checksum {
     perform_checksum(env, args[0], args[1])
-  } else if func.code() == native_compress {
-    perform_compress(env, args[0], args[1])
   } else if func.code() == native_decompress {
     perform_decompress(env, args[0], args[1])
   } else {

@@ -22,16 +22,41 @@ extern "C" fn c_zlib_decompress(
 /// Compresses a string or a binary. The method word is `zlib`, `deflate`, or `gzip`.
 fn perform_compress(
   env : Env,
-  data : @value.Cell,
-  kind : @value.Cell,
+  args : Array[@value.Cell],
+  active : Array[Int],
 ) -> @value.Cell raise EvalError {
-  let window = press_window(env, kind, "compress")
-  let bytes = payload_bytes(data, "compress")
-  let packed = c_zlib_compress(latin_text(bytes), bytes.length(), -1, window)
+  let window = press_window(env, args[1], "compress")
+  let level = compress_level(env, args, active)
+  let bytes = payload_bytes(args[0], "compress")
+  let packed = c_zlib_compress(latin_text(bytes), bytes.length(), level, window)
   if c_zlib_code() != 0 {
     raise EvalError::Cannot("compress")
   }
   binary_cell(codes_of(packed))
+}
+
+///|
+fn compress_level(
+  env : Env,
+  args : Array[@value.Cell],
+  active : Array[Int],
+) -> Int raise EvalError {
+  let mut custom = false
+  for sym in active {
+    if env.symbols.canon(sym) == "level" {
+      custom = true
+    } else {
+      raise EvalError::Cannot("compress")
+    }
+  }
+  if !custom {
+    -1
+  } else {
+    match args[2] {
+      @value.Integer(n) if n >= 0L && n <= 9L => n.to_int()
+      _ => raise EvalError::Cannot("compress")
+    }
+  }
 }
 
 ///|
