@@ -322,6 +322,29 @@ test "crypt chacha20 encrypts a short tail in the same write" {
 }
 
 ///|
+test "crypt chacha20-poly1305 seals a tls record" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "port: open crypt:chacha20-poly1305\nmodify port 'key #{438D7027FD611C1A5CD532D1151665EA3BB925CF1F37453C109790B604E7A0C4}\nmodify port 'iv #{9F45E14C213A3719186DDF50}\nwrite port #{00000000000000001603030010}\nwrite port #{1400000C89F6A49D54518857D140BE74}\ncipher: read port\nmac: take port\nout: open crypt://chacha20-poly1305#decrypt\nmodify out 'key #{438D7027FD611C1A5CD532D1151665EA3BB925CF1F37453C109790B604E7A0C4}\nmodify out 'iv #{9F45E14C213A3719186DDF50}\nwrite out #{00000000000000001603030010}\nwrite out cipher\nplain: read out\n(reduce [cipher mac plain take out]) = reduce [#{AE84B0499E0B7837027C6FD712A68894} #{3604F4477DCA0C6856559D1DD2EEC03C} #{1400000C89F6A49D54518857D140BE74} mac]",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "port: open crypt://chacha20-poly1305\nmodify port 'key #{AE8A57A15387FD92E9DAA50FECD6CA31044A7EEC9459EC9C6ED6A93EE4F6CC42}\nmodify port 'iv #{F01A5EF18B11C15FB97AE808}\nwrite port #{00000000000000001603030010000000}\nwrite port #{DEADBEAF}\nwrite port #{0BADCAFE}\n(take port) = #{E3B37D390075D5A09549BA5853B40E0A8368918B7DDD425A}",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "port: open crypt://chacha20-poly1305\nmodify port 'key #{AE8A57A15387FD92E9DAA50FECD6CA31044A7EEC9459EC9C6ED6A93EE4F6CC42}\nmodify port 'iv #{F01A5EF18B11C15FB97AE808}\nwrite port #{00000000000000001603030010000000}\nwrite port #{DEADBEAF}\nwrite port #{0BADCAFE}\ncipher: read port\nmac: read update port\nout: open crypt://chacha20-poly1305#decrypt\nmodify out 'key #{AE8A57A15387FD92E9DAA50FECD6CA31044A7EEC9459EC9C6ED6A93EE4F6CC42}\nmodify out 'iv #{F01A5EF18B11C15FB97AE808}\nwrite out #{00000000000000001603030010000000}\nwrite out cipher\n(reduce [cipher mac read out read update out]) = reduce [#{E3B37D390075D5A0} #{9549BA5853B40E0A8368918B7DDD425A} #{DEADBEAF0BADCAFE} mac]",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "crypt rejects a cipher that is not wired yet" {
   let env = @eval.Env::new()
   let missing = try {

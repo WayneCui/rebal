@@ -17,6 +17,17 @@ priv struct CryptSlot {
   mut chacha_counter : UInt64
   mut chacha_off : Int
   mut chacha_stream : Array[Int]
+  mut poly : Bool
+  mut poly_key : Array[Int]
+  mut poly_iv : Array[Int]
+  mut poly_aad : Array[Int]
+  mut poly_cipher : Array[Int]
+  mut poly_nonce : Array[Int]
+  mut poly_counter : UInt64
+  mut poly_off : Int
+  mut poly_stream : Array[Int]
+  mut poly_started : Bool
+  mut poly_done : Bool
   mut iv_ready : Bool
   mut iv : Array[Int]
   mut rounds : Array[Int]
@@ -73,6 +84,7 @@ fn crypt_open(env : Env, port : @value.Cell) -> @value.Cell raise EvalError {
               kind.1,
               kind.2,
               kind.3,
+              kind.4,
             )
             value.set_handle(handle)
             errdefer (if !value.is_open() {
@@ -204,6 +216,9 @@ fn crypt_set_direction(
     chacha_rewind(slot)
     slot.pending = []
   }
+  if slot.poly {
+    poly_reset(slot)
+  }
 }
 
 ///|
@@ -219,11 +234,13 @@ fn crypt_set_algorithm(
           slot.cbc = kind.1
           slot.camellia = kind.2
           slot.chacha = kind.3
+          slot.poly = kind.4
           slot.key_ready = false
           slot.rounds = []
           slot.cam_enc = []
           slot.cam_dec = []
           chacha_blank(slot)
+          poly_blank(slot)
           slot.pending = []
         }
         None => raise EvalError::Cannot("modify")
@@ -233,34 +250,36 @@ fn crypt_set_algorithm(
 }
 
 ///|
-/// Key length, CBC, Camellia, then ChaCha20.
-fn cipher_kind(name : String) -> (Int, Bool, Bool, Bool)? {
+/// Key length, CBC, Camellia, ChaCha20, then ChaCha20-Poly1305.
+fn cipher_kind(name : String) -> (Int, Bool, Bool, Bool, Bool)? {
   if name == "aes-128-ecb" {
-    Some((16, false, false, false))
+    Some((16, false, false, false, false))
   } else if name == "aes-192-ecb" {
-    Some((24, false, false, false))
+    Some((24, false, false, false, false))
   } else if name == "aes-256-ecb" {
-    Some((32, false, false, false))
+    Some((32, false, false, false, false))
   } else if name == "aes-128-cbc" {
-    Some((16, true, false, false))
+    Some((16, true, false, false, false))
   } else if name == "aes-192-cbc" {
-    Some((24, true, false, false))
+    Some((24, true, false, false, false))
   } else if name == "aes-256-cbc" {
-    Some((32, true, false, false))
+    Some((32, true, false, false, false))
   } else if name == "camellia-128-ecb" {
-    Some((16, false, true, false))
+    Some((16, false, true, false, false))
   } else if name == "camellia-128-cbc" {
-    Some((16, true, true, false))
+    Some((16, true, true, false, false))
   } else if name == "camellia-192-ecb" {
-    Some((24, false, true, false))
+    Some((24, false, true, false, false))
   } else if name == "camellia-192-cbc" {
-    Some((24, true, true, false))
+    Some((24, true, true, false, false))
   } else if name == "camellia-256-ecb" {
-    Some((32, false, true, false))
+    Some((32, false, true, false, false))
   } else if name == "camellia-256-cbc" {
-    Some((32, true, true, false))
+    Some((32, true, true, false, false))
   } else if name == "chacha20" {
-    Some((32, false, false, true))
+    Some((32, false, false, true, false))
+  } else if name == "chacha20-poly1305" {
+    Some((32, false, false, false, true))
   } else {
     None
   }
@@ -278,6 +297,9 @@ fn crypt_set_iv(slot : CryptSlot, value : @value.Cell) -> Unit raise EvalError {
       if slot.chacha {
         chacha_clear(slot)
       }
+      if slot.poly {
+        poly_set_iv(slot, [])
+      }
     }
     @value.Seq(series, index) if series.datatype() == @value.Binary => {
       let bytes = bytes_from(series, index)
@@ -291,6 +313,9 @@ fn crypt_set_iv(slot : CryptSlot, value : @value.Cell) -> Unit raise EvalError {
       if slot.chacha && bytes.length() > 0 {
         chacha_set_iv(slot, bytes)
       }
+      if slot.poly && bytes.length() > 0 {
+        poly_set_iv(slot, bytes)
+      }
     }
     _ => raise EvalError::Cannot("modify")
   }
@@ -300,6 +325,10 @@ fn crypt_set_iv(slot : CryptSlot, value : @value.Cell) -> Unit raise EvalError {
 /// Pads a short block with zeros, then encrypts or decrypts it.
 fn crypt_update(port : @value.Cell) -> @value.Cell raise EvalError {
   let slot = crypt_slot(port)
+  if slot.poly {
+    poly_finish(slot)
+    return port
+  }
   if slot.pending.length() > 0 {
     if !slot.key_ready || (slot.cbc && !slot.iv_ready) {
       raise EvalError::Cannot("update")
@@ -345,6 +374,10 @@ fn crypt_absorb(slot : CryptSlot, bytes : Array[Int]) -> Unit raise EvalError {
     chacha_absorb(slot, bytes)
     return
   }
+  if slot.poly {
+    poly_absorb(slot, bytes)
+    return
+  }
   for byte in bytes {
     slot.pending.push(byte)
     if slot.pending.length() == 16 {
@@ -362,6 +395,9 @@ fn install_key(slot : CryptSlot, key : Array[Int]) -> Unit raise EvalError {
   if slot.chacha {
     slot.chacha_key = key
     chacha_rewind(slot)
+  } else if slot.poly {
+    slot.poly_key = key
+    poly_reset(slot)
   } else if slot.camellia && slot.key_len == 16 {
     slot.cam_enc = camellia128_subkeys(key)
     slot.cam_dec = camellia128_decrypt_keys(slot.cam_enc)
@@ -536,12 +572,142 @@ fn zero_nonce() -> Array[Int] {
 }
 
 ///|
+/// The first write is additional data and produces no output. Later writes
+/// are the message. `update` appends the 16-byte tag.
+fn poly_absorb(slot : CryptSlot, bytes : Array[Int]) -> Unit {
+  if bytes.length() == 0 {
+    return
+  }
+  if !slot.poly_started {
+    poly_begin(slot, bytes)
+  } else {
+    chacha_emit(slot, poly_apply(slot, bytes))
+  }
+}
+
+///|
+fn poly_begin(slot : CryptSlot, aad : Array[Int]) -> Unit {
+  slot.output = []
+  slot.pending = []
+  slot.poly_aad = aad
+  slot.poly_cipher = []
+  slot.poly_nonce = poly_nonce(slot.poly_iv, aad)
+  slot.poly_counter = 1UL
+  slot.poly_off = 0
+  slot.poly_stream = []
+  slot.poly_started = true
+  slot.poly_done = false
+}
+
+///|
+/// XOR the first eight additional-data bytes into the tail of the vector.
+fn poly_nonce(iv : Array[Int], aad : Array[Int]) -> Array[Int] {
+  let nonce = zero_nonce()
+  let copied = if iv.length() > 12 { 12 } else { iv.length() }
+  let mut index = 0
+  while index < copied {
+    nonce[index] = iv[index]
+    index = index + 1
+  }
+  let mixed = if aad.length() > 8 { 8 } else { aad.length() }
+  index = 0
+  while index < mixed {
+    let at = 12 - mixed + index
+    nonce[at] = nonce[at] ^ aad[index]
+    index = index + 1
+  }
+  nonce
+}
+
+///|
+fn poly_apply(slot : CryptSlot, data : Array[Int]) -> Array[Int] {
+  let out : Array[Int] = []
+  for byte in data {
+    if slot.poly_off == 0 {
+      slot.poly_stream = chacha20_block(
+        slot.poly_key,
+        slot.poly_counter,
+        slot.poly_nonce,
+      )
+    }
+    let mixed = byte ^ slot.poly_stream[slot.poly_off]
+    out.push(mixed)
+    if slot.encrypting {
+      slot.poly_cipher.push(mixed)
+    } else {
+      slot.poly_cipher.push(byte)
+    }
+    slot.poly_off = slot.poly_off + 1
+    if slot.poly_off == 64 {
+      slot.poly_off = 0
+      slot.poly_counter = slot.poly_counter + 1UL
+    }
+  }
+  out
+}
+
+///|
+fn poly_finish(slot : CryptSlot) -> Unit raise EvalError {
+  if !slot.key_ready {
+    raise EvalError::Cannot("update")
+  }
+  if slot.poly_done {
+    return
+  }
+  if !slot.poly_started {
+    poly_begin(slot, [])
+  }
+  let tag = poly1305_tag(
+    slot.poly_key,
+    slot.poly_nonce,
+    slot.poly_aad,
+    slot.poly_cipher,
+  )
+  chacha_emit(slot, tag)
+  slot.poly_done = true
+}
+
+///|
+fn poly_set_iv(slot : CryptSlot, bytes : Array[Int]) -> Unit {
+  let iv = zero_nonce()
+  let copied = if bytes.length() > 12 { 12 } else { bytes.length() }
+  let mut index = 0
+  while index < copied {
+    iv[index] = bytes[index]
+    index = index + 1
+  }
+  slot.poly_iv = iv
+  poly_reset(slot)
+}
+
+///|
+fn poly_reset(slot : CryptSlot) -> Unit {
+  slot.poly_aad = []
+  slot.poly_cipher = []
+  slot.poly_nonce = zero_nonce()
+  slot.poly_counter = 1UL
+  slot.poly_off = 0
+  slot.poly_stream = []
+  slot.poly_started = false
+  slot.poly_done = false
+  slot.pending = []
+}
+
+///|
+fn poly_blank(slot : CryptSlot) -> Unit {
+  slot.poly_key = []
+  slot.poly_iv = zero_nonce()
+  poly_reset(slot)
+}
+
+///|
 fn crypt_alloc(
   decrypting : Bool,
   key_len : Int,
   cbc : Bool,
   camellia : Bool,
   chacha : Bool,
+  poly : Bool,
 ) -> Int {
   let mut index = 0
   let mut found = -1
@@ -552,10 +718,18 @@ fn crypt_alloc(
     index = index + 1
   }
   if found >= 0 {
-    crypt_reset(crypts.slots[found], decrypting, key_len, cbc, camellia, chacha)
+    crypt_reset(
+      crypts.slots[found],
+      decrypting,
+      key_len,
+      cbc,
+      camellia,
+      chacha,
+      poly,
+    )
     found
   } else {
-    let slot = crypt_fresh(decrypting, key_len, cbc, camellia, chacha)
+    let slot = crypt_fresh(decrypting, key_len, cbc, camellia, chacha, poly)
     crypts.slots.push(slot)
     crypts.slots.length() - 1
   }
@@ -568,6 +742,7 @@ fn crypt_fresh(
   cbc : Bool,
   camellia : Bool,
   chacha : Bool,
+  poly : Bool,
 ) -> CryptSlot {
   {
     live: true,
@@ -585,6 +760,17 @@ fn crypt_fresh(
     chacha_counter: 0UL,
     chacha_off: 0,
     chacha_stream: [],
+    poly,
+    poly_key: [],
+    poly_iv: zero_nonce(),
+    poly_aad: [],
+    poly_cipher: [],
+    poly_nonce: zero_nonce(),
+    poly_counter: 1UL,
+    poly_off: 0,
+    poly_stream: [],
+    poly_started: false,
+    poly_done: false,
     iv_ready: false,
     iv: [],
     rounds: [],
@@ -601,6 +787,7 @@ fn crypt_reset(
   cbc : Bool,
   camellia : Bool,
   chacha : Bool,
+  poly : Bool,
 ) -> Unit {
   slot.live = true
   slot.encrypting = !decrypting
@@ -611,7 +798,9 @@ fn crypt_reset(
   slot.cam_enc = []
   slot.cam_dec = []
   slot.chacha = chacha
+  slot.poly = poly
   chacha_blank(slot)
+  poly_blank(slot)
   slot.iv_ready = false
   slot.iv = []
   slot.rounds = []
@@ -766,7 +955,14 @@ fn crypt_use_key(slot : CryptSlot, value : @value.Cell) -> Unit raise EvalError 
 ///|
 fn crypt_use_iv(slot : CryptSlot, value : @value.Cell) -> Unit raise EvalError {
   match value {
-    @value.None => if slot.chacha { chacha_clear(slot) }
+    @value.None => {
+      if slot.chacha {
+        chacha_clear(slot)
+      }
+      if slot.poly {
+        poly_set_iv(slot, [])
+      }
+    }
     @value.Seq(series, index) if series.datatype() == @value.Binary => {
       let bytes = bytes_from(series, index)
       if slot.cbc {
@@ -778,6 +974,9 @@ fn crypt_use_iv(slot : CryptSlot, value : @value.Cell) -> Unit raise EvalError {
       }
       if slot.chacha && bytes.length() > 0 {
         chacha_set_iv(slot, bytes)
+      }
+      if slot.poly && bytes.length() > 0 {
+        poly_set_iv(slot, bytes)
       }
     }
     _ => raise EvalError::Cannot("open")
