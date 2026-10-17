@@ -19,13 +19,30 @@ fn slot_value(env : Env, lexeme : @value.Lexeme) -> @value.Cell? {
 }
 
 ///|
-fn write_word(env : Env, lexeme : @value.Lexeme, value : @value.Cell) -> Unit {
+fn write_word(
+  env : Env,
+  lexeme : @value.Lexeme,
+  value : @value.Cell,
+) -> Unit raise EvalError {
   match lexeme.binding() {
-    @value.Bound(frame, slot) => frame.set(slot, value)
+    @value.Bound(frame, slot) => store(frame, slot, value)
     @value.Unbound => {
       let slot = env.user.ensure(lexeme.sym())
-      env.user.set(slot, value)
+      store(env.user, slot, value)
     }
+  }
+}
+
+///|
+fn store(
+  frame : @value.Frame,
+  slot : Int,
+  value : @value.Cell,
+) -> Unit raise EvalError {
+  if frame.set(slot, value) {
+    ()
+  } else {
+    raise EvalError::Cannot("protected")
   }
 }
 

@@ -21,11 +21,11 @@ test "the same symbol uses a different slot in each frame" {
   let name = symbols.intern("a")
   let user = @value.Frame::new()
   let user_slot = user.ensure(name)
-  user.set(user_slot, @value.Integer(1L))
+  user.set(user_slot, @value.Integer(1L)) |> ignore
   let func = @value.Frame::new()
   func.ensure(symbols.intern("x")) |> ignore
   let func_slot = func.ensure(name)
-  func.set(func_slot, @value.Integer(2L))
+  func.set(func_slot, @value.Integer(2L)) |> ignore
   assert_true(user_slot != func_slot)
   let block = @value.Series::block()
   block.push_item(word(name, "a", @value.Word)) |> ignore
@@ -47,7 +47,7 @@ test "a miss keeps the binding already on the word" {
   let name = symbols.intern("a")
   let user = @value.Frame::new()
   let slot = user.ensure(name)
-  user.set(slot, @value.Integer(1L))
+  user.set(slot, @value.Integer(1L)) |> ignore
   let block = @value.Series::block()
   block.push_item(word(name, "a", @value.Word)) |> ignore
   let cell = @value.Seq(block, 0)
@@ -65,7 +65,7 @@ test "binding walks nested blocks and paths from the current index" {
   let other = symbols.intern("b")
   let user = @value.Frame::new()
   let slot = user.ensure(name)
-  user.set(slot, @value.Integer(1L))
+  user.set(slot, @value.Integer(1L)) |> ignore
   let inner = @value.Series::block()
   inner.push_item(word(name, "a", @value.SetWord)) |> ignore
   let path = @value.Series::path()
@@ -90,7 +90,7 @@ test "a block that contains itself is bound once" {
   let name = symbols.intern("a")
   let user = @value.Frame::new()
   let slot = user.ensure(name)
-  user.set(slot, @value.Integer(1L))
+  user.set(slot, @value.Integer(1L)) |> ignore
   let block = @value.Series::block()
   let cell = @value.Seq(block, 0)
   block.push_item(cell) |> ignore

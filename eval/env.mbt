@@ -347,6 +347,15 @@ let native_import : Int = 113
 let native_closure : Int = 114
 
 ///|
+let native_protect : Int = 115
+
+///|
+let native_unprotect : Int = 116
+
+///|
+let native_protected_q : Int = 117
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -466,6 +475,9 @@ pub fn Env::new() -> Env {
   define_native(env, "module", 2, false, native_module)
   define_native(env, "import", 1, false, native_import)
   define_native(env, "closure", 2, false, native_closure)
+  define_native(env, "protect", 1, false, native_protect)
+  define_native(env, "unprotect", 1, false, native_unprotect)
+  define_native(env, "protected?", 1, false, native_protected_q)
   install(env, "unset!", @value.Type(@value.Unset))
   install(env, "none!", @value.Type(@value.None))
   install(env, "logic!", @value.Type(@value.Logic))
@@ -511,7 +523,7 @@ pub fn Env::new() -> Env {
 fn install(env : Env, spelling : String, cell : @value.Cell) -> Unit {
   let sym = env.symbols.intern(spelling)
   let slot = env.user.ensure(sym)
-  env.user.set(slot, cell)
+  env.user.set(slot, cell) |> ignore
 }
 
 ///|

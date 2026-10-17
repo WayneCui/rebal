@@ -506,6 +506,12 @@ fn apply(
     perform_module(env, args[0], args[1])
   } else if func.code() == native_import {
     perform_import(env, args[0])
+  } else if func.code() == native_protect {
+    perform_protect(env, args[0], true)
+  } else if func.code() == native_unprotect {
+    perform_protect(env, args[0], false)
+  } else if func.code() == native_protected_q {
+    perform_protected_q(env, args[0])
   } else {
     raise EvalError::Cannot("function")
   }
@@ -610,9 +616,9 @@ fn assign(
   index : Int,
   lexeme : @value.Lexeme,
   value : @value.Cell,
-) -> Unit {
+) -> Unit raise EvalError {
   match lexeme.binding() {
-    @value.Bound(frame, slot) => frame.set(slot, value)
+    @value.Bound(frame, slot) => store(frame, slot, value)
     @value.Unbound => {
       let slot = env.user.ensure(lexeme.sym())
       series.set_item(
@@ -623,7 +629,7 @@ fn assign(
         ),
       )
       |> ignore
-      env.user.set(slot, value)
+      store(env.user, slot, value)
     }
   }
 }

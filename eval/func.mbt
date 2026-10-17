@@ -233,7 +233,7 @@ fn write_slot(
   value : @value.Cell,
 ) -> Unit raise EvalError {
   match frame.find(sym) {
-    Some(slot) => frame.set(slot, value)
+    Some(slot) => store(frame, slot, value)
     None => raise EvalError::Cannot("func")
   }
 }

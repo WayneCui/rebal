@@ -188,7 +188,7 @@ fn write_selector(
       match selector {
         @value.Sym(_, lexeme) =>
           match frame.find(lexeme.sym()) {
-            Some(slot) => frame.set(slot, value)
+            Some(slot) => store(frame, slot, value)
             None => raise EvalError::InvalidPath(lexeme.spelling())
           }
         _ => raise EvalError::InvalidPath("object")

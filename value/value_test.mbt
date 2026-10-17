@@ -43,7 +43,7 @@ test "rebind replaces the slot and keeps the earlier copy" {
   let sym = symbols.intern("x")
   let frame = @value.Frame::new()
   let slot = frame.ensure(sym)
-  frame.set(slot, @value.Integer(3L))
+  frame.set(slot, @value.Integer(3L)) |> ignore
   let series = @value.Series::block()
   let original = @value.Sym(@value.Word, @value.Lexeme::make(sym, "x"))
   series.push_item(original) |> ignore

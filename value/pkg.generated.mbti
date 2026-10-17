@@ -127,14 +127,17 @@ pub fn ErrorValue::make(String, String, String) -> Self
 pub struct Frame {
   slots : Array[Cell]
   sym_to_slot : Map[Int, Int]
+  locked : Array[Bool]
 }
 pub fn Frame::copy_shape(Self) -> Self
 pub fn Frame::ensure(Self, Int) -> Int
 pub fn Frame::find(Self, Int) -> Int?
 pub fn Frame::get(Self, Int) -> Cell?
+pub fn Frame::is_locked(Self, Int) -> Bool
 pub fn Frame::length(Self) -> Int
+pub fn Frame::lock(Self, Int, Bool) -> Unit
 pub fn Frame::new() -> Self
-pub fn Frame::set(Self, Int, Cell) -> Unit
+pub fn Frame::set(Self, Int, Cell) -> Bool
 
 pub struct Func {
   params : Array[Int]

@@ -38,7 +38,7 @@ fn perform_import(env : Env, cell : @value.Cell) -> @value.Cell raise EvalError 
             match loaded.frame.get(slot) {
               Some(value) => {
                 let user_slot = env.user.ensure(sym)
-                env.user.set(user_slot, value)
+                store(env.user, user_slot, value)
               }
               None => ()
             }

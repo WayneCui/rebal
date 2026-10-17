@@ -180,7 +180,7 @@ fn foreach_items(
   while running && cursor < series.length() {
     match series.item(cursor) {
       Some(item) => {
-        frame.set(slot, item.snapshot())
+        store(frame, slot, item.snapshot())
         match eval_body(env, body, "foreach") {
           Stop => {
             kept = @value.Cell::None
@@ -214,7 +214,7 @@ fn foreach_chars(
   while running && cursor < series.length() {
     match series.code(cursor) {
       Some(code) => {
-        frame.set(slot, @value.Char(code))
+        store(frame, slot, @value.Char(code))
         match eval_body(env, body, "foreach") {
           Stop => {
             kept = @value.Cell::None

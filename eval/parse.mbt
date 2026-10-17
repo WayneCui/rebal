@@ -882,7 +882,7 @@ fn keep_rule(
 }
 
 ///|
-fn open_collect(env : Env, target : @value.Lexeme?) -> Unit {
+fn open_collect(env : Env, target : @value.Lexeme?) -> Unit raise EvalError {
   let block = @value.Series::block()
   match target {
     Some(lexeme) => {
@@ -1656,7 +1656,7 @@ fn write_capture(
   begin : Int,
   end : Int,
   copying : Bool,
-) -> Unit {
+) -> Unit raise EvalError {
   let value = if copying {
     copy_span(input, begin, end)
   } else {
