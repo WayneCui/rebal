@@ -1,6 +1,21 @@
 ///|
 /// The boot constants from base-constants. `system` is not built yet, so
 /// `REBOL`, `sys`, and `lib` stay as they were installed.
+fn boot_default(env : Env) -> Unit {
+  try eval(env, load(env, default_script())) |> ignore catch {
+    error => abort(error.id())
+  }
+}
+
+///|
+fn default_script() -> String {
+  "default: func ['word [word! set-word! lit-word!] value] [\n" +
+  "unless all [value? word not none? get word] [set word :value]\n" +
+  ":value\n" +
+  "]\n"
+}
+
+///|
 fn boot_constants(env : Env) -> Unit {
   try eval(env, load(env, constants_script())) |> ignore catch {
     error => abort(error.id())

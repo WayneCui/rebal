@@ -226,13 +226,23 @@ fn call(
   } else {
     func.arity()
   }
-  for _ in 0..<count {
+  let quoted = func.lits()
+  for nth in 0..<count {
     if cursor >= series.length() {
       raise EvalError::MissingArg("argument")
+    } else if func.code() == 0 && nth < quoted.length() && quoted[nth] {
+      match series.item(cursor) {
+        Some(cell) => {
+          args.push(cell)
+          cursor = cursor + 1
+        }
+        None => raise EvalError::MissingArg("argument")
+      }
+    } else {
+      let (arg, next) = do_next_at(env, series, cursor)
+      args.push(arg)
+      cursor = next
     }
-    let (arg, next) = do_next_at(env, series, cursor)
-    args.push(arg)
-    cursor = next
   }
   if func.code() == native_find {
     (perform_find(env, args, active), cursor)
@@ -410,6 +420,8 @@ fn apply(
     perform_in(env, args[0], args[1])
   } else if func.code() == native_value_q {
     perform_value_q(env, args[0])
+  } else if func.code() == native_none_q {
+    perform_none_q(args[0])
   } else if func.code() == native_unset_q {
     perform_unset_q(env, args[0])
   } else if func.code() == native_bind {

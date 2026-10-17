@@ -392,6 +392,9 @@ let native_function : Int = 128
 let native_use : Int = 129
 
 ///|
+let native_none_q : Int = 130
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -455,6 +458,7 @@ pub fn Env::new() -> Env {
   define_native(env, "unset", 1, false, native_unset)
   define_native(env, "in", 2, false, native_in)
   define_native(env, "value?", 1, false, native_value_q)
+  define_native(env, "none?", 1, false, native_none_q)
   define_native(env, "unset?", 1, false, native_unset_q)
   define_native(env, "bind", 2, false, native_bind)
   define_native(env, "unbind", 1, false, native_unbind)
@@ -567,6 +571,7 @@ pub fn Env::new() -> Env {
   install(env, "error!", @value.Type(@value.Error))
   install(env, "sys", @value.Object(@value.Frame::new()))
   boot_constants(env)
+  boot_default(env)
   env
 }
 

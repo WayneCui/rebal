@@ -144,6 +144,7 @@ pub fn Frame::set(Self, Int, Cell) -> Bool
 pub struct Func {
   params : Array[Int]
   types : Array[Array[Datatype]]
+  lits : Array[Bool]
   refines : Array[Int]
   refine_args : Array[Array[Int]]
   body : Series
@@ -159,7 +160,8 @@ pub fn Func::code(Self) -> Int
 pub fn Func::frame(Self) -> Frame
 pub fn Func::is_closure(Self) -> Bool
 pub fn Func::is_infix(Self) -> Bool
-pub fn Func::make(Array[Int], Array[Array[Datatype]], Array[Int], Array[Array[Int]], Series, Bool, Frame, Bool) -> Self
+pub fn Func::lits(Self) -> Array[Bool]
+pub fn Func::make(Array[Int], Array[Array[Datatype]], Array[Bool], Array[Int], Array[Array[Int]], Series, Bool, Frame, Bool) -> Self
 pub fn Func::native(Int, Bool, Int) -> Self
 pub fn Func::params(Self) -> Array[Int]
 pub fn Func::refine_args(Self) -> Array[Array[Int]]

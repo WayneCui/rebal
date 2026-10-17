@@ -77,6 +77,11 @@ fn perform_unset(env : Env, word : @value.Cell) -> @value.Cell raise EvalError {
 }
 
 ///|
+fn perform_none_q(value : @value.Cell) -> @value.Cell {
+  @value.Logic(value is @value.None)
+}
+
+///|
 fn perform_value_q(
   env : Env,
   word : @value.Cell,

@@ -30,6 +30,7 @@ fn build_func(
         @value.Func::make(
           names.args,
           names.types,
+          names.lits,
           names.refines,
           names.refine_args,
           series,
@@ -47,6 +48,7 @@ fn build_func(
 priv struct FuncSpec {
   args : Array[Int]
   types : Array[Array[@value.Datatype]]
+  lits : Array[Bool]
   locals : Array[Int]
   refines : Array[Int]
   refine_args : Array[Array[Int]]
@@ -61,6 +63,7 @@ fn spec_names(env : Env, spec : @value.Cell) -> FuncSpec raise EvalError {
       let built : FuncSpec = {
         args: [],
         types: [],
+        lits: [],
         locals: [],
         refines: [],
         refine_args: [],
@@ -69,22 +72,26 @@ fn spec_names(env : Env, spec : @value.Cell) -> FuncSpec raise EvalError {
       let mut mode = 0
       while cursor < series.length() {
         match series.item(cursor) {
-          Some(@value.Sym(@value.Word, lexeme)) => {
-            cursor = cursor + 1
-            if mode == 0 {
-              built.args.push(lexeme.sym())
-              built.types.push(arg_types(env, series, cursor))
-              match series.item(cursor) {
-                Some(@value.Seq(block, _)) if block.datatype() == @value.Block =>
-                  cursor = cursor + 1
-                _ => ()
-              }
-            } else if mode < 0 {
-              built.locals.push(lexeme.sym())
-            } else {
-              built.refine_args[mode - 1].push(lexeme.sym())
-            }
-          }
+          Some(@value.Sym(@value.Word, lexeme)) =>
+            cursor = push_param(
+              env,
+              built,
+              mode,
+              lexeme.sym(),
+              false,
+              series,
+              cursor,
+            )
+          Some(@value.Sym(@value.LitWord, lexeme)) =>
+            cursor = push_param(
+              env,
+              built,
+              mode,
+              lexeme.sym(),
+              true,
+              series,
+              cursor,
+            )
           Some(@value.Sym(@value.Refinement, lexeme)) => {
             if lexeme.spelling() == "local" {
               mode = -1
@@ -101,6 +108,36 @@ fn spec_names(env : Env, spec : @value.Cell) -> FuncSpec raise EvalError {
       built
     }
     _ => raise EvalError::Cannot("func")
+  }
+}
+
+///|
+fn push_param(
+  env : Env,
+  built : FuncSpec,
+  mode : Int,
+  sym : Int,
+  lit : Bool,
+  series : @value.Series,
+  cursor : Int,
+) -> Int raise EvalError {
+  let next = cursor + 1
+  if mode == 0 {
+    built.args.push(sym)
+    built.lits.push(lit)
+    built.types.push(arg_types(env, series, next))
+    match series.item(next) {
+      Some(@value.Seq(block, _)) if block.datatype() == @value.Block => next + 1
+      _ => next
+    }
+  } else if lit {
+    raise EvalError::Cannot("func")
+  } else if mode < 0 {
+    built.locals.push(sym)
+    next
+  } else {
+    built.refine_args[mode - 1].push(sym)
+    next
   }
 }
 

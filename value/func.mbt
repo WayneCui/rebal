@@ -2,6 +2,7 @@
 pub struct Func {
   params : Array[Int]
   types : Array[Array[Datatype]]
+  lits : Array[Bool]
   refines : Array[Int]
   refine_args : Array[Array[Int]]
   body : Series
@@ -16,6 +17,7 @@ pub struct Func {
 pub fn Func::make(
   params : Array[Int],
   types : Array[Array[Datatype]],
+  lits : Array[Bool],
   refines : Array[Int],
   refine_args : Array[Array[Int]],
   body : Series,
@@ -23,7 +25,18 @@ pub fn Func::make(
   frame : Frame,
   closure : Bool,
 ) -> Func {
-  { params, types, refines, refine_args, body, infix, code: 0, frame, closure, }
+  {
+    params,
+    types,
+    lits,
+    refines,
+    refine_args,
+    body,
+    infix,
+    code: 0,
+    frame,
+    closure,
+  }
 }
 
 ///|
@@ -35,6 +48,7 @@ pub fn Func::native(arity : Int, infix : Bool, code : Int) -> Func {
   {
     params,
     types: [],
+    lits: [],
     refines: [],
     refine_args: [],
     body: Series::block(),
@@ -76,6 +90,12 @@ pub fn Func::types(self : Func) -> Array[Array[Datatype]] {
 }
 
 ///|
+/// Parallel to `params`. True means that argument is taken without evaluation.
+pub fn Func::lits(self : Func) -> Array[Bool] {
+  self.lits
+}
+
+///|
 pub fn Func::refines(self : Func) -> Array[Int] {
   self.refines
 }
@@ -101,6 +121,7 @@ pub fn Func::as_op(self : Func) -> Func {
   {
     params: self.params,
     types: self.types,
+    lits: self.lits,
     refines: self.refines,
     refine_args: self.refine_args,
     body: self.body,

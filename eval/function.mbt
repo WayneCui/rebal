@@ -28,6 +28,7 @@ fn spec_words(series : @value.Series, index : Int) -> Array[Int] {
   while cursor < series.length() {
     match series.item(cursor) {
       Some(@value.Sym(@value.Word, lexeme))
+      | Some(@value.Sym(@value.LitWord, lexeme))
       | Some(@value.Sym(@value.Refinement, lexeme)) => words.push(lexeme.sym())
       _ => ()
     }
