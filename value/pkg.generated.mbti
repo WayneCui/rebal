@@ -18,6 +18,7 @@ pub(all) enum Cell {
   Integer(Int64)
   Decimal(Double)
   Percent(Double)
+  Pair(Int64, Int64)
   Char(Int)
   Sym(Datatype, Lexeme)
   Seq(Series, Int)
@@ -40,6 +41,7 @@ pub(all) enum Datatype {
   Integer
   Decimal
   Percent
+  Pair
   Char
   Word
   SetWord

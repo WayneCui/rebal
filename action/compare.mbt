@@ -162,6 +162,12 @@ fn number_order(left : @value.Cell, right : @value.Cell) -> Int? {
     (@value.Integer(x), @value.Decimal(y)) => Some(cmp_double(x.to_double(), y))
     (@value.Decimal(x), @value.Integer(y)) => Some(cmp_double(x, y.to_double()))
     (@value.Decimal(x), @value.Decimal(y)) => Some(cmp_double(x, y))
+    (@value.Pair(x, y), @value.Pair(a, b)) =>
+      if x != a {
+        Some(cmp_int64(x, a))
+      } else {
+        Some(cmp_int64(y, b))
+      }
     _ =>
       match (as_double(left), as_double(right)) {
         (Some(x), Some(y)) if left.datatype() == @value.Percent ||

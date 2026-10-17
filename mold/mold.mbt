@@ -44,6 +44,11 @@ fn write_cell(
       @value.Integer(n) => buf.write_string(n.to_string())
       @value.Decimal(n) => buf.write_string(decimal_text(n))
       @value.Percent(n) => buf.write_string(percent_text(n))
+      @value.Pair(x, y) => {
+        buf.write_string(x.to_string())
+        buf.write_char('x')
+        buf.write_string(y.to_string())
+      }
       @value.Char(code) => write_char_value(buf, code, molded)
       @value.Sym(datatype, lexeme) =>
         write_word(buf, datatype, lexeme.spelling())
@@ -336,6 +341,7 @@ pub fn type_name(datatype : @value.Datatype) -> String {
     @value.Integer => "integer!"
     @value.Decimal => "decimal!"
     @value.Percent => "percent!"
+    @value.Pair => "pair!"
     @value.Char => "char!"
     @value.Word => "word!"
     @value.SetWord => "set-word!"

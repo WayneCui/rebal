@@ -10,6 +10,7 @@ fn make_value(
     @value.Type(@value.Percent) => to_percent(spec, true)
     @value.Type(@value.Decimal) => decimal_from(spec)
     @value.Type(@value.Integer) => integer_from(spec)
+    @value.Type(@value.Pair) => to_pair(spec)
     _ => raise EvalError::Cannot("make")
   }
 }

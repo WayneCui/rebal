@@ -94,7 +94,29 @@ fn path_step(
         _ => raise EvalError::InvalidPath("object")
       }
     @value.Seq(series, index) => step_series(series, index, selector)
+    @value.Pair(x, y) => pair_field(x, y, selector)
     _ => raise EvalError::InvalidPath("path")
+  }
+}
+
+///|
+fn pair_field(
+  x : Int64,
+  y : Int64,
+  selector : @value.Cell,
+) -> @value.Cell raise EvalError {
+  match selector {
+    @value.Sym(_, lexeme) =>
+      if lexeme.spelling() == "x" {
+        @value.Integer(x)
+      } else if lexeme.spelling() == "y" {
+        @value.Integer(y)
+      } else {
+        raise EvalError::InvalidPath(lexeme.spelling())
+      }
+    @value.Integer(1L) => @value.Integer(x)
+    @value.Integer(2L) => @value.Integer(y)
+    _ => raise EvalError::InvalidPath("pair")
   }
 }
 

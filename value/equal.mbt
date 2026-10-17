@@ -19,6 +19,7 @@ fn equal_at(left : Cell, right : Cell, depth : Int) -> Bool {
       (Integer(a), Integer(b)) => a == b
       (Decimal(a), Decimal(b)) => a == b
       (Percent(a), Percent(b)) => a == b
+      (Pair(a, b), Pair(c, d)) => a == c && b == d
       (Char(a), Char(b)) => a == b
       (Sym(_, a), Sym(_, b)) => a.sym == b.sym
       (Seq(a, ai), Seq(b, bi)) =>

@@ -40,6 +40,12 @@ fn combine(
       Ok(@value.Decimal(on_decimal(x, y)))
     (@value.Percent(x), @value.Percent(y)) =>
       Ok(@value.Percent(on_decimal(x, y)))
+    (@value.Pair(x, y), @value.Pair(a, b)) =>
+      Ok(@value.Pair(on_int(x, a), on_int(y, b)))
+    (@value.Pair(x, y), @value.Integer(n)) =>
+      Ok(@value.Pair(on_int(x, n), on_int(y, n)))
+    (@value.Integer(n), @value.Pair(x, y)) =>
+      Ok(@value.Pair(on_int(n, x), on_int(n, y)))
     _ =>
       match (as_double(left), as_double(right)) {
         (Some(x), Some(y)) => Ok(@value.Decimal(on_decimal(x, y)))

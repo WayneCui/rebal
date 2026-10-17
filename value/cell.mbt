@@ -6,6 +6,7 @@ pub(all) enum Cell {
   Integer(Int64)
   Decimal(Double)
   Percent(Double)
+  Pair(Int64, Int64)
   Char(Int)
   Sym(Datatype, Lexeme)
   Seq(Series, Int)
@@ -24,6 +25,7 @@ pub fn Cell::datatype(self : Cell) -> Datatype {
     Integer(_) => Integer
     Decimal(_) => Decimal
     Percent(_) => Percent
+    Pair(_, _) => Pair
     Char(_) => Char
     Sym(datatype, _) => datatype
     Seq(series, _) => series.datatype()

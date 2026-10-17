@@ -41,13 +41,22 @@ pub fn pick(
   series : @value.Cell,
   index : @value.Cell,
 ) -> Result[@value.Cell, ActionError] {
-  if is_series(series) {
-    match fit_int(index) {
-      Some(n) => Ok(@series.pick(series, n))
-      None => Err(Cannot("pick"))
-    }
-  } else {
-    Err(Cannot("pick"))
+  match series {
+    @value.Pair(x, y) =>
+      match fit_int(index) {
+        Some(1) => Ok(@value.Integer(x))
+        Some(2) => Ok(@value.Integer(y))
+        _ => Err(Cannot("pick"))
+      }
+    _ =>
+      if is_series(series) {
+        match fit_int(index) {
+          Some(n) => Ok(@series.pick(series, n))
+          None => Err(Cannot("pick"))
+        }
+      } else {
+        Err(Cannot("pick"))
+      }
   }
 }
 
@@ -62,10 +71,14 @@ pub fn length(series : @value.Cell) -> Result[@value.Cell, ActionError] {
 ///|
 /// `first` is `pick` of 1. An empty series is `none`.
 pub fn first(series : @value.Cell) -> Result[@value.Cell, ActionError] {
-  if is_series(series) {
-    Ok(@series.pick(series, 1))
-  } else {
-    Err(Cannot("first"))
+  match series {
+    @value.Pair(x, _) => Ok(@value.Integer(x))
+    _ =>
+      if is_series(series) {
+        Ok(@series.pick(series, 1))
+      } else {
+        Err(Cannot("first"))
+      }
   }
 }
 

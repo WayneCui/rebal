@@ -31,6 +31,20 @@ fn integer_from(spec : @value.Cell) -> @value.Cell raise EvalError {
 }
 
 ///|
+fn to_pair(spec : @value.Cell) -> @value.Cell raise EvalError {
+  match spec {
+    @value.Pair(x, y) => @value.Pair(x, y)
+    @value.Integer(n) => @value.Pair(n, n)
+    @value.Seq(series, index) if series.datatype() == @value.Block =>
+      match (series.item(index), series.item(index + 1)) {
+        (Some(@value.Integer(x)), Some(@value.Integer(y))) => @value.Pair(x, y)
+        _ => raise EvalError::Cannot("make")
+      }
+    _ => raise EvalError::Cannot("make")
+  }
+}
+
+///|
 fn perform_to(
   datatype : @value.Cell,
   spec : @value.Cell,
@@ -39,6 +53,7 @@ fn perform_to(
     @value.Type(@value.Percent) => to_percent(spec, false)
     @value.Type(@value.Decimal) => decimal_from(spec)
     @value.Type(@value.Integer) => integer_from(spec)
+    @value.Type(@value.Pair) => to_pair(spec)
     _ => raise EvalError::Cannot("to")
   }
 }

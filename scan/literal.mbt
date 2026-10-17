@@ -111,9 +111,29 @@ fn Lexer::percent_suffix(
             _ => Ok(value)
           }
         }
+        Some('x') | Some('X') =>
+          match value {
+            @value.Integer(n) if self.pair_tail() => {
+              self.bump() |> ignore
+              match self.number() {
+                Ok(@value.Integer(m)) => Ok(@value.Pair(n, m))
+                Ok(_) => Err(Invalid("pair"))
+                Err(error) => Err(error)
+              }
+            }
+            _ => Ok(value)
+          }
         _ => Ok(value)
       }
     Err(error) => Err(error)
+  }
+}
+
+///|
+fn Lexer::pair_tail(self : Lexer) -> Bool {
+  match self.chars.get(self.pos + 1) {
+    Some(char) => is_digit(char) || char == '+' || char == '-'
+    None => false
   }
 }
 
