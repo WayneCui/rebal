@@ -6,11 +6,15 @@ import {
 }
 
 // Values
+pub fn console_written() -> String
+
 pub fn do_next(Env, @value.Cell) -> (@value.Cell, @value.Cell) raise EvalError
 
 pub fn eval(Env, @value.Cell) -> @value.Cell raise EvalError
 
 pub fn load(Env, String) -> @value.Cell raise EvalError
+
+pub fn push_console(String) -> Unit
 
 pub fn run(Env, String) -> @value.Cell raise EvalError
 

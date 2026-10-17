@@ -187,3 +187,47 @@ int32_t rebal_write_text(
   int failed = fclose(file) != 0 || wrote != len;
   return failed ? 1 : 0;
 }
+
+static int32_t rebal_line_code = 0;
+
+int32_t rebal_line_status(void) { return rebal_line_code; }
+
+moonbit_string_t rebal_read_line(void) {
+  rebal_line_code = 0;
+  char buf[4096];
+  if (fgets(buf, 4096, stdin) == NULL) {
+    rebal_line_code = 1;
+    return moonbit_make_string(0, 0);
+  }
+  size_t got = 0;
+  while (buf[got] != 0) {
+    got++;
+  }
+  if (got > 0 && buf[got - 1] == '\n') {
+    got--;
+  }
+  if (got > 0 && buf[got - 1] == '\r') {
+    got--;
+  }
+  int32_t units = rebal_utf8_units((unsigned char *)buf, got);
+  if (units < 0) {
+    rebal_line_code = 2;
+    return moonbit_make_string(0, 0);
+  }
+  moonbit_string_t text = moonbit_make_string(units, 0);
+  rebal_fill_utf16(text, (unsigned char *)buf, got);
+  return text;
+}
+
+int32_t rebal_write_stdout(moonbit_string_t text, int32_t text_len) {
+  char *body = rebal_to_utf8(text, text_len);
+  if (body == NULL) {
+    return 1;
+  }
+  if (fputs(body, stdout) < 0) {
+    free(body);
+    return 1;
+  }
+  free(body);
+  return fflush(stdout) == 0 ? 0 : 1;
+}

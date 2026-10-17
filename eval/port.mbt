@@ -26,6 +26,8 @@ fn make_port(env : Env, spec : @value.Cell) -> @value.Cell raise EvalError {
       port_from_file(env, series, index, spec)
     @value.Seq(series, index) if series.datatype() == @value.Url =>
       port_from_url(env, series, index, spec)
+    @value.Sym(@value.Word, lexeme) =>
+      build_port(env, lexeme.spelling().to_lower(), @value.None)
     _ => raise EvalError::Cannot("make")
   }
 }
@@ -104,6 +106,8 @@ fn as_port(
       port_from_file(env, series, index, spec)
     @value.Seq(series, index) if series.datatype() == @value.Url =>
       port_from_url(env, series, index, spec)
+    @value.Sym(@value.Word, lexeme) =>
+      build_port(env, lexeme.spelling().to_lower(), @value.None)
     _ => raise EvalError::Cannot(action)
   }
 }
@@ -135,6 +139,8 @@ fn run_scheme(
     file_actor(env, action, port, extra)
   } else if name == "system" {
     system_actor(env, action, port, extra)
+  } else if name == "console" {
+    console_actor(env, action, port, extra)
   } else {
     let _ = (env, action, port, extra)
     raise EvalError::Cannot("port")
