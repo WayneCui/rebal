@@ -318,6 +318,8 @@ fn apply(
     from_action(@action.last(args[0]))
   } else if func.code() == native_suffix_q {
     perform_suffix(args[0])
+  } else if func.code() == native_split_path {
+    perform_split_path(args[0])
   } else if func.code() == native_copy {
     from_action(@action.copy(args[0]))
   } else if func.code() == native_insert {
