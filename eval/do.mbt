@@ -319,6 +319,18 @@ fn apply(
     from_action(@action.tail_q(args[0]))
   } else if func.code() == native_poke {
     from_action(@action.poke(args[0], args[1], args[2]))
+  } else if func.code() == native_get {
+    perform_get(env, args[0])
+  } else if func.code() == native_set {
+    perform_set(env, args[0], args[1])
+  } else if func.code() == native_unset {
+    perform_unset(env, args[0])
+  } else if func.code() == native_in {
+    perform_in(env, args[0], args[1])
+  } else if func.code() == native_value_q {
+    perform_value_q(env, args[0])
+  } else if func.code() == native_unset_q {
+    perform_unset_q(env, args[0])
   } else {
     raise EvalError::Cannot("function")
   }

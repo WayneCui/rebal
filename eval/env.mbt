@@ -164,6 +164,24 @@ let native_tail_q : Int = 52
 let native_poke : Int = 53
 
 ///|
+let native_get : Int = 54
+
+///|
+let native_set : Int = 55
+
+///|
+let native_unset : Int = 56
+
+///|
+let native_in : Int = 57
+
+///|
+let native_value_q : Int = 58
+
+///|
+let native_unset_q : Int = 59
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -222,6 +240,12 @@ pub fn Env::new() -> Env {
   define_native(env, "head?", 1, false, native_head_q)
   define_native(env, "tail?", 1, false, native_tail_q)
   define_native(env, "poke", 3, false, native_poke)
+  define_native(env, "get", 1, false, native_get)
+  define_native(env, "set", 2, false, native_set)
+  define_native(env, "unset", 1, false, native_unset)
+  define_native(env, "in", 2, false, native_in)
+  define_native(env, "value?", 1, false, native_value_q)
+  define_native(env, "unset?", 1, false, native_unset_q)
   install(env, "unset!", @value.Type(@value.Unset))
   install(env, "none!", @value.Type(@value.None))
   install(env, "logic!", @value.Type(@value.Logic))
