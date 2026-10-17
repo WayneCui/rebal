@@ -89,3 +89,37 @@ test "parse to and thru a target, including an absolute index" {
   }
   assert_true(bad)
 }
+
+///|
+test "parse copy, set, and a saved input position" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(env, "parse {xyz} [copy f to end] f = {xyz}")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "parse {abc} [#\"a\" copy x to end] x = {bc}")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "parse {ab} [set c skip] c = #\"a\"") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "parse {ab} [set c {ab}] c = #\"a\"") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "parse [1 2] [set n 1] n = 1") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "parse {} [set c end] c = none") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "parse {} [copy c end] c = {}") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "parse {abc} [skip b:] b = {bc}") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "parse {abc} [a: {a} :a {abc}]") is @value.Logic(true),
+  )
+}

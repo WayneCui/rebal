@@ -88,6 +88,27 @@ fn match_seq(
           } else {
             match_seq(env, input, pos + 1, rules, cursor + 1, end)
           }
+        } else if is_word(Some(rule), "copy") || is_word(Some(rule), "set") {
+          capture(
+            env,
+            input,
+            pos,
+            rules,
+            cursor,
+            end,
+            is_word(Some(rule), "copy"),
+          )
+        } else if is_kind(rule, @value.SetWord) {
+          match rule {
+            @value.Sym(_, lexeme) => {
+              write_word(env, lexeme, @value.Seq(input, pos))
+              match_seq(env, input, pos, rules, cursor + 1, end)
+            }
+            _ => None
+          }
+        } else if is_kind(rule, @value.GetWord) {
+          let next = resume_at(env, input, rule)
+          match_seq(env, input, next, rules, cursor + 1, end)
         } else {
           match match_one(env, input, pos, rule) {
             Some(next) => match_seq(env, input, next, rules, cursor + 1, end)
@@ -417,6 +438,8 @@ fn bad_target(spelling : String) -> Bool {
   spelling == "to" ||
   spelling == "thru" ||
   spelling == "skip" ||
+  spelling == "copy" ||
+  spelling == "set" ||
   spelling == "|"
 }
 
@@ -450,6 +473,206 @@ fn match_value(input : @value.Series, pos : Int, rule : @value.Cell) -> Int? {
   match input.item(pos) {
     Some(item) => if item.equal(rule) { Some(pos + 1) } else { None }
     None => None
+  }
+}
+
+///|
+fn capture(
+  env : Env,
+  input : @value.Series,
+  pos : Int,
+  rules : @value.Series,
+  cursor : Int,
+  end : Int,
+  copying : Bool,
+) -> Int? raise EvalError {
+  if cursor + 1 >= end {
+    raise EvalError::Cannot("parse")
+  }
+  let lexeme = capture_name(rules.item(cursor + 1))
+  let at = cursor + 2
+  match rules.item(at) {
+    Some(item) =>
+      if is_word(Some(item), "some") || is_word(Some(item), "any") {
+        match rules.item(at + 1) {
+          Some(repeated) => {
+            let stops = repeat_stops(env, input, pos, repeated)
+            let least = if is_word(Some(item), "some") { 1 } else { 0 }
+            let mut index = stops.length() - 1
+            let mut found : Int? = None
+            while found is None && index >= least {
+              let stop = stops[index]
+              write_capture(env, lexeme, input, pos, stop, copying)
+              found = match_seq(env, input, stop, rules, at + 2, end)
+              index = index - 1
+            }
+            found
+          }
+          None => raise EvalError::Cannot("parse")
+        }
+      } else if is_word(Some(item), "to") || is_word(Some(item), "thru") {
+        match rules.item(at + 1) {
+          Some(target) =>
+            match
+              advance_to(env, input, pos, target, is_word(Some(item), "thru")) {
+              Some(next) => {
+                write_capture(env, lexeme, input, pos, next, copying)
+                match_seq(env, input, next, rules, at + 2, end)
+              }
+              None => None
+            }
+          None => raise EvalError::Cannot("parse")
+        }
+      } else if is_word(Some(item), "skip") {
+        if pos >= input.length() {
+          None
+        } else {
+          write_capture(env, lexeme, input, pos, pos + 1, copying)
+          match_seq(env, input, pos + 1, rules, at + 1, end)
+        }
+      } else {
+        match match_one(env, input, pos, item) {
+          Some(next) => {
+            write_capture(env, lexeme, input, pos, next, copying)
+            match_seq(env, input, next, rules, at + 1, end)
+          }
+          None => None
+        }
+      }
+    None => raise EvalError::Cannot("parse")
+  }
+}
+
+///|
+fn repeat_stops(
+  env : Env,
+  input : @value.Series,
+  pos : Int,
+  item : @value.Cell,
+) -> Array[Int] raise EvalError {
+  let stops : Array[Int] = [pos]
+  let mut current = pos
+  let mut running = true
+  while running {
+    match match_one(env, input, current, item) {
+      Some(next) =>
+        if next == current {
+          running = false
+        } else {
+          stops.push(next)
+          current = next
+        }
+      None => running = false
+    }
+  }
+  stops
+}
+
+///|
+fn write_capture(
+  env : Env,
+  lexeme : @value.Lexeme,
+  input : @value.Series,
+  begin : Int,
+  end : Int,
+  copying : Bool,
+) -> Unit {
+  let value = if copying {
+    copy_span(input, begin, end)
+  } else {
+    taken_value(input, begin, end)
+  }
+  write_word(env, lexeme, value)
+}
+
+///|
+fn copy_span(input : @value.Series, begin : Int, end : Int) -> @value.Cell {
+  let from = begin
+  let until = if end > begin { end } else { begin }
+  if input.datatype() == @value.String {
+    let series = @value.Series::text()
+    for index in from..<until {
+      match input.code(index) {
+        Some(code) => series.push_code(code) |> ignore
+        None => ()
+      }
+    }
+    @value.Seq(series, 0)
+  } else {
+    let series = @value.Series::block()
+    for index in from..<until {
+      match input.item(index) {
+        Some(item) => series.push_item(item.snapshot()) |> ignore
+        None => ()
+      }
+    }
+    @value.Seq(series, 0)
+  }
+}
+
+///|
+fn taken_value(input : @value.Series, begin : Int, end : Int) -> @value.Cell {
+  if end <= begin {
+    @value.None
+  } else if input.datatype() == @value.String {
+    match input.code(begin) {
+      Some(code) => @value.Char(code)
+      None => @value.None
+    }
+  } else {
+    match input.item(begin) {
+      Some(item) => item
+      None => @value.None
+    }
+  }
+}
+
+///|
+fn capture_name(cell : @value.Cell?) -> @value.Lexeme raise EvalError {
+  match cell {
+    Some(@value.Sym(kind, lexeme)) if kind == @value.Word ||
+      kind == @value.SetWord =>
+      if bad_target(lexeme.spelling().to_lower()) {
+        raise EvalError::Cannot("parse")
+      } else {
+        lexeme
+      }
+    _ => raise EvalError::Cannot("parse")
+  }
+}
+
+///|
+fn resume_at(
+  env : Env,
+  input : @value.Series,
+  rule : @value.Cell,
+) -> Int raise EvalError {
+  match rule {
+    @value.Sym(_, lexeme) =>
+      match slot_value(env, lexeme) {
+        Some(@value.Seq(series, index)) =>
+          if physical_equal(series, input) {
+            if index < 0 {
+              0
+            } else if index > input.length() {
+              input.length()
+            } else {
+              index
+            }
+          } else {
+            raise EvalError::Cannot("parse")
+          }
+        _ => raise EvalError::Cannot("parse")
+      }
+    _ => raise EvalError::Cannot("parse")
+  }
+}
+
+///|
+fn is_kind(cell : @value.Cell, kind : @value.Datatype) -> Bool {
+  match cell {
+    @value.Sym(datatype, _) => datatype == kind
+    _ => false
   }
 }
 
