@@ -133,6 +133,8 @@ fn run_scheme(
 ) -> @value.Cell raise EvalError {
   if name == "file" {
     file_actor(env, action, port, extra)
+  } else if name == "system" {
+    system_actor(env, action, port, extra)
   } else {
     let _ = (env, action, port, extra)
     raise EvalError::Cannot("port")
