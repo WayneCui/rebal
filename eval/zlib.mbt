@@ -1,26 +1,33 @@
 ///|
 #borrow(data)
-extern "C" fn c_zlib_compress(data : String, len : Int, level : Int) -> String = "rebal_zlib_compress"
+extern "C" fn c_zlib_compress(
+  data : String,
+  len : Int,
+  level : Int,
+  window : Int,
+) -> String = "rebal_zlib_compress"
 
 ///|
 extern "C" fn c_zlib_code() -> Int = "rebal_zlib_code"
 
 ///|
 #borrow(data)
-extern "C" fn c_zlib_decompress(data : String, len : Int) -> String = "rebal_zlib_decompress"
+extern "C" fn c_zlib_decompress(
+  data : String,
+  len : Int,
+  window : Int,
+) -> String = "rebal_zlib_decompress"
 
 ///|
-/// Compresses a string or a binary with zlib. The method word must be `zlib`.
+/// Compresses a string or a binary. The method word is `zlib` or `deflate`.
 fn perform_compress(
   env : Env,
   data : @value.Cell,
   kind : @value.Cell,
 ) -> @value.Cell raise EvalError {
-  if !zlib_word(env, kind, "compress") {
-    raise EvalError::Cannot("compress")
-  }
+  let window = press_window(env, kind, "compress")
   let bytes = payload_bytes(data, "compress")
-  let packed = c_zlib_compress(latin_text(bytes), bytes.length(), -1)
+  let packed = c_zlib_compress(latin_text(bytes), bytes.length(), -1, window)
   if c_zlib_code() != 0 {
     raise EvalError::Cannot("compress")
   }
@@ -28,19 +35,17 @@ fn perform_compress(
 }
 
 ///|
-/// Decompresses a zlib binary. The method word must be `zlib`.
+/// Decompresses a zlib or raw deflate binary.
 fn perform_decompress(
   env : Env,
   data : @value.Cell,
   kind : @value.Cell,
 ) -> @value.Cell raise EvalError {
-  if !zlib_word(env, kind, "decompress") {
-    raise EvalError::Cannot("decompress")
-  }
+  let window = press_window(env, kind, "decompress")
   match data {
     @value.Seq(series, index) if series.datatype() == @value.Binary => {
       let bytes = bytes_from(series, index)
-      let plain = c_zlib_decompress(latin_text(bytes), bytes.length())
+      let plain = c_zlib_decompress(latin_text(bytes), bytes.length(), window)
       if c_zlib_code() != 0 {
         raise EvalError::Cannot("decompress")
       }
@@ -51,13 +56,17 @@ fn perform_decompress(
 }
 
 ///|
-fn zlib_word(
+fn press_window(
   env : Env,
   kind : @value.Cell,
   action : String,
-) -> Bool raise EvalError {
+) -> Int raise EvalError {
   let word = as_word(kind, action)
-  env.symbols.canon(word.sym()) == "zlib"
+  match env.symbols.canon(word.sym()) {
+    "zlib" => 15
+    "deflate" => -15
+    _ => raise EvalError::Cannot(action)
+  }
 }
 
 ///|

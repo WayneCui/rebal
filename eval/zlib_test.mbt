@@ -30,3 +30,22 @@ test "compress and decompress round-trip zlib" {
   }
   assert_true(bad)
 }
+
+///|
+test "compress and decompress round-trip raw deflate" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(env, "(decompress compress {abc} 'deflate 'deflate) = #{616263}")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(decompress compress {} 'deflate 'deflate) = #{}")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "(decompress compress {test test test} 'deflate 'deflate) = #{7465737420746573742074657374}",
+    )
+    is @value.Logic(true),
+  )
+}
