@@ -109,6 +109,10 @@ fn match_seq(
         } else if is_kind(rule, @value.GetWord) {
           let next = resume_at(env, input, rule)
           match_seq(env, input, next, rules, cursor + 1, end)
+        } else if is_word(Some(rule), "break") {
+          raise EvalError::Stopped(pos)
+        } else if is_word(Some(rule), "into") {
+          enter(env, input, pos, rules, cursor, end)
         } else {
           match match_one(env, input, pos, rule) {
             Some(next) => match_seq(env, input, next, rules, cursor + 1, end)
@@ -134,17 +138,33 @@ fn repeat_rule(
   let stops : Array[Int] = [pos]
   let mut current = pos
   let mut running = true
-  while running {
-    match match_one(env, input, current, item) {
-      Some(next) =>
-        if next == current {
-          running = false
-        } else {
-          stops.push(next)
-          current = next
-        }
-      None => running = false
+  let mut halted : Int? = None
+  while running && halted is None {
+    let stepped = match_one(env, input, current, item) catch {
+      EvalError::Stopped(at) => {
+        halted = Some(at)
+        None
+      }
+      error => raise error
     }
+    match halted {
+      Some(_) => ()
+      None =>
+        match stepped {
+          Some(next) =>
+            if next == current {
+              running = false
+            } else {
+              stops.push(next)
+              current = next
+            }
+          None => running = false
+        }
+    }
+  }
+  match halted {
+    Some(at) => return match_seq(env, input, at, rules, cursor, end)
+    None => ()
   }
   let mut found : Int? = None
   let mut index = stops.length() - 1
@@ -440,6 +460,8 @@ fn bad_target(spelling : String) -> Bool {
   spelling == "skip" ||
   spelling == "copy" ||
   spelling == "set" ||
+  spelling == "into" ||
+  spelling == "break" ||
   spelling == "|"
 }
 
@@ -473,6 +495,35 @@ fn match_value(input : @value.Series, pos : Int, rule : @value.Cell) -> Int? {
   match input.item(pos) {
     Some(item) => if item.equal(rule) { Some(pos + 1) } else { None }
     None => None
+  }
+}
+
+///|
+fn enter(
+  env : Env,
+  input : @value.Series,
+  pos : Int,
+  rules : @value.Series,
+  cursor : Int,
+  end : Int,
+) -> Int? raise EvalError {
+  match rules.item(cursor + 1) {
+    Some(@value.Seq(sub, sub_index)) if sub.datatype() == @value.Block =>
+      match input.item(pos) {
+        Some(@value.Seq(nested, nested_index)) =>
+          match match_rules(env, nested, nested_index, sub, sub_index) {
+            Some(done) =>
+              if done == nested.length() {
+                match_seq(env, input, pos + 1, rules, cursor + 2, end)
+              } else {
+                None
+              }
+            None => None
+          }
+        _ => None
+      }
+    Some(_) => raise EvalError::Cannot("parse")
+    None => raise EvalError::Cannot("parse")
   }
 }
 

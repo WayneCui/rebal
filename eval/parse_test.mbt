@@ -123,3 +123,29 @@ test "parse copy, set, and a saved input position" {
     @eval.run(env, "parse {abc} [a: {a} :a {abc}]") is @value.Logic(true),
   )
 }
+
+///|
+test "parse into a nested series, and break out of some" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(env, "(parse [[1 2] 3] [into [1 2] 3]) = true")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse [[1 2]] [into [1]]) = false") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse [{ab}] [into [{ab}]]) = true") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(parse {aaa} [some [break] {aaa}]) = true")
+    is @value.Logic(true),
+  )
+  let bare = try {
+    @eval.run(env, "parse {a} [break]") |> ignore
+    false
+  } catch {
+    error => error.id() == "parse"
+  }
+  assert_true(bare)
+}

@@ -30,6 +30,7 @@ pub(all) suberror EvalError {
   NoContinue
   Thrown(String, @value.Cell)
   NoThrow(String)
+  Stopped(Int)
 }
 pub fn EvalError::id(Self) -> String
 pub fn EvalError::to_cell(Self) -> @value.Cell

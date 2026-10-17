@@ -22,6 +22,8 @@ pub(all) suberror EvalError {
   Thrown(String, @value.Cell)
   /// `throw` reached `run` with no matching `catch`.
   NoThrow(String)
+  /// `break` inside a parse rule, carrying the input position where it stopped.
+  Stopped(Int)
 }
 
 ///|
@@ -51,6 +53,7 @@ pub fn EvalError::to_cell(self : EvalError) -> @value.Cell {
     NoContinue => ("continue", "continue")
     Thrown(name, _) => ("throw", throw_arg(name))
     NoThrow(name) => ("throw", throw_arg(name))
+    Stopped(_) => ("parse", "break")
   }
   @value.Error(@value.ErrorValue::make(id, arg, ""))
 }
@@ -72,5 +75,6 @@ pub fn EvalError::id(self : EvalError) -> String {
     NoContinue => "continue"
     Thrown(_, _) => "throw"
     NoThrow(_) => "throw"
+    Stopped(_) => "parse"
   }
 }
