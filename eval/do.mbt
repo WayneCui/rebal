@@ -216,7 +216,9 @@ fn call(
     func.code() != native_clean_path &&
     func.code() != native_make_dir &&
     func.code() != native_confirm &&
-    func.code() != native_compress {
+    func.code() != native_compress &&
+    func.code() != native_encloak &&
+    func.code() != native_decloak {
     raise EvalError::Cannot("func")
   }
   let args : Array[@value.Cell] = []
@@ -274,6 +276,10 @@ fn call(
     (perform_confirm(env, args, active), cursor)
   } else if func.code() == native_compress {
     (perform_compress(env, args, active), cursor)
+  } else if func.code() == native_encloak {
+    (perform_encloak(env, args[0], args[1], active), cursor)
+  } else if func.code() == native_decloak {
+    (perform_decloak(env, args[0], args[1], active), cursor)
   } else if func.code() == 0 {
     (call_user(env, func, args, active), cursor)
   } else {
@@ -602,10 +608,6 @@ fn apply(
     perform_checksum(env, args[0], args[1])
   } else if func.code() == native_decompress {
     perform_decompress(env, args[0], args[1])
-  } else if func.code() == native_encloak {
-    perform_encloak(args[0], args[1])
-  } else if func.code() == native_decloak {
-    perform_decloak(args[0], args[1])
   } else {
     raise EvalError::Cannot("function")
   }

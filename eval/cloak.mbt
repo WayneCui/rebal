@@ -1,32 +1,39 @@
 ///|
-/// Scrambles a binary in place. The key is repeated to 20 bytes and hashed with SHA-1.
+/// Scrambles a binary in place. Without `/with`, the key is repeated to 20 bytes and hashed with SHA-1.
 fn perform_encloak(
+  env : Env,
   data : @value.Cell,
   key : @value.Cell,
+  active : Array[Int],
 ) -> @value.Cell raise EvalError {
-  cloak(data, key, false, "encloak")
+  cloak(env, data, key, false, active, "encloak")
 }
 
 ///|
-/// Restores a binary scrambled by `encloak`. The same key is required.
+/// Restores a binary scrambled by `encloak`. The same key and `/with` are required.
 fn perform_decloak(
+  env : Env,
   data : @value.Cell,
   key : @value.Cell,
+  active : Array[Int],
 ) -> @value.Cell raise EvalError {
-  cloak(data, key, true, "decloak")
+  cloak(env, data, key, true, active, "decloak")
 }
 
 ///|
 fn cloak(
+  env : Env,
   data : @value.Cell,
   key : @value.Cell,
   decode : Bool,
+  active : Array[Int],
   action : String,
 ) -> @value.Cell raise EvalError {
+  let raw_key = cloak_raw(env, active, action)
   match data {
     @value.Seq(series, index) if series.datatype() == @value.Binary => {
       let bytes = bytes_from(series, index)
-      let secret = cloak_key(key, action)
+      let secret = cloak_key(key, action, raw_key)
       let changed = if decode {
         decloak_bytes(bytes, secret)
       } else {
@@ -44,16 +51,41 @@ fn cloak(
 }
 
 ///|
-fn cloak_key(key : @value.Cell, action : String) -> Array[Int] raise EvalError {
+fn cloak_raw(
+  env : Env,
+  active : Array[Int],
+  action : String,
+) -> Bool raise EvalError {
+  let mut raw = false
+  for sym in active {
+    if env.symbols.canon(sym) == "with" {
+      raw = true
+    } else {
+      raise EvalError::Cannot(action)
+    }
+  }
+  raw
+}
+
+///|
+fn cloak_key(
+  key : @value.Cell,
+  action : String,
+  raw_key : Bool,
+) -> Array[Int] raise EvalError {
   let raw = payload_bytes(key, action)
   if raw.length() == 0 {
     raise EvalError::Cannot(action)
   }
-  let src : Array[Int] = []
-  for i in 0..<20 {
-    src.push(raw[i % raw.length()])
+  if raw_key {
+    raw
+  } else {
+    let src : Array[Int] = []
+    for i in 0..<20 {
+      src.push(raw[i % raw.length()])
+    }
+    sha1(src)
   }
-  sha1(src)
 }
 
 ///|
