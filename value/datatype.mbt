@@ -35,6 +35,7 @@ pub(all) enum Datatype {
   Error
   Bitset
   Map
+  Module
 } derive(Eq)
 
 ///|

@@ -500,6 +500,10 @@ fn apply(
     perform_load(env, args[0])
   } else if func.code() == native_save {
     perform_save(args[0], args[1])
+  } else if func.code() == native_module {
+    perform_module(env, args[0], args[1])
+  } else if func.code() == native_import {
+    perform_import(env, args[0])
   } else {
     raise EvalError::Cannot("function")
   }

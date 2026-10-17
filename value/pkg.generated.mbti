@@ -47,6 +47,7 @@ pub(all) enum Cell {
   Error(ErrorValue)
   Bitset(Bitset)
   Map(MapValue)
+  Module(ModuleValue)
 }
 pub fn Cell::datatype(Self) -> Datatype
 pub fn Cell::equal(Self, Self) -> Bool
@@ -91,6 +92,7 @@ pub(all) enum Datatype {
   Error
   Bitset
   Map
+  Module
 } derive(Eq)
 pub fn Datatype::equal(Self, Self) -> Bool
 pub fn Datatype::not_equal(Self, Self) -> Bool
@@ -179,6 +181,12 @@ pub fn MapValue::make() -> Self
 pub fn MapValue::put(Self, Cell, Cell) -> Unit
 pub fn MapValue::same(Self, Self) -> Bool
 pub fn MapValue::value(Self, Int) -> Cell?
+
+pub struct ModuleValue {
+  frame : Frame
+  exports : Array[Int]
+}
+pub fn ModuleValue::make(Frame, Array[Int]) -> Self
 
 type Payload
 

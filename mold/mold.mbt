@@ -74,6 +74,7 @@ fn write_cell(
           buf.write_string("function!")
         }
       @value.Object(_) => buf.write_string("object!")
+      @value.Module(_) => buf.write_string("module!")
       @value.Bitset(bits) => write_bitset(buf, bits)
       @value.Map(map) => write_map(buf, map, molded, depth)
       @value.Error(error) => {
@@ -659,5 +660,6 @@ pub fn type_name(datatype : @value.Datatype) -> String {
     @value.Error => "error!"
     @value.Bitset => "bitset!"
     @value.Map => "map!"
+    @value.Module => "module!"
   }
 }
