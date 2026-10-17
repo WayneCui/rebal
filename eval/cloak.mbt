@@ -73,19 +73,31 @@ fn cloak_key(
   action : String,
   raw_key : Bool,
 ) -> Array[Int] raise EvalError {
-  let raw = payload_bytes(key, action)
+  let (raw, hash_key) = match key {
+    @value.Integer(n) => (integer_digits(n), true)
+    _ => (payload_bytes(key, action), !raw_key)
+  }
   if raw.length() == 0 {
     raise EvalError::Cannot(action)
   }
-  if raw_key {
-    raw
-  } else {
+  if hash_key {
     let src : Array[Int] = []
     for i in 0..<20 {
       src.push(raw[i % raw.length()])
     }
     sha1(src)
+  } else {
+    raw
   }
+}
+
+///|
+fn integer_digits(n : Int64) -> Array[Int] {
+  let bytes : Array[Int] = []
+  for char in n.to_string() {
+    bytes.push(char.to_int())
+  }
+  bytes
 }
 
 ///|

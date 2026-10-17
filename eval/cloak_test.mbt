@@ -44,3 +44,24 @@ test "encloak/with uses the key bytes without hashing them" {
   }
   assert_true(other)
 }
+
+///|
+test "an integer key is its decimal digits, then hashed" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(env, "(encloak #{616263} 256) = (encloak #{616263} {256})")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(encloak #{616263} -2) = (encloak #{616263} {-2})")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(encloak/with #{616263} 256) = (encloak #{616263} {256})")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(decloak encloak #{616263} -2 {-2}) = #{616263}")
+    is @value.Logic(true),
+  )
+}
