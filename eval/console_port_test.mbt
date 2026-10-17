@@ -32,4 +32,15 @@ test "console port reads a line and writes formed text" {
     @eval.run(env, "q/length = " + (before.length() + 4).to_string())
     is @value.Logic(true),
   )
+  @eval.push_console("one")
+  @eval.push_console("two")
+  assert_true(@eval.run(env, "(input) = \"one\"") is @value.Logic(true))
+  assert_true(@eval.run(env, "(input) = \"two\"") is @value.Logic(true))
+  let asked = @eval.console_written().length()
+  @eval.push_console("yes")
+  assert_true(
+    @eval.run(env, "(ask \"name? \") = \"yes\"") is @value.Logic(true),
+  )
+  let written = @eval.console_written()
+  assert_eq(written[asked:].to_owned(), "name? ")
 }

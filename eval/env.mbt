@@ -428,6 +428,12 @@ let native_make_dir : Int = 140
 let native_clean_path : Int = 141
 
 ///|
+let native_input : Int = 142
+
+///|
+let native_ask : Int = 143
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -448,6 +454,8 @@ pub fn Env::new() -> Env {
   define_native(env, "change-dir", 1, false, native_change_dir)
   define_native(env, "make-dir", 1, false, native_make_dir)
   define_native(env, "clean-path", 1, false, native_clean_path)
+  define_native(env, "input", 0, false, native_input)
+  define_native(env, "ask", 1, false, native_ask)
   define_native(env, "copy", 1, false, native_copy)
   define_native(env, "insert", 2, false, native_insert)
   define_native(env, "remove", 1, false, native_remove)

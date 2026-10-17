@@ -260,6 +260,10 @@ fn call(
     (perform_clean_path(env, args[0], active), cursor)
   } else if func.code() == native_make_dir {
     (perform_make_dir(env, args[0], active), cursor)
+  } else if func.code() == native_input {
+    (perform_input(), cursor)
+  } else if func.code() == native_ask {
+    (perform_ask(args[0]), cursor)
   } else if func.code() == 0 {
     (call_user(env, func, args, active), cursor)
   } else {
