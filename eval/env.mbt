@@ -401,6 +401,9 @@ let native_cause_error : Int = 131
 let native_series_q : Int = 132
 
 ///|
+let native_clos : Int = 133
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -522,6 +525,7 @@ pub fn Env::new() -> Env {
   define_native(env, "module", 2, false, native_module)
   define_native(env, "import", 1, false, native_import)
   define_native(env, "closure", 2, false, native_closure)
+  define_native(env, "clos", 2, false, native_clos)
   define_native(env, "protect", 1, false, native_protect)
   define_native(env, "unprotect", 1, false, native_unprotect)
   define_native(env, "protected?", 1, false, native_protected_q)
@@ -581,6 +585,7 @@ pub fn Env::new() -> Env {
   boot_constants(env)
   boot_default(env)
   boot_series(env)
+  boot_funcs(env)
   env
 }
 

@@ -1,10 +1,12 @@
 ///|
-/// `function` adds set-words from the body as locals. Words already named in
-/// the spec stay as they are. `/with` and `/extern` are not accepted yet.
+/// `function` and `closure` add set-words from the body as locals. Words
+/// already named in the spec stay as they are. `/with` and `/extern` are
+/// not accepted yet. `clos` is the closure that does not add those locals.
 fn perform_function(
   env : Env,
   spec : @value.Cell,
   body : @value.Cell,
+  closure : Bool,
 ) -> @value.Cell raise EvalError {
   match spec {
     @value.Seq(series, index) if series.datatype() == @value.Block => {
@@ -14,7 +16,7 @@ fn perform_function(
         env,
         @value.Seq(extend_spec(env, series, index, locals), 0),
         body,
-        false,
+        closure,
       )
     }
     _ => raise EvalError::Cannot("func")
