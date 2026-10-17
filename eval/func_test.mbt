@@ -99,4 +99,10 @@ test "local words stay inside the function" {
     is @value.Integer(3L),
   )
   assert_true(@eval.run(env, "n") is @value.Integer(0L))
+  assert_true(@eval.run(env, "unless false [1]") is @value.Integer(1L))
+  assert_true(@eval.run(env, "unless true [1]") is @value.None)
+  assert_true(@eval.run(env, "n: 0 also 1 (n: 2)") is @value.Integer(1L))
+  assert_true(@eval.run(env, "n") is @value.Integer(2L))
+  assert_true(@eval.run(env, "comment [1 + 2]") is @value.Unset)
+  assert_true(@eval.run(env, "f: func [] [exit] f") is @value.Unset)
 }

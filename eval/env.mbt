@@ -188,6 +188,18 @@ let native_bind : Int = 60
 let native_unbind : Int = 61
 
 ///|
+let native_exit : Int = 62
+
+///|
+let native_unless : Int = 63
+
+///|
+let native_also : Int = 64
+
+///|
+let native_comment : Int = 65
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -254,6 +266,10 @@ pub fn Env::new() -> Env {
   define_native(env, "unset?", 1, false, native_unset_q)
   define_native(env, "bind", 2, false, native_bind)
   define_native(env, "unbind", 1, false, native_unbind)
+  define_native(env, "exit", 0, false, native_exit)
+  define_native(env, "unless", 2, false, native_unless)
+  define_native(env, "also", 2, false, native_also)
+  define_native(env, "comment", 1, false, native_comment)
   install(env, "unset!", @value.Type(@value.Unset))
   install(env, "none!", @value.Type(@value.None))
   install(env, "logic!", @value.Type(@value.Logic))

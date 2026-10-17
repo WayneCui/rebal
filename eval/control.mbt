@@ -46,3 +46,17 @@ fn perform_either(
     eval_branch(env, yes)
   }
 }
+
+///|
+/// Evaluates the branch only when the condition is `false` or `none`.
+fn perform_unless(
+  env : Env,
+  condition : @value.Cell,
+  branch : @value.Cell,
+) -> @value.Cell raise EvalError {
+  if is_false(condition) {
+    eval_branch(env, branch)
+  } else {
+    @value.None
+  }
+}

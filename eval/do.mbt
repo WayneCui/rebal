@@ -335,6 +335,16 @@ fn apply(
     perform_bind(env, args[0], args[1])
   } else if func.code() == native_unbind {
     perform_unbind(args[0])
+  } else if func.code() == native_exit {
+    raise EvalError::Returned(@value.Unset)
+  } else if func.code() == native_unless {
+    perform_unless(env, args[0], args[1])
+  } else if func.code() == native_also {
+    let _ = args[1]
+    args[0]
+  } else if func.code() == native_comment {
+    let _ = args[0]
+    @value.Unset
   } else {
     raise EvalError::Cannot("function")
   }
