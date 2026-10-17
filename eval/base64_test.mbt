@@ -107,10 +107,33 @@ test "enbase/part and debase/part limit the input" {
     is @value.Logic(true),
   )
   let other = try {
-    @eval.run(env, "enbase/url {f} 64") |> ignore
+    @eval.run(env, "enbase/only {f} 64") |> ignore
     false
   } catch {
     error => error.id() == "cannot"
   }
   assert_true(other)
+}
+
+///|
+test "enbase/url uses the url alphabet and omits padding" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(env, "(enbase/url {f} 64) = {Zg}") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(enbase/url {fo} 64) = {Zm8}") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(enbase/url {foo} 64) = {Zm9v}") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(enbase/url #{FBFFEF} 64) = {-__v}") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(debase/url {-__v} 64) = #{FBFFEF}") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(enbase/flat {foo} 64) = {Zm9v}") is @value.Logic(true),
+  )
 }

@@ -6,13 +6,10 @@ fn perform_enbase(
   args : Array[@value.Cell],
   active : Array[Int],
 ) -> @value.Cell raise EvalError {
-  let bytes = ranged_payload(
-    args[0],
-    base_part(env, args, active, "enbase"),
-    "enbase",
-  )
+  let (part, url) = base_flags(env, args, active, "enbase")
+  let bytes = ranged_payload(args[0], part, "enbase")
   match coding_base(args[1]) {
-    Some(64) => text_series(encode_base64(bytes))
+    Some(64) => text_series(encode_base64(bytes, url))
     Some(16) => text_series(encode_base16(bytes))
     Some(2) => text_series(encode_base2(bytes))
     _ => raise EvalError::Cannot("enbase")
@@ -27,9 +24,8 @@ fn perform_debase(
   args : Array[@value.Cell],
   active : Array[Int],
 ) -> @value.Cell raise EvalError {
-  let text = latin_text(
-    ranged_payload(args[0], base_part(env, args, active, "debase"), "debase"),
-  )
+  let (part, _) = base_flags(env, args, active, "debase")
+  let text = latin_text(ranged_payload(args[0], part, "debase"))
   match coding_base(args[1]) {
     Some(64) => binary_cell(decode_base64(text))
     Some(16) => binary_cell(decode_base16(text))
@@ -39,23 +35,31 @@ fn perform_debase(
 }
 
 ///|
-fn base_part(
+/// `/part` takes one length. `/url` selects the URL alphabet. `/flat` is accepted
+/// because the result is already one line.
+fn base_flags(
   env : Env,
   args : Array[@value.Cell],
   active : Array[Int],
   action : String,
-) -> Int? raise EvalError {
+) -> (Int?, Bool) raise EvalError {
   let mut part : Int? = None
+  let mut url = false
   let mut cursor = 2
   for sym in active {
-    if env.symbols.canon(sym) == "part" {
+    let name = env.symbols.canon(sym)
+    if name == "part" {
       part = Some(part_count(args[0], args[cursor], action))
       cursor = cursor + 1
+    } else if name == "url" {
+      url = true
+    } else if name == "flat" {
+      ()
     } else {
       raise EvalError::Cannot(action)
     }
   }
-  part
+  (part, url)
 }
 
 ///|
@@ -143,38 +147,42 @@ fn binary_cell(bytes : Array[Int]) -> @value.Cell {
 }
 
 ///|
-fn encode_base64(bytes : Array[Int]) -> String {
+fn encode_base64(bytes : Array[Int], url : Bool) -> String {
   let buf = StringBuilder()
   let mut index = 0
   while index + 2 < bytes.length() {
     let first = bytes[index]
     let second = bytes[index + 1]
     let third = bytes[index + 2]
-    buf.write_char(b64_char(first / 4))
-    buf.write_char(b64_char(first % 4 * 16 + second / 16))
-    buf.write_char(b64_char(second % 16 * 4 + third / 64))
-    buf.write_char(b64_char(third % 64))
+    buf.write_char(b64_char(first / 4, url))
+    buf.write_char(b64_char(first % 4 * 16 + second / 16, url))
+    buf.write_char(b64_char(second % 16 * 4 + third / 64, url))
+    buf.write_char(b64_char(third % 64, url))
     index = index + 3
   }
   let rest = bytes.length() - index
   if rest == 1 {
     let first = bytes[index]
-    buf.write_char(b64_char(first / 4))
-    buf.write_char(b64_char(first % 4 * 16))
-    buf.write_string("==")
+    buf.write_char(b64_char(first / 4, url))
+    buf.write_char(b64_char(first % 4 * 16, url))
+    if !url {
+      buf.write_string("==")
+    }
   } else if rest == 2 {
     let first = bytes[index]
     let second = bytes[index + 1]
-    buf.write_char(b64_char(first / 4))
-    buf.write_char(b64_char(first % 4 * 16 + second / 16))
-    buf.write_char(b64_char(second % 16 * 4))
-    buf.write_char('=')
+    buf.write_char(b64_char(first / 4, url))
+    buf.write_char(b64_char(first % 4 * 16 + second / 16, url))
+    buf.write_char(b64_char(second % 16 * 4, url))
+    if !url {
+      buf.write_char('=')
+    }
   }
   buf.to_string()
 }
 
 ///|
-fn b64_char(n : Int) -> Char {
+fn b64_char(n : Int, url : Bool) -> Char {
   if n < 26 {
     ('A'.to_int() + n).to_char().unwrap()
   } else if n < 52 {
@@ -182,7 +190,13 @@ fn b64_char(n : Int) -> Char {
   } else if n < 62 {
     ('0'.to_int() + n - 52).to_char().unwrap()
   } else if n == 62 {
-    '+'
+    if url {
+      '-'
+    } else {
+      '+'
+    }
+  } else if url {
+    '_'
   } else {
     '/'
   }
@@ -350,9 +364,9 @@ fn b64_value(char : Char) -> Int? {
     Some(code - 'a'.to_int() + 26)
   } else if char >= '0' && char <= '9' {
     Some(code - '0'.to_int() + 52)
-  } else if char == '+' {
+  } else if char == '+' || char == '-' {
     Some(62)
-  } else if char == '/' {
+  } else if char == '/' || char == '_' {
     Some(63)
   } else {
     None
