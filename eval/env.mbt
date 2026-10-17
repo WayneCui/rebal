@@ -398,6 +398,9 @@ let native_none_q : Int = 130
 let native_cause_error : Int = 131
 
 ///|
+let native_series_q : Int = 132
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -455,6 +458,7 @@ pub fn Env::new() -> Env {
   define_native(env, "index?", 1, false, native_index)
   define_native(env, "head?", 1, false, native_head_q)
   define_native(env, "tail?", 1, false, native_tail_q)
+  define_native(env, "series?", 1, false, native_series_q)
   define_native(env, "poke", 3, false, native_poke)
   define_native(env, "get", 1, false, native_get)
   define_native(env, "set", 2, false, native_set)
@@ -576,6 +580,7 @@ pub fn Env::new() -> Env {
   install(env, "sys", @value.Object(@value.Frame::new()))
   boot_constants(env)
   boot_default(env)
+  boot_series(env)
   env
 }
 

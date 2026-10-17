@@ -369,7 +369,8 @@ fn perform_try(env : Env, cell : @value.Cell) -> @value.Cell raise EvalError {
 }
 
 ///|
-/// Evaluates each expression. Unset results are left out. `none` stays `none`.
+/// Evaluates each expression in a block or paren. Unset results are left
+/// out. `none` stays `none`. Any other value is returned as it is.
 fn reduce_block(env : Env, cell : @value.Cell) -> @value.Cell raise EvalError {
   match cell {
     @value.None => @value.None
@@ -390,6 +391,6 @@ fn reduce_block(env : Env, cell : @value.Cell) -> @value.Cell raise EvalError {
       }
       @value.Seq(out, 0)
     }
-    _ => raise EvalError::Cannot("reduce")
+    _ => cell
   }
 }

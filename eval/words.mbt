@@ -82,6 +82,30 @@ fn perform_none_q(value : @value.Cell) -> @value.Cell {
 }
 
 ///|
+/// True for a block, paren, path, string, binary, or any-string series.
+fn perform_series_q(value : @value.Cell) -> @value.Cell {
+  let flag = match value {
+    @value.Seq(series, _) =>
+      match series.datatype() {
+        @value.String
+        | @value.File
+        | @value.Email
+        | @value.Url
+        | @value.Tag
+        | @value.Issue
+        | @value.Binary
+        | @value.Block
+        | @value.Paren
+        | @value.Path
+        | @value.SetPath => true
+        _ => false
+      }
+    _ => false
+  }
+  @value.Logic(flag)
+}
+
+///|
 fn perform_value_q(
   env : Env,
   word : @value.Cell,

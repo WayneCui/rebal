@@ -408,6 +408,8 @@ fn apply(
     from_action(@action.index(args[0]))
   } else if func.code() == native_head_q {
     from_action(@action.head_q(args[0]))
+  } else if func.code() == native_series_q {
+    perform_series_q(args[0])
   } else if func.code() == native_tail_q {
     from_action(@action.tail_q(args[0]))
   } else if func.code() == native_poke {
