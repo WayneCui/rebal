@@ -1,13 +1,18 @@
 ///|
 /// `load` of a %.ppk file. An SSH2 public armor reuses the ssh-key decoder.
-/// A PuTTY private key is accepted when its MAC matches and encryption is `none`.
-fn decode_ppk(env : Env, value : @value.Cell) -> @value.Cell raise EvalError {
+/// A PuTTY private key is accepted when its MAC matches. `aes256-cbc` needs
+/// the password; the cipher uses a zero initialization vector.
+fn decode_ppk(
+  env : Env,
+  value : @value.Cell,
+  password : String?,
+) -> @value.Cell raise EvalError {
   let bytes = payload_bytes(value, "decode")
   let text = latin_text(bytes)
   if has_prefix(text, "---- BEGIN SSH2 PUBLIC KEY ----") {
     decode_ssh_key(env, value)
   } else {
-    match putty_handle(text) {
+    match putty_handle(text, password) {
       Some(cell) => cell
       None => raise EvalError::Caused("no-codec", "ppk")
     }
@@ -27,19 +32,96 @@ priv struct PuttyKey {
 }
 
 ///|
-fn putty_handle(text : String) -> @value.Cell? raise EvalError {
+fn putty_handle(
+  text : String,
+  password : String?,
+) -> @value.Cell? raise EvalError {
   match putty_key(text) {
     None => None
     Some(key) =>
-      if key.kind == "ssh-rsa" &&
-        key.encryption == "none" &&
-        (key.version == 1 || key.version == 2) &&
-        mac_matches(key) {
-        rsa_from_putty(key)
-      } else {
-        None
+      match opened_putty(key, password) {
+        None => None
+        Some(ready) =>
+          if ready.kind == "ssh-rsa" &&
+            (ready.version == 1 || ready.version == 2) &&
+            mac_matches(ready, password) {
+            rsa_from_putty(ready)
+          } else {
+            None
+          }
       }
   }
+}
+
+///|
+fn opened_putty(key : PuttyKey, password : String?) -> PuttyKey? {
+  if key.encryption == "none" {
+    Some(key)
+  } else if key.encryption == "aes256-cbc" {
+    match password {
+      None => None
+      Some(pass) =>
+        Some({
+          version: key.version,
+          kind: key.kind,
+          encryption: key.encryption,
+          comment: key.comment,
+          public_blob: key.public_blob,
+          private_blob: aes_cbc_decrypt(putty_aes_key(pass), key.private_blob),
+          mac: key.mac,
+          use_mac: key.use_mac,
+        }) catch {
+          _ => None
+        }
+    }
+  } else {
+    None
+  }
+}
+
+///|
+fn putty_aes_key(password : String) -> Array[Int] {
+  let pass = bytes_of(password)
+  let head = sha1(join_bytes([0, 0, 0, 0], pass))
+  let tail = sha1(join_bytes([0, 0, 0, 1], pass))
+  let both = join_bytes(head, tail)
+  let key : Array[Int] = []
+  for i in 0..<32 {
+    key.push(both[i])
+  }
+  key
+}
+
+///|
+fn aes_cbc_decrypt(
+  key : Array[Int],
+  data : Array[Int],
+) -> Array[Int] raise EvalError {
+  if data.length() == 0 || data.length() % 16 != 0 {
+    raise EvalError::Cannot("decode")
+  }
+  let rounds = aes_rounds(key)
+  let mut previous : Array[Int] = []
+  let mut pad = 0
+  while pad < 16 {
+    previous.push(0)
+    pad = pad + 1
+  }
+  let out : Array[Int] = []
+  let mut offset = 0
+  while offset < data.length() {
+    let block : Array[Int] = []
+    for i in 0..<16 {
+      block.push(data[offset + i])
+    }
+    let plain = chain_xor(aes_decrypt(rounds, block), previous)
+    for byte in plain {
+      out.push(byte)
+    }
+    previous = block
+    offset = offset + 16
+  }
+  out
 }
 
 ///|
@@ -121,9 +203,13 @@ fn private_chunks(bytes : Array[Int]) -> (Array[Int], Array[Int], Array[Int])? {
 }
 
 ///|
-fn mac_matches(key : PuttyKey) -> Bool raise EvalError {
+fn mac_matches(key : PuttyKey, password : String?) -> Bool raise EvalError {
   let material = mac_material(key)
-  let phrase = bytes_of("putty-private-key-file-mac-key")
+  let phrase = match password {
+    Some(pass) =>
+      join_bytes(bytes_of("putty-private-key-file-mac-key"), bytes_of(pass))
+    None => bytes_of("putty-private-key-file-mac-key")
+  }
   let mackey = sha1(phrase)
   let digest = if key.use_mac {
     hmac(mackey, material, "sha1")

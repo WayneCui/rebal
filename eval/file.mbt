@@ -49,7 +49,7 @@ fn perform_load(env : Env, source : @value.Cell) -> @value.Cell raise EvalError 
   } else if key_file(source) {
     decode_ssh_key(env, text_series(read_file(loaded_path(source))))
   } else if ppk_file(source) {
-    decode_ppk(env, text_series(read_file(loaded_path(source))))
+    decode_ppk(env, text_series(read_file(loaded_path(source))), None)
   } else {
     singular(drop_header(load(env, source_text(source))))
   }

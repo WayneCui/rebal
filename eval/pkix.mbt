@@ -7,9 +7,15 @@ fn perform_decode(
   active : Array[Int],
 ) -> @value.Cell raise EvalError {
   let mut binary = false
+  let mut password : String? = None
+  let mut cursor = 2
   for sym in active {
-    if env.symbols.canon(sym) == "binary" {
+    let name = env.symbols.canon(sym)
+    if name == "binary" {
       binary = true
+    } else if name == "password" {
+      password = Some(latin_text(payload_bytes(args[cursor], "decode")))
+      cursor = cursor + 1
     } else {
       raise EvalError::Cannot("decode")
     }
@@ -17,6 +23,9 @@ fn perform_decode(
   let kind = match args[0] {
     @value.Sym(_, lexeme) => env.symbols.canon(lexeme.sym())
     _ => raise EvalError::Cannot("decode")
+  }
+  if has_password(password) && kind != "ppk" {
+    raise EvalError::Cannot("decode")
   }
   if kind == "utc-time" {
     if binary {
@@ -48,6 +57,12 @@ fn perform_decode(
     }
     return decode_ssh_key(env, args[1])
   }
+  if kind == "ppk" {
+    if binary {
+      raise EvalError::Cannot("decode")
+    }
+    return decode_ppk(env, args[1], password)
+  }
   if kind != "pkix" {
     raise EvalError::Cannot("access")
   }
@@ -60,6 +75,14 @@ fn perform_decode(
         pem_block(env, pem)
       }
     None => @value.None
+  }
+}
+
+///|
+fn has_password(password : String?) -> Bool {
+  match password {
+    Some(_) => true
+    None => false
   }
 }
 

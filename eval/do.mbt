@@ -250,6 +250,8 @@ fn call(
     func.arity() + 1
   } else if func.code() == native_call {
     func.arity() + call_extra(env, active)
+  } else if func.code() == native_decode {
+    func.arity() + decode_extra(env, active)
   } else if func.code() == 0 {
     taken_count(func, active)
   } else {
@@ -348,6 +350,15 @@ fn named(env : Env, active : Array[Int], spelling : String) -> Bool {
     }
   }
   found
+}
+
+///|
+fn decode_extra(env : Env, active : Array[Int]) -> Int {
+  if named(env, active, "password") {
+    1
+  } else {
+    0
+  }
 }
 
 ///|
