@@ -212,6 +212,42 @@ let native_compose : Int = 68
 let native_to : Int = 69
 
 ///|
+let native_divide : Int = 70
+
+///|
+let native_remainder : Int = 71
+
+///|
+let native_power : Int = 72
+
+///|
+let native_negate : Int = 73
+
+///|
+let native_absolute : Int = 74
+
+///|
+let native_odd : Int = 75
+
+///|
+let native_even : Int = 76
+
+///|
+let native_negative : Int = 77
+
+///|
+let native_positive : Int = 78
+
+///|
+let native_zero : Int = 79
+
+///|
+let native_min : Int = 80
+
+///|
+let native_max : Int = 81
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -286,6 +322,18 @@ pub fn Env::new() -> Env {
   define_native(env, "throw", 2, false, native_throw)
   define_native(env, "compose", 1, false, native_compose)
   define_native(env, "to", 2, false, native_to)
+  define_native(env, "/", 2, true, native_divide)
+  define_native(env, "//", 2, true, native_remainder)
+  define_native(env, "**", 2, true, native_power)
+  define_native(env, "negate", 1, false, native_negate)
+  define_native(env, "absolute", 1, false, native_absolute)
+  define_native(env, "odd?", 1, false, native_odd)
+  define_native(env, "even?", 1, false, native_even)
+  define_native(env, "negative?", 1, false, native_negative)
+  define_native(env, "positive?", 1, false, native_positive)
+  define_native(env, "zero?", 1, false, native_zero)
+  define_native(env, "min", 2, false, native_min)
+  define_native(env, "max", 2, false, native_max)
   install(env, "unset!", @value.Type(@value.Unset))
   install(env, "none!", @value.Type(@value.None))
   install(env, "logic!", @value.Type(@value.Logic))

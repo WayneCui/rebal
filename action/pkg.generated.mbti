@@ -6,6 +6,8 @@ import {
 }
 
 // Values
+pub fn absolute(@value.Cell) -> Result[@value.Cell, ActionError]
+
 pub fn add(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn append(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
@@ -16,7 +18,11 @@ pub fn back(@value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn copy(@value.Cell) -> Result[@value.Cell, ActionError]
 
+pub fn divide(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
+
 pub fn equal(@value.Cell, @value.Cell) -> Bool
+
+pub fn even_q(@value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn find(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
@@ -48,15 +54,31 @@ pub fn logic_not(@value.Cell) -> @value.Cell
 
 pub fn logic_or(@value.Cell, @value.Cell) -> @value.Cell
 
+pub fn maximum(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn minimum(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
+
 pub fn mold(@value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn multiply(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
+pub fn negate(@value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn negative_q(@value.Cell) -> Result[@value.Cell, ActionError]
+
 pub fn next(@value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn odd_q(@value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn pick(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn poke(@value.Cell, @value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn positive_q(@value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn power(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn remainder(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn remove(@value.Cell) -> Result[@value.Cell, ActionError]
 
@@ -69,6 +91,8 @@ pub fn subtract(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
 pub fn tail(@value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn tail_q(@value.Cell) -> Result[@value.Cell, ActionError]
+
+pub fn zero_q(@value.Cell) -> Result[@value.Cell, ActionError]
 
 // Errors
 

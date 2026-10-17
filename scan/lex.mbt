@@ -238,7 +238,11 @@ fn Lexer::lit_word(self : Lexer) -> Result[@value.Cell, ScanError] {
 fn Lexer::refinement(self : Lexer) -> Result[@value.Cell, ScanError] {
   self.bump() |> ignore
   match self.peek() {
-    Some(char) if !is_space(char) && char != '/' && char != ']' && char != ')' =>
+    Some('/') => {
+      self.bump() |> ignore
+      self.plain_word_from("//", @value.Word)
+    }
+    Some(char) if !is_space(char) && char != ']' && char != ')' =>
       self.plain_word(@value.Refinement)
     _ => self.plain_word_from("/", @value.Word)
   }

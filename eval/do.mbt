@@ -392,6 +392,30 @@ fn apply(
     perform_compose(env, args[0])
   } else if func.code() == native_to {
     perform_to(args[0], args[1])
+  } else if func.code() == native_divide {
+    from_action(@action.divide(args[0], args[1]))
+  } else if func.code() == native_remainder {
+    from_action(@action.remainder(args[0], args[1]))
+  } else if func.code() == native_power {
+    from_action(@action.power(args[0], args[1]))
+  } else if func.code() == native_negate {
+    from_action(@action.negate(args[0]))
+  } else if func.code() == native_absolute {
+    from_action(@action.absolute(args[0]))
+  } else if func.code() == native_odd {
+    from_action(@action.odd_q(args[0]))
+  } else if func.code() == native_even {
+    from_action(@action.even_q(args[0]))
+  } else if func.code() == native_negative {
+    from_action(@action.negative_q(args[0]))
+  } else if func.code() == native_positive {
+    from_action(@action.positive_q(args[0]))
+  } else if func.code() == native_zero {
+    from_action(@action.zero_q(args[0]))
+  } else if func.code() == native_min {
+    from_action(@action.minimum(args[0], args[1]))
+  } else if func.code() == native_max {
+    from_action(@action.maximum(args[0], args[1]))
   } else {
     raise EvalError::Cannot("function")
   }
