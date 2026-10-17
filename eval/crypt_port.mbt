@@ -239,6 +239,8 @@ fn cipher_kind(name : String) -> (Int, Bool, Bool)? {
     Some((16, true, true))
   } else if name == "camellia-192-ecb" {
     Some((24, false, true))
+  } else if name == "camellia-192-cbc" {
+    Some((24, true, true))
   } else if name == "camellia-256-ecb" {
     Some((32, false, true))
   } else {

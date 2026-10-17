@@ -207,6 +207,17 @@ test "crypt camellia-192-ecb matches RFC 3713" {
 }
 
 ///|
+test "crypt camellia-192-cbc chains blocks with the init vector" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "port: open crypt://camellia-192-cbc\nmodify port 'key #{8E73B0F7DA0E6452C810F32B809079E562F8EAD2522C6B7B}\nmodify port 'init-vector #{000102030405060708090A0B0C0D0E0F}\ncipher: read write port #{6BC1BEE22E409F96E93D7E117393172AAE2D8A571E03AC9C9EB76FAC45AF8E51}\nmodify port 'direction 'decrypt\nmodify port 'init-vector #{000102030405060708090A0B0C0D0E0F}\nplain: read write port cipher\n(reduce [cipher plain]) = reduce [#{2A4830AB5AC4A1A2405955FD2195CF935D5A869BD14CE54264F892A6DD2EC3D5} #{6BC1BEE22E409F96E93D7E117393172AAE2D8A571E03AC9C9EB76FAC45AF8E51}]",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "crypt camellia-128-cbc chains blocks with the init vector" {
   let env = @eval.Env::new()
   assert_true(
