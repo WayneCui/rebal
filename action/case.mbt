@@ -46,12 +46,23 @@ pub fn dehex_with(
 
 ///|
 pub fn enhex(cell : @value.Cell) -> Result[@value.Cell, ActionError] {
-  changed_text(cell, "enhex", fn(value) { @series.enhex(value) })
+  enhex_with(cell, false, '%'.to_int())
 }
 
 ///|
 pub fn enhex_uri(cell : @value.Cell) -> Result[@value.Cell, ActionError] {
-  changed_text(cell, "enhex", fn(value) { @series.enhex_with(value, true) })
+  enhex_with(cell, true, '%'.to_int())
+}
+
+///|
+pub fn enhex_with(
+  cell : @value.Cell,
+  plus : Bool,
+  escape : Int,
+) -> Result[@value.Cell, ActionError] {
+  changed_text(cell, "enhex", fn(value) {
+    @series.enhex_with(value, plus, escape)
+  })
 }
 
 ///|

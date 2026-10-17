@@ -40,6 +40,8 @@ pub fn enhex(@value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn enhex_uri(@value.Cell) -> Result[@value.Cell, ActionError]
 
+pub fn enhex_with(@value.Cell, Bool, Int) -> Result[@value.Cell, ActionError]
+
 pub fn enline(@value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn entab(@value.Cell) -> Result[@value.Cell, ActionError]

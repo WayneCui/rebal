@@ -233,6 +233,8 @@ fn call(
     func.arity() + 1
   } else if func.code() == native_dehex && named(env, active, "escape") {
     func.arity() + 1
+  } else if func.code() == native_enhex && named(env, active, "escape") {
+    func.arity() + 1
   } else if func.code() == native_call {
     func.arity() + call_extra(env, active)
   } else if func.code() == 0 {
@@ -285,7 +287,7 @@ fn call(
   } else if func.code() == native_decloak {
     (perform_decloak(env, args[0], args[1], active), cursor)
   } else if func.code() == native_enhex {
-    (perform_enhex(env, args[0], active), cursor)
+    (perform_enhex(env, args, active), cursor)
   } else if func.code() == native_dehex {
     (perform_dehex(env, args, active), cursor)
   } else if func.code() == 0 {

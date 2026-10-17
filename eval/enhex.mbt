@@ -1,27 +1,40 @@
 ///|
-/// Encodes a string, file, url, or binary. `/uri` writes a space as `+` and encodes a plus sign.
 fn perform_enhex(
   env : Env,
-  value : @value.Cell,
+  args : Array[@value.Cell],
   active : Array[Int],
 ) -> @value.Cell raise EvalError {
-  let plus = enhex_plus(env, active)
-  if plus {
-    from_action(@action.enhex_uri(value))
-  } else {
-    from_action(@action.enhex(value))
-  }
+  let (plus, escape) = enhex_flags(env, args, active)
+  from_action(@action.enhex_with(args[0], plus, escape))
 }
 
 ///|
-fn enhex_plus(env : Env, active : Array[Int]) -> Bool raise EvalError {
+fn enhex_flags(
+  env : Env,
+  args : Array[@value.Cell],
+  active : Array[Int],
+) -> (Bool, Int) raise EvalError {
   let mut plus = false
+  let mut escape = '%'.to_int()
+  let mut cursor = 1
   for sym in active {
-    if env.symbols.canon(sym) == "uri" {
+    let name = env.symbols.canon(sym)
+    if name == "uri" {
       plus = true
+    } else if name == "escape" {
+      escape = enhex_mark(args[cursor])
+      cursor = cursor + 1
     } else {
       raise EvalError::Cannot("enhex")
     }
   }
-  plus
+  (plus, escape)
+}
+
+///|
+fn enhex_mark(cell : @value.Cell) -> Int raise EvalError {
+  match cell {
+    @value.Char(code) => code
+    _ => raise EvalError::Cannot("enhex")
+  }
 }

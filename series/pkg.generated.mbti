@@ -26,7 +26,7 @@ pub fn detab(@value.Cell) -> @value.Cell?
 
 pub fn enhex(@value.Cell) -> @value.Cell?
 
-pub fn enhex_with(@value.Cell, Bool) -> @value.Cell?
+pub fn enhex_with(@value.Cell, Bool, Int) -> @value.Cell?
 
 pub fn enline(@value.Cell) -> @value.Cell?
 

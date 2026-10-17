@@ -56,3 +56,39 @@ test "enhex/uri writes a space as plus and encodes a plus sign" {
   }
   assert_true(other)
 }
+
+///|
+test "enhex/escape uses the given mark, and equals writes uri spaces as underscore" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(env, "(enhex/escape {(#)} #\"#\") = {(#23)}")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(enhex/escape {(š)} #\"#\") = {(#C5#A1)}")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(enhex/escape {a b_} #\"=\") = {a=20b_}")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(enhex/uri/escape {a b_} #\"=\") = {a_b=5F}")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(enhex/escape {a á_} #\"=\") = {a=20=C3=A1_}")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(enhex/escape/uri {a á_} #\"=\") = {a_=C3=A1=5F}")
+    is @value.Logic(true),
+  )
+  let bad = try {
+    @eval.run(env, "enhex/escape {a} 1") |> ignore
+    false
+  } catch {
+    error => error.id() == "cannot"
+  }
+  assert_true(bad)
+}

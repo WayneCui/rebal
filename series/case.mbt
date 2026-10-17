@@ -143,11 +143,16 @@ pub fn dehex_with(cell : @value.Cell, escape : Int, uri : Bool) -> @value.Cell? 
 
 ///|
 pub fn enhex(cell : @value.Cell) -> @value.Cell? {
-  enhex_with(cell, false)
+  enhex_with(cell, false, '%'.to_int())
 }
 
 ///|
-pub fn enhex_with(cell : @value.Cell, plus : Bool) -> @value.Cell? {
+/// `plus` writes a space as `+`, or as `_` when `escape` is `=`.
+pub fn enhex_with(
+  cell : @value.Cell,
+  plus : Bool,
+  escape : Int,
+) -> @value.Cell? {
   let uri = match cell {
     @value.Seq(series, _) =>
       series.datatype() == @value.File || series.datatype() == @value.Url
@@ -157,7 +162,7 @@ pub fn enhex_with(cell : @value.Cell, plus : Bool) -> @value.Cell? {
     @value.Seq(series, _) => series.datatype() == @value.Binary
     _ => false
   }
-  map_codes(cell, fn(codes) { encode_hex(codes, uri, binary, plus) })
+  map_codes(cell, fn(codes) { encode_hex(codes, uri, binary, plus, escape) })
 }
 
 ///|
@@ -284,17 +289,19 @@ fn encode_hex(
   uri : Bool,
   binary : Bool,
   plus : Bool,
+  escape : Int,
 ) -> Array[Int] {
+  let space = if escape == '='.to_int() { '_'.to_int() } else { '+'.to_int() }
   let next : Array[Int] = []
   for code in codes {
     let bytes = if binary { [code] } else { utf8_codes(code) }
     for byte in bytes {
       if plus && byte == ' '.to_int() {
-        next.push('+'.to_int())
-      } else if stays_plain(byte, uri) && !(plus && byte == '+'.to_int()) {
+        next.push(space)
+      } else if stays_plain(byte, uri) && !(plus && byte == space) {
         next.push(byte)
       } else {
-        next.push('%'.to_int())
+        next.push(escape)
         next.push(hex_digit_code(byte / 16))
         next.push(hex_digit_code(byte % 16))
       }
