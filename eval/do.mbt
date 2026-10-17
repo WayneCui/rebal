@@ -324,6 +324,8 @@ fn apply(
     perform_function(env, args[0], args[1], false)
   } else if func.code() == native_use {
     perform_use(env, args[0], args[1])
+  } else if func.code() == native_wrap {
+    perform_wrap(env, args[0])
   } else if func.code() == native_cause_error {
     perform_cause_error(args[0], args[1], args[2])
   } else if func.code() == native_closure {

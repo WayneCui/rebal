@@ -404,6 +404,9 @@ let native_series_q : Int = 132
 let native_clos : Int = 133
 
 ///|
+let native_wrap : Int = 134
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -542,6 +545,7 @@ pub fn Env::new() -> Env {
   define_native(env, "function", 2, false, native_function)
   define_native(env, "funct", 2, false, native_function)
   define_native(env, "use", 2, false, native_use)
+  define_native(env, "wrap", 1, false, native_wrap)
   define_native(env, "cause-error", 3, false, native_cause_error)
   install(env, "unset!", @value.Type(@value.Unset))
   install(env, "none!", @value.Type(@value.None))
