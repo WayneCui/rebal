@@ -329,6 +329,9 @@ let native_dehex : Int = 107
 let native_enhex : Int = 108
 
 ///|
+let native_parse : Int = 109
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -442,6 +445,7 @@ pub fn Env::new() -> Env {
   define_native(env, "entab", 1, false, native_entab)
   define_native(env, "dehex", 1, false, native_dehex)
   define_native(env, "enhex", 1, false, native_enhex)
+  define_native(env, "parse", 2, false, native_parse)
   install(env, "unset!", @value.Type(@value.Unset))
   install(env, "none!", @value.Type(@value.None))
   install(env, "logic!", @value.Type(@value.Logic))
