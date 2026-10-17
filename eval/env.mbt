@@ -449,6 +449,12 @@ let native_debase : Int = 147
 let native_checksum : Int = 148
 
 ///|
+let native_compress : Int = 149
+
+///|
+let native_decompress : Int = 150
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -476,6 +482,8 @@ pub fn Env::new() -> Env {
   define_native(env, "enbase", 2, false, native_enbase)
   define_native(env, "debase", 2, false, native_debase)
   define_native(env, "checksum", 2, false, native_checksum)
+  define_native(env, "compress", 2, false, native_compress)
+  define_native(env, "decompress", 2, false, native_decompress)
   define_native(env, "copy", 1, false, native_copy)
   define_native(env, "insert", 2, false, native_insert)
   define_native(env, "remove", 1, false, native_remove)

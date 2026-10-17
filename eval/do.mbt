@@ -595,6 +595,10 @@ fn apply(
     perform_debase(args[0], args[1])
   } else if func.code() == native_checksum {
     perform_checksum(env, args[0], args[1])
+  } else if func.code() == native_compress {
+    perform_compress(env, args[0], args[1])
+  } else if func.code() == native_decompress {
+    perform_decompress(env, args[0], args[1])
   } else {
     raise EvalError::Cannot("function")
   }
