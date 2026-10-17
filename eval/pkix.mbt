@@ -24,6 +24,12 @@ fn perform_decode(
     }
     return decode_utc_time(args[1])
   }
+  if kind == "der" {
+    if binary {
+      raise EvalError::Cannot("decode")
+    }
+    return decode_der(env, args[1])
+  }
   if kind != "pkix" {
     raise EvalError::Cannot("access")
   }
