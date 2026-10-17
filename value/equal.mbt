@@ -34,6 +34,7 @@ fn equal_at(left : Cell, right : Cell, depth : Int) -> Bool {
       (Error(a), Error(b)) =>
         a.id == b.id && a.arg1 == b.arg1 && a.near == b.near
       (Bitset(a), Bitset(b)) => a.same(b)
+      (Map(a), Map(b)) => a.same(b)
       _ => false
     }
   }

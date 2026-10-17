@@ -19,6 +19,7 @@ pub(all) enum Cell {
   Object(Frame)
   Error(ErrorValue)
   Bitset(Bitset)
+  Map(MapValue)
 }
 
 ///|
@@ -43,6 +44,7 @@ pub fn Cell::datatype(self : Cell) -> Datatype {
     Object(_) => Object
     Error(_) => Error
     Bitset(_) => Bitset
+    Map(_) => Map
   }
 }
 

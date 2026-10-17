@@ -46,6 +46,7 @@ pub(all) enum Cell {
   Object(Frame)
   Error(ErrorValue)
   Bitset(Bitset)
+  Map(MapValue)
 }
 pub fn Cell::datatype(Self) -> Datatype
 pub fn Cell::equal(Self, Self) -> Bool
@@ -84,6 +85,7 @@ pub(all) enum Datatype {
   Object
   Error
   Bitset
+  Map
 } derive(Eq)
 pub fn Datatype::equal(Self, Self) -> Bool
 pub fn Datatype::not_equal(Self, Self) -> Bool
@@ -160,6 +162,18 @@ pub fn Lexeme::snapshot(Self) -> Self
 pub fn Lexeme::spelling(Self) -> String
 pub fn Lexeme::sym(Self) -> Int
 pub fn Lexeme::with_binding(Self, Binding) -> Self
+
+pub struct MapValue {
+  keys : Array[Cell]
+  values : Array[Cell]
+}
+pub fn MapValue::get(Self, Cell) -> Cell?
+pub fn MapValue::key(Self, Int) -> Cell?
+pub fn MapValue::length(Self) -> Int
+pub fn MapValue::make() -> Self
+pub fn MapValue::put(Self, Cell, Cell) -> Unit
+pub fn MapValue::same(Self, Self) -> Bool
+pub fn MapValue::value(Self, Int) -> Cell?
 
 type Payload
 

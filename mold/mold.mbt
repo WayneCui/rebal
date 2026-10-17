@@ -75,6 +75,7 @@ fn write_cell(
         }
       @value.Object(_) => buf.write_string("object!")
       @value.Bitset(bits) => write_bitset(buf, bits)
+      @value.Map(map) => write_map(buf, map, molded, depth)
       @value.Error(error) => {
         buf.write_string("make error! [id: ")
         buf.write_string(error.id)
@@ -495,6 +496,30 @@ fn decimal_text(value : Double) -> String {
 }
 
 ///|
+fn write_map(
+  buf : StringBuilder,
+  map : @value.MapValue,
+  molded : Bool,
+  depth : Int,
+) -> Unit {
+  buf.write_string("make map! [")
+  for index in 0..<map.length() {
+    if index > 0 {
+      buf.write_char(' ')
+    }
+    match (map.key(index), map.value(index)) {
+      (Some(key), Some(value)) => {
+        write_cell(buf, key, molded, depth + 1)
+        buf.write_char(' ')
+        write_cell(buf, value, molded, depth + 1)
+      }
+      _ => ()
+    }
+  }
+  buf.write_char(']')
+}
+
+///|
 fn write_bitset(buf : StringBuilder, bits : @value.Bitset) -> Unit {
   buf.write_string("make bitset! #{")
   for index in 0..<32 {
@@ -535,5 +560,6 @@ pub fn type_name(datatype : @value.Datatype) -> String {
     @value.Object => "object!"
     @value.Error => "error!"
     @value.Bitset => "bitset!"
+    @value.Map => "map!"
   }
 }

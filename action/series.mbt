@@ -97,6 +97,11 @@ pub fn select(
 ) -> Result[@value.Cell, ActionError] {
   match series {
     @value.None => Ok(@value.None)
+    @value.Map(map) =>
+      match map.get(value) {
+        Some(found) => Ok(found)
+        None => Ok(@value.None)
+      }
     _ =>
       if is_series(series) {
         Ok(@series.select(series, value))
@@ -138,6 +143,14 @@ pub fn pick(
 
 ///|
 pub fn length(series : @value.Cell) -> Result[@value.Cell, ActionError] {
+  match series {
+    @value.Map(map) => Ok(@value.Integer(map.length().to_int64()))
+    _ => length_series(series)
+  }
+}
+
+///|
+fn length_series(series : @value.Cell) -> Result[@value.Cell, ActionError] {
   match @series.length(series) {
     Some(n) => Ok(@value.Integer(n.to_int64()))
     None => Err(Cannot("length?"))

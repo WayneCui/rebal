@@ -29,6 +29,7 @@ pub(all) enum Datatype {
   Object
   Error
   Bitset
+  Map
 } derive(Eq)
 
 ///|

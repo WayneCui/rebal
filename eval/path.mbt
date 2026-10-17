@@ -95,6 +95,11 @@ fn path_step(
       }
     @value.Seq(series, index) => step_series(series, index, selector)
     @value.Pair(x, y) => pair_field(x, y, selector)
+    @value.Map(map) =>
+      match map.get(selector) {
+        Some(found) => found
+        None => @value.None
+      }
     _ => raise EvalError::InvalidPath("path")
   }
 }
@@ -189,6 +194,7 @@ fn write_selector(
         _ => raise EvalError::InvalidPath("object")
       }
     @value.Seq(series, index) => write_series(series, index, selector, value)
+    @value.Map(map) => map.put(selector, value)
     _ => raise EvalError::InvalidPath("path")
   }
 }
