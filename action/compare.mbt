@@ -191,6 +191,7 @@ fn number_order(left : @value.Cell, right : @value.Cell) -> Int? {
     (@value.Decimal(x), @value.Time(y)) => Some(cmp_double(x, y))
     (@value.Time(x), @value.Percent(y)) => Some(cmp_double(x, y))
     (@value.Percent(x), @value.Time(y)) => Some(cmp_double(x, y))
+    (@value.Date(left), @value.Date(right)) => Some(left.order(right))
     _ =>
       match (as_double(left), as_double(right)) {
         (Some(x), Some(y)) if left.datatype() == @value.Percent ||

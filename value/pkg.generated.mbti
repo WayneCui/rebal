@@ -4,6 +4,8 @@ package "rebal/value"
 // Values
 pub fn snap_seconds(Double) -> Double
 
+pub fn valid_date(Int, Int, Int) -> Bool
+
 // Errors
 
 // Types and methods
@@ -23,6 +25,7 @@ pub(all) enum Cell {
   Tuple(Array[Int])
   Money(Double)
   Time(Double)
+  Date(DateValue)
   Char(Int)
   Sym(Datatype, Lexeme)
   Seq(Series, Int)
@@ -49,6 +52,7 @@ pub(all) enum Datatype {
   Tuple
   Money
   Time
+  Date
   Char
   Word
   SetWord
@@ -69,6 +73,25 @@ pub(all) enum Datatype {
 } derive(Eq)
 pub fn Datatype::equal(Self, Self) -> Bool
 pub fn Datatype::not_equal(Self, Self) -> Bool
+
+pub struct DateValue {
+  year : Int
+  month : Int
+  day : Int
+  time : Double?
+  zone : Int?
+}
+pub fn DateValue::add_seconds(Self, Double) -> Self
+pub fn DateValue::day(Self) -> Int
+pub fn DateValue::day_diff(Self, Self) -> Int
+pub fn DateValue::make(Int, Int, Int, Double?, Int?) -> Self
+pub fn DateValue::month(Self) -> Int
+pub fn DateValue::order(Self, Self) -> Int
+pub fn DateValue::same(Self, Self) -> Bool
+pub fn DateValue::shift(Self, Int) -> Self
+pub fn DateValue::time(Self) -> Double?
+pub fn DateValue::year(Self) -> Int
+pub fn DateValue::zone(Self) -> Int?
 
 pub struct ErrorValue {
   id : String

@@ -47,6 +47,110 @@ fn to_pair(spec : @value.Cell) -> @value.Cell raise EvalError {
 }
 
 ///|
+fn to_date(spec : @value.Cell) -> @value.Cell raise EvalError {
+  match spec {
+    @value.Date(date) => @value.Date(date)
+    @value.Seq(series, index) if series.datatype() == @value.Block =>
+      date_block(series, index)
+    _ => raise EvalError::Cannot("make")
+  }
+}
+
+///|
+fn date_block(
+  series : @value.Series,
+  index : Int,
+) -> @value.Cell raise EvalError {
+  match series.item(index) {
+    Some(@value.Date(date)) => date_from_date(date, series, index)
+    Some(@value.Integer(day)) => date_from_parts(day, series, index)
+    _ => raise EvalError::Cannot("make")
+  }
+}
+
+///|
+fn date_from_date(
+  date : @value.DateValue,
+  series : @value.Series,
+  index : Int,
+) -> @value.Cell raise EvalError {
+  let count = series.length() - index
+  if count == 1 {
+    @value.Date(date)
+  } else if count == 2 {
+    @value.Date(date.add_seconds(date_time_at(series, index + 1)))
+  } else if count == 3 {
+    let shifted = date.add_seconds(date_time_at(series, index + 1))
+    @value.Date(
+      @value.DateValue::make(
+        shifted.year(),
+        shifted.month(),
+        shifted.day(),
+        shifted.time(),
+        Some(zone_minutes(date_time_at(series, index + 2))),
+      ),
+    )
+  } else {
+    raise EvalError::Cannot("make")
+  }
+}
+
+///|
+fn date_from_parts(
+  day : Int64,
+  series : @value.Series,
+  index : Int,
+) -> @value.Cell raise EvalError {
+  let count = series.length() - index
+  if count < 3 || count > 5 {
+    raise EvalError::Cannot("make")
+  } else {
+    match (series.item(index + 1), series.item(index + 2)) {
+      (Some(@value.Integer(month)), Some(@value.Integer(year))) => {
+        let y = year.to_int()
+        let m = month.to_int()
+        let d = day.to_int()
+        if !@value.valid_date(y, m, d) {
+          raise EvalError::Cannot("make")
+        } else {
+          let base = @value.DateValue::make(y, m, d, None, None)
+          if count == 3 {
+            @value.Date(base)
+          } else if count == 4 {
+            @value.Date(base.add_seconds(date_time_at(series, index + 3)))
+          } else {
+            let shifted = base.add_seconds(date_time_at(series, index + 3))
+            @value.Date(
+              @value.DateValue::make(
+                shifted.year(),
+                shifted.month(),
+                shifted.day(),
+                shifted.time(),
+                Some(zone_minutes(date_time_at(series, index + 4))),
+              ),
+            )
+          }
+        }
+      }
+      _ => raise EvalError::Cannot("make")
+    }
+  }
+}
+
+///|
+fn date_time_at(series : @value.Series, index : Int) -> Double raise EvalError {
+  match series.item(index) {
+    Some(@value.Time(seconds)) => seconds
+    _ => raise EvalError::Cannot("make")
+  }
+}
+
+///|
+fn zone_minutes(seconds : Double) -> Int {
+  (seconds / 60.0).to_int()
+}
+
+///|
 fn to_time(spec : @value.Cell) -> @value.Cell raise EvalError {
   match spec {
     @value.Time(n) => @value.Time(n)
@@ -157,6 +261,7 @@ fn perform_to(
     @value.Type(@value.Tuple) => to_tuple(spec)
     @value.Type(@value.Money) => to_money(spec)
     @value.Type(@value.Time) => to_time(spec)
+    @value.Type(@value.Date) => to_date(spec)
     _ => raise EvalError::Cannot("to")
   }
 }

@@ -73,6 +73,20 @@ fn combine(
       time_money(name, on_decimal(x / 3600.0, y))
     (@value.Money(x), @value.Time(y)) =>
       time_money(name, on_decimal(x, y / 3600.0))
+    (@value.Date(date), @value.Integer(n)) =>
+      shift_date(name, date, n.to_int(), true)
+    (@value.Integer(n), @value.Date(date)) =>
+      shift_date(name, date, n.to_int(), false)
+    (@value.Date(left), @value.Date(right)) =>
+      if name == "subtract" {
+        Ok(@value.Integer(left.day_diff(right).to_int64()))
+      } else {
+        Err(Cannot(name))
+      }
+    (@value.Date(date), @value.Time(seconds)) =>
+      add_date_time(name, date, seconds)
+    (@value.Time(seconds), @value.Date(date)) =>
+      add_date_time(name, date, seconds)
     _ =>
       match (as_double(left), as_double(right)) {
         (Some(x), Some(y)) => Ok(@value.Decimal(on_decimal(x, y)))
@@ -140,6 +154,35 @@ fn time_money(
 ) -> Result[@value.Cell, ActionError] {
   if name == "multiply" {
     Ok(@value.Money(amount))
+  } else {
+    Err(Cannot(name))
+  }
+}
+
+///|
+fn shift_date(
+  name : String,
+  date : @value.DateValue,
+  days : Int,
+  date_on_left : Bool,
+) -> Result[@value.Cell, ActionError] {
+  if name == "add" {
+    Ok(@value.Date(date.shift(days)))
+  } else if name == "subtract" && date_on_left {
+    Ok(@value.Date(date.shift(0 - days)))
+  } else {
+    Err(Cannot(name))
+  }
+}
+
+///|
+fn add_date_time(
+  name : String,
+  date : @value.DateValue,
+  seconds : Double,
+) -> Result[@value.Cell, ActionError] {
+  if name == "add" {
+    Ok(@value.Date(date.add_seconds(seconds)))
   } else {
     Err(Cannot(name))
   }

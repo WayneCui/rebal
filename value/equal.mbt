@@ -23,6 +23,7 @@ fn equal_at(left : Cell, right : Cell, depth : Int) -> Bool {
       (Tuple(a), Tuple(b)) => tuple_same(a, b)
       (Money(a), Money(b)) => a == b
       (Time(a), Time(b)) => a == b
+      (Date(a), Date(b)) => a.same(b)
       (Char(a), Char(b)) => a == b
       (Sym(_, a), Sym(_, b)) => a.sym == b.sym
       (Seq(a, ai), Seq(b, bi)) =>

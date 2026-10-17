@@ -37,6 +37,21 @@ fn Lexer::number(self : Lexer) -> Result[@value.Cell, ScanError] {
         Some(char) if is_digit(char) => self.time_value(sign, whole)
         _ => self.percent_suffix(finish_integer(sign, whole, 10))
       }
+    Some('-') if sign >= 0L =>
+      match self.chars.get(self.pos + 1) {
+        Some(char) if is_digit(char) || is_letter(char) => {
+          let saved = self.pos
+          match self.date_try(whole) {
+            Ready(cell) => Ok(cell)
+            Fail => Err(Invalid("date"))
+            Skip => {
+              self.pos = saved
+              self.percent_suffix(finish_integer(sign, whole, 10))
+            }
+          }
+        }
+        _ => self.percent_suffix(finish_integer(sign, whole, 10))
+      }
     _ => self.percent_suffix(finish_integer(sign, whole, 10))
   }
 }

@@ -14,6 +14,7 @@ fn make_value(
     @value.Type(@value.Tuple) => to_tuple(spec)
     @value.Type(@value.Money) => to_money(spec)
     @value.Type(@value.Time) => to_time(spec)
+    @value.Type(@value.Date) => to_date(spec)
     _ => raise EvalError::Cannot("make")
   }
 }

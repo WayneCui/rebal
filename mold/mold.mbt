@@ -60,6 +60,7 @@ fn write_cell(
           buf.write_string(money_text(n))
         }
       @value.Time(n) => write_time(buf, n)
+      @value.Date(date) => write_date(buf, date)
       @value.Char(code) => write_char_value(buf, code, molded)
       @value.Sym(datatype, lexeme) =>
         write_word(buf, datatype, lexeme.spelling())
@@ -310,6 +311,71 @@ fn hex_digit(value : Int) -> Char {
 }
 
 ///|
+fn write_date(buf : StringBuilder, date : @value.DateValue) -> Unit {
+  buf.write_string(date.day().to_string())
+  buf.write_char('-')
+  buf.write_string(month_name(date.month()))
+  buf.write_char('-')
+  buf.write_string(year_text(date.year()))
+  match date.time() {
+    Some(seconds) => {
+      buf.write_char('/')
+      write_time(buf, seconds)
+    }
+    None => ()
+  }
+  match date.zone() {
+    Some(minutes) =>
+      if minutes < 0 {
+        buf.write_char('-')
+        write_time(buf, (0 - minutes).to_double() * 60.0)
+      } else {
+        buf.write_char('+')
+        write_time(buf, minutes.to_double() * 60.0)
+      }
+    None => ()
+  }
+}
+
+///|
+fn month_name(month : Int) -> String {
+  if month == 1 {
+    "Jan"
+  } else if month == 2 {
+    "Feb"
+  } else if month == 3 {
+    "Mar"
+  } else if month == 4 {
+    "Apr"
+  } else if month == 5 {
+    "May"
+  } else if month == 6 {
+    "Jun"
+  } else if month == 7 {
+    "Jul"
+  } else if month == 8 {
+    "Aug"
+  } else if month == 9 {
+    "Sep"
+  } else if month == 10 {
+    "Oct"
+  } else if month == 11 {
+    "Nov"
+  } else {
+    "Dec"
+  }
+}
+
+///|
+fn year_text(year : Int) -> String {
+  let mut text = year.to_string()
+  while text.length() < 4 {
+    text = "0" + text
+  }
+  text
+}
+
+///|
 fn write_time(buf : StringBuilder, seconds : Double) -> Unit {
   let snapped = @value.snap_seconds(seconds)
   if snapped < 0.0 {
@@ -440,6 +506,7 @@ pub fn type_name(datatype : @value.Datatype) -> String {
     @value.Tuple => "tuple!"
     @value.Money => "money!"
     @value.Time => "time!"
+    @value.Date => "date!"
     @value.Char => "char!"
     @value.Word => "word!"
     @value.SetWord => "set-word!"

@@ -296,6 +296,7 @@ pub fn Env::new() -> Env {
   install(env, "tuple!", @value.Type(@value.Tuple))
   install(env, "money!", @value.Type(@value.Money))
   install(env, "time!", @value.Type(@value.Time))
+  install(env, "date!", @value.Type(@value.Date))
   install(env, "char!", @value.Type(@value.Char))
   install(env, "word!", @value.Type(@value.Word))
   install(env, "set-word!", @value.Type(@value.SetWord))
