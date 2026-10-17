@@ -324,6 +324,8 @@ fn apply(
     perform_what_dir()
   } else if func.code() == native_change_dir {
     perform_change_dir(args[0])
+  } else if func.code() == native_make_dir {
+    perform_make_dir(env, args[0])
   } else if func.code() == native_copy {
     from_action(@action.copy(args[0]))
   } else if func.code() == native_insert {
