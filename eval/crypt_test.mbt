@@ -27,6 +27,23 @@ test "crypt aes-128-ecb encrypts each block on its own" {
 }
 
 ///|
+test "crypt aes-256-ecb matches the FIPS-197 block" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "port: open crypt://aes-256-ecb\nmodify port 'key #{000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F}\nmodify port 'init-vector none\ncipher: read write port #{00112233445566778899AABBCCDDEEFF}\nmodify port 'direction 'decrypt\nplain: read write port cipher\n(reduce [cipher plain]) = reduce [#{8EA2B7CA516745BFEAFC49904B496089} #{00112233445566778899AABBCCDDEEFF}]",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "port: open crypt://aes-256-ecb\nmodify port 'key #{603DEB1015CA71BE2B73AEF0857D77811F352C073B6108D72D9810A30914DFF4}\n(read write port #{6BC1BEE22E409F96E93D7E117393172A}) = #{F3EED1BDB5D2A03C064B5A7E3DB181F8}",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "crypt aes-192-ecb matches the FIPS-197 block" {
   let env = @eval.Env::new()
   assert_true(
@@ -61,7 +78,7 @@ test "crypt aes-192-ecb matches the FIPS-197 block" {
 test "crypt rejects a cipher that is not wired yet" {
   let env = @eval.Env::new()
   let missing = try {
-    @eval.run(env, "open crypt://aes-256-ecb") |> ignore
+    @eval.run(env, "open crypt://aes-128-cbc") |> ignore
     false
   } catch {
     error =>

@@ -43,7 +43,7 @@ fn crypt_actor(
 }
 
 ///|
-/// `crypt://aes-128-ecb` or `aes-192-ecb` encrypts. `#decrypt` starts in decrypt.
+/// `crypt://aes-128-ecb`, `aes-192-ecb`, or `aes-256-ecb`. `#decrypt` starts in decrypt.
 fn crypt_open(env : Env, port : @value.Cell) -> @value.Cell raise EvalError {
   match port {
     @value.Port(value) =>
@@ -205,6 +205,8 @@ fn ecb_key_len(name : String) -> Int? {
     Some(16)
   } else if name == "aes-192-ecb" {
     Some(24)
+  } else if name == "aes-256-ecb" {
+    Some(32)
   } else {
     None
   }

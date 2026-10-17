@@ -46,10 +46,10 @@ let aes_tables : AesTables = {
 }
 
 ///|
-/// Expands a 16- or 24-byte key. The round count is `key words + 6`.
+/// Expands a 16-, 24-, or 32-byte key. The round count is `key words + 6`.
 fn aes_rounds(key : Array[Int]) -> Array[Int] raise EvalError {
   let nk = key.length() / 4
-  if (nk != 4 && nk != 6) || key.length() != nk * 4 {
+  if (nk != 4 && nk != 6 && nk != 8) || key.length() != nk * 4 {
     raise EvalError::Cannot("modify")
   }
   let total = 4 * (nk + 6 + 1)
@@ -83,6 +83,11 @@ fn aes_next_word(
     t1 = aes_tables.sbox[t2]
     t2 = aes_tables.sbox[t3]
     t3 = aes_tables.sbox[spun]
+  } else if nk > 6 && word % nk == 4 {
+    t0 = aes_tables.sbox[t0]
+    t1 = aes_tables.sbox[t1]
+    t2 = aes_tables.sbox[t2]
+    t3 = aes_tables.sbox[t3]
   }
   let prev = (word - nk) * 4
   rounds.push(rounds[prev] ^ t0)
