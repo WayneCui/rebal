@@ -8,6 +8,7 @@ priv struct GcmRun {
   mut clen : Int
   mut phase : Int
   mut done : Bool
+  mut blank : Bool
 }
 
 ///|
@@ -21,6 +22,7 @@ fn gcm_new() -> GcmRun {
     clen: 0,
     phase: 0,
     done: false,
+    blank: false,
   }
 }
 
@@ -41,6 +43,7 @@ fn gcm_start(
   run.clen = 0
   run.phase = 0
   run.done = false
+  run.blank = false
 }
 
 ///|

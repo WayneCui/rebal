@@ -130,7 +130,12 @@ fn crypt_close(port : @value.Cell) -> @value.Cell raise EvalError {
 fn crypt_read(port : @value.Cell) -> @value.Cell raise EvalError {
   let slot = crypt_slot(port)
   if slot.output.length() == 0 {
-    @value.None
+    if slot.gcm && slot.gcm_run.blank {
+      slot.gcm_run.blank = false
+      binary_cell([])
+    } else {
+      @value.None
+    }
   } else {
     let cell = binary_cell(slot.output)
     slot.output = []
@@ -880,9 +885,17 @@ fn same_bytes(left : Array[Int], right : Array[Int]) -> Bool {
 /// writes are the message. `update` appends the tag.
 fn gcm_absorb(slot : CryptSlot, bytes : Array[Int]) -> Unit raise EvalError {
   if bytes.length() == 0 {
+    if slot.ccm_aad > 0 && slot.gcm_run.phase == 0 {
+      raise EvalError::Cannot("write")
+    }
+    gcm_prepare(slot)
+    if slot.output.length() == 0 {
+      slot.gcm_run.blank = true
+    }
     return
   }
   gcm_prepare(slot)
+  slot.gcm_run.blank = false
   let run = slot.gcm_run
   if run.phase == 0 {
     if bytes.length() < slot.ccm_aad {
@@ -892,6 +905,9 @@ fn gcm_absorb(slot : CryptSlot, bytes : Array[Int]) -> Unit raise EvalError {
     run.phase = 1
     let rest = slice_from(bytes, slot.ccm_aad, bytes.length() - slot.ccm_aad)
     if rest.length() == 0 {
+      if slot.output.length() == 0 {
+        run.blank = true
+      }
       return
     }
     chacha_emit(slot, gcm_data(run, slot.rounds, rest, slot.encrypting))
@@ -935,6 +951,7 @@ fn gcm_finish_port(slot : CryptSlot) -> Unit raise EvalError {
   }
   chacha_emit(slot, gcm_tag(run, tag_len))
   run.done = true
+  run.blank = false
 }
 
 ///|

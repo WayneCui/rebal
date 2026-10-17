@@ -396,6 +396,20 @@ test "crypt aes-128-gcm authenticates the record" {
 }
 
 ///|
+test "crypt aes-128-gcm tags an empty message" {
+  // crypt-port-gcm-test.r3, AES-GCM NIST Validation row 1.
+  // A 16-byte nonce is folded with GHASH. The empty write still starts
+  // the cipher, so read is #{} and take is only the tag.
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "port: open crypt://aes-128-gcm\nmodify port 'key #{1014f74310d1718d1cc8f65f033aaf83}\nmodify port 'iv #{6bb54c9fd83c12f5ba76cc83f7650d2c}\nmodify port 'tag-length 16\nmodify port 'aad-length 0\nwrite port #{}\nwrite port #{}\ncipher: read port\ntag: take port\n(reduce [cipher tag]) = reduce [#{} #{0b6b57db309eff920c8133b8691e0cac}]",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "crypt rejects a cipher that is not wired yet" {
   let env = @eval.Env::new()
   let missing = try {
