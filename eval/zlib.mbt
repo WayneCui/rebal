@@ -19,20 +19,30 @@ extern "C" fn c_zlib_decompress(
 ) -> String = "rebal_zlib_decompress"
 
 ///|
-/// Compresses a string or a binary. The method word is `zlib`, `deflate`, or `gzip`.
+/// Compresses a string or a binary. The method word is `zlib`, `deflate`,
+/// `gzip`, or `zip`.
 fn perform_compress(
   env : Env,
   args : Array[@value.Cell],
   active : Array[Int],
 ) -> @value.Cell raise EvalError {
-  let window = press_window(env, args[1], "compress")
-  let level = compress_level(env, args, active)
-  let bytes = payload_bytes(args[0], "compress")
-  let packed = c_zlib_compress(latin_text(bytes), bytes.length(), level, window)
-  if c_zlib_code() != 0 {
-    raise EvalError::Cannot("compress")
+  if method_name(env, args[1], "compress") == "zip" {
+    zip_compress(args[0], active)
+  } else {
+    let window = press_window(env, args[1], "compress")
+    let level = compress_level(env, args, active)
+    let bytes = payload_bytes(args[0], "compress")
+    let packed = c_zlib_compress(
+      latin_text(bytes),
+      bytes.length(),
+      level,
+      window,
+    )
+    if c_zlib_code() != 0 {
+      raise EvalError::Cannot("compress")
+    }
+    binary_cell(codes_of(packed))
   }
-  binary_cell(codes_of(packed))
 }
 
 ///|
@@ -60,24 +70,38 @@ fn compress_level(
 }
 
 ///|
-/// Decompresses a zlib, raw deflate, or gzip binary.
+/// Decompresses a zlib, raw deflate, gzip, or stored zip binary.
 fn perform_decompress(
   env : Env,
   data : @value.Cell,
   kind : @value.Cell,
 ) -> @value.Cell raise EvalError {
-  let window = press_window(env, kind, "decompress")
-  match data {
-    @value.Seq(series, index) if series.datatype() == @value.Binary => {
-      let bytes = bytes_from(series, index)
-      let plain = c_zlib_decompress(latin_text(bytes), bytes.length(), window)
-      if c_zlib_code() != 0 {
-        raise EvalError::Cannot("decompress")
+  if method_name(env, kind, "decompress") == "zip" {
+    zip_decompress(data)
+  } else {
+    let window = press_window(env, kind, "decompress")
+    match data {
+      @value.Seq(series, index) if series.datatype() == @value.Binary => {
+        let bytes = bytes_from(series, index)
+        let plain = c_zlib_decompress(latin_text(bytes), bytes.length(), window)
+        if c_zlib_code() != 0 {
+          raise EvalError::Cannot("decompress")
+        }
+        binary_cell(codes_of(plain))
       }
-      binary_cell(codes_of(plain))
+      _ => raise EvalError::Cannot("decompress")
     }
-    _ => raise EvalError::Cannot("decompress")
   }
+}
+
+///|
+fn method_name(
+  env : Env,
+  kind : @value.Cell,
+  action : String,
+) -> String raise EvalError {
+  let word = as_word(kind, action)
+  env.symbols.canon(word.sym())
 }
 
 ///|
