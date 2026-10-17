@@ -233,8 +233,8 @@ fn call(
     func.arity() + 1
   } else if func.code() == native_dehex && named(env, active, "escape") {
     func.arity() + 1
-  } else if func.code() == native_enhex && named(env, active, "escape") {
-    func.arity() + 1
+  } else if func.code() == native_enhex {
+    func.arity() + enhex_extra(env, active)
   } else if func.code() == native_call {
     func.arity() + call_extra(env, active)
   } else if func.code() == 0 {
@@ -307,6 +307,18 @@ fn named(env : Env, active : Array[Int], spelling : String) -> Bool {
     }
   }
   found
+}
+
+///|
+fn enhex_extra(env : Env, active : Array[Int]) -> Int {
+  let mut extra = 0
+  if named(env, active, "escape") {
+    extra = extra + 1
+  }
+  if named(env, active, "except") {
+    extra = extra + 1
+  }
+  extra
 }
 
 ///|

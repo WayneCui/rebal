@@ -4,8 +4,8 @@ fn perform_enhex(
   args : Array[@value.Cell],
   active : Array[Int],
 ) -> @value.Cell raise EvalError {
-  let (plus, escape) = enhex_flags(env, args, active)
-  from_action(@action.enhex_with(args[0], plus, escape))
+  let (plus, escape, except) = enhex_flags(env, args, active)
+  from_action(@action.enhex_with(args[0], plus, escape, except))
 }
 
 ///|
@@ -13,9 +13,10 @@ fn enhex_flags(
   env : Env,
   args : Array[@value.Cell],
   active : Array[Int],
-) -> (Bool, Int) raise EvalError {
+) -> (Bool, Int, @value.Bitset?) raise EvalError {
   let mut plus = false
   let mut escape = '%'.to_int()
+  let mut except : @value.Bitset? = None
   let mut cursor = 1
   for sym in active {
     let name = env.symbols.canon(sym)
@@ -24,17 +25,28 @@ fn enhex_flags(
     } else if name == "escape" {
       escape = enhex_mark(args[cursor])
       cursor = cursor + 1
+    } else if name == "except" {
+      except = Some(enhex_set(args[cursor]))
+      cursor = cursor + 1
     } else {
       raise EvalError::Cannot("enhex")
     }
   }
-  (plus, escape)
+  (plus, escape, except)
 }
 
 ///|
 fn enhex_mark(cell : @value.Cell) -> Int raise EvalError {
   match cell {
     @value.Char(code) => code
+    _ => raise EvalError::Cannot("enhex")
+  }
+}
+
+///|
+fn enhex_set(cell : @value.Cell) -> @value.Bitset raise EvalError {
+  match cell {
+    @value.Bitset(set) => set
     _ => raise EvalError::Cannot("enhex")
   }
 }

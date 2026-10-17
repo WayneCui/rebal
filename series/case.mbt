@@ -143,15 +143,17 @@ pub fn dehex_with(cell : @value.Cell, escape : Int, uri : Bool) -> @value.Cell? 
 
 ///|
 pub fn enhex(cell : @value.Cell) -> @value.Cell? {
-  enhex_with(cell, false, '%'.to_int())
+  enhex_with(cell, false, '%'.to_int(), None)
 }
 
 ///|
 /// `plus` writes a space as `+`, or as `_` when `escape` is `=`.
+/// `except` replaces the default set of characters left as themselves.
 pub fn enhex_with(
   cell : @value.Cell,
   plus : Bool,
   escape : Int,
+  except : @value.Bitset?,
 ) -> @value.Cell? {
   let uri = match cell {
     @value.Seq(series, _) =>
@@ -162,7 +164,9 @@ pub fn enhex_with(
     @value.Seq(series, _) => series.datatype() == @value.Binary
     _ => false
   }
-  map_codes(cell, fn(codes) { encode_hex(codes, uri, binary, plus, escape) })
+  map_codes(cell, fn(codes) {
+    encode_hex(codes, uri, binary, plus, escape, except)
+  })
 }
 
 ///|
@@ -290,24 +294,48 @@ fn encode_hex(
   binary : Bool,
   plus : Bool,
   escape : Int,
+  except : @value.Bitset?,
 ) -> Array[Int] {
   let space = if escape == '='.to_int() { '_'.to_int() } else { '+'.to_int() }
+  let forced = match except {
+    Some(_) => true
+    None => false
+  }
   let next : Array[Int] = []
   for code in codes {
-    let bytes = if binary { [code] } else { utf8_codes(code) }
-    for byte in bytes {
-      if plus && byte == ' '.to_int() {
-        next.push(space)
-      } else if stays_plain(byte, uri) && !(plus && byte == space) {
-        next.push(byte)
-      } else {
-        next.push(escape)
-        next.push(hex_digit_code(byte / 16))
-        next.push(hex_digit_code(byte % 16))
+    if forced && !binary && code >= 0x80 {
+      for byte in utf8_codes(code) {
+        write_escaped(next, byte, escape)
+      }
+    } else {
+      let bytes = if binary { [code] } else { utf8_codes(code) }
+      for byte in bytes {
+        if plus && byte == ' '.to_int() {
+          next.push(space)
+        } else if byte_kept(byte, uri, except) && !(plus && byte == space) {
+          next.push(byte)
+        } else {
+          write_escaped(next, byte, escape)
+        }
       }
     }
   }
   next
+}
+
+///|
+fn write_escaped(next : Array[Int], byte : Int, escape : Int) -> Unit {
+  next.push(escape)
+  next.push(hex_digit_code(byte / 16))
+  next.push(hex_digit_code(byte % 16))
+}
+
+///|
+fn byte_kept(byte : Int, uri : Bool, except : @value.Bitset?) -> Bool {
+  match except {
+    Some(set) => set.has(byte)
+    None => stays_plain(byte, uri)
+  }
 }
 
 ///|

@@ -92,3 +92,31 @@ test "enhex/escape uses the given mark, and equals writes uri spaces as undersco
   }
   assert_true(bad)
 }
+
+///|
+test "enhex/except keeps only the characters in the bitset" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(env, "(enhex/except {12 ab} charset {12}) = {12%20%61%62}")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(enhex/except {12 ab} charset {12 }) = {12 %61%62}")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(enhex/except/escape {(#)} charset {()} #\"#\") = {(#23)}")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(enhex/escape/except {(#)} #\"#\" charset {()}) = {(#23)}")
+    is @value.Logic(true),
+  )
+  let bad = try {
+    @eval.run(env, "enhex/except {a} 1") |> ignore
+    false
+  } catch {
+    error => error.id() == "cannot"
+  }
+  assert_true(bad)
+}
