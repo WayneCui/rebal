@@ -104,6 +104,21 @@ let native_foreach : Int = 32
 let native_continue : Int = 33
 
 ///|
+let native_not : Int = 34
+
+///|
+let native_and : Int = 35
+
+///|
+let native_or : Int = 36
+
+///|
+let native_any : Int = 37
+
+///|
+let native_all : Int = 38
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -142,6 +157,11 @@ pub fn Env::new() -> Env {
   define_native(env, "break", 0, false, native_break)
   define_native(env, "foreach", 3, false, native_foreach)
   define_native(env, "continue", 0, false, native_continue)
+  define_native(env, "not", 1, false, native_not)
+  define_native(env, "and", 2, true, native_and)
+  define_native(env, "or", 2, true, native_or)
+  define_native(env, "any", 1, false, native_any)
+  define_native(env, "all", 1, false, native_all)
   install(env, "unset!", @value.Type(@value.Unset))
   install(env, "none!", @value.Type(@value.None))
   install(env, "logic!", @value.Type(@value.Logic))

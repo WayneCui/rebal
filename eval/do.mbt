@@ -279,6 +279,16 @@ fn apply(
     perform_foreach(env, args[0], args[1], args[2])
   } else if func.code() == native_continue {
     raise EvalError::Continued
+  } else if func.code() == native_not {
+    @action.logic_not(args[0])
+  } else if func.code() == native_and {
+    @action.logic_and(args[0], args[1])
+  } else if func.code() == native_or {
+    @action.logic_or(args[0], args[1])
+  } else if func.code() == native_any {
+    perform_any(env, args[0])
+  } else if func.code() == native_all {
+    perform_all(env, args[0])
   } else {
     raise EvalError::Cannot("function")
   }

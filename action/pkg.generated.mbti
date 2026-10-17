@@ -28,6 +28,12 @@ pub fn length(@value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn lesser(@value.Cell, @value.Cell) -> Result[Bool, ActionError]
 
+pub fn logic_and(@value.Cell, @value.Cell) -> @value.Cell
+
+pub fn logic_not(@value.Cell) -> @value.Cell
+
+pub fn logic_or(@value.Cell, @value.Cell) -> @value.Cell
+
 pub fn mold(@value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn multiply(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]
