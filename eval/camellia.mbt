@@ -36,7 +36,7 @@ let camellia_box : CamelliaBoxes = camellia_boxes()
 fn camellia128_subkeys(key : Array[Int]) -> Array[UInt64] {
   let kl_high = load64(key, 0)
   let kl_low = load64(key, 8)
-  let (ka_high, ka_low) = camellia_ka(kl_high, kl_low)
+  let (ka_high, ka_low) = camellia_ka(kl_high, kl_low, 0UL, 0UL)
   let keys : Array[UInt64] = []
   keys.push(kl_high)
   keys.push(kl_low)
@@ -100,9 +100,14 @@ fn camellia128_crypt(keys : Array[UInt64], block : Array[Int]) -> Array[Int] {
 }
 
 ///|
-fn camellia_ka(kl_high : UInt64, kl_low : UInt64) -> (UInt64, UInt64) {
-  let mut left = kl_high
-  let mut right = kl_low
+fn camellia_ka(
+  kl_high : UInt64,
+  kl_low : UInt64,
+  kr_high : UInt64,
+  kr_low : UInt64,
+) -> (UInt64, UInt64) {
+  let mut left = kl_high ^ kr_high
+  let mut right = kl_low ^ kr_low
   right = right ^ camellia_f(left, 0xA09E667F3BCC908BUL)
   left = left ^ camellia_f(right, 0xB67AE8584CAA73B2UL)
   left = left ^ kl_high
@@ -254,6 +259,98 @@ fn store64(out : Array[Int], value : UInt64) -> Unit {
     out.push(((value >> shift) & 255UL).to_int())
     shift = shift - 8
   }
+}
+
+///|
+/// 192-bit keys use the rightmost 64 bits and their complement as KR.
+fn camellia192_subkeys(key : Array[Int]) -> Array[UInt64] {
+  let kl_high = load64(key, 0)
+  let kl_low = load64(key, 8)
+  let kr_high = load64(key, 16)
+  let kr_low = kr_high.lnot()
+  let (ka_high, ka_low) = camellia_ka(kl_high, kl_low, kr_high, kr_low)
+  let (kb_high, kb_low) = camellia_kb(ka_high, ka_low, kr_high, kr_low)
+  let keys : Array[UInt64] = []
+  keys.push(kl_high)
+  keys.push(kl_low)
+  keys.push(kb_high)
+  keys.push(kb_low)
+  push_rot(keys, kr_high, kr_low, 15)
+  push_rot(keys, ka_high, ka_low, 15)
+  push_rot(keys, kr_high, kr_low, 30)
+  push_rot(keys, kb_high, kb_low, 30)
+  push_rot(keys, kl_high, kl_low, 45)
+  push_rot(keys, ka_high, ka_low, 45)
+  push_rot(keys, kl_high, kl_low, 60)
+  push_rot(keys, kr_high, kr_low, 60)
+  push_rot(keys, kb_high, kb_low, 60)
+  push_rot(keys, kl_high, kl_low, 77)
+  push_rot(keys, ka_high, ka_low, 77)
+  push_rot(keys, kr_high, kr_low, 94)
+  push_rot(keys, ka_high, ka_low, 94)
+  push_rot(keys, kl_high, kl_low, 111)
+  push_rot(keys, kb_high, kb_low, 111)
+  keys
+}
+
+///|
+fn camellia_kb(
+  ka_high : UInt64,
+  ka_low : UInt64,
+  kr_high : UInt64,
+  kr_low : UInt64,
+) -> (UInt64, UInt64) {
+  let mut left = ka_high ^ kr_high
+  let mut right = ka_low ^ kr_low
+  right = right ^ camellia_f(left, 0x10E527FADE682D1DUL)
+  left = left ^ camellia_f(right, 0xB05688C2B3E6C1FDUL)
+  (left, right)
+}
+
+///|
+fn camellia192_decrypt_keys(enc : Array[UInt64]) -> Array[UInt64] {
+  let dec : Array[UInt64] = []
+  for sub in enc {
+    dec.push(sub)
+  }
+  swap_key(dec, 0, 32)
+  swap_key(dec, 1, 33)
+  swap_key(dec, 2, 31)
+  swap_key(dec, 3, 30)
+  swap_key(dec, 4, 29)
+  swap_key(dec, 5, 28)
+  swap_key(dec, 6, 27)
+  swap_key(dec, 7, 26)
+  swap_key(dec, 8, 25)
+  swap_key(dec, 9, 24)
+  swap_key(dec, 10, 23)
+  swap_key(dec, 11, 22)
+  swap_key(dec, 12, 21)
+  swap_key(dec, 13, 20)
+  swap_key(dec, 14, 19)
+  swap_key(dec, 15, 18)
+  swap_key(dec, 16, 17)
+  dec
+}
+
+///|
+fn camellia192_crypt(keys : Array[UInt64], block : Array[Int]) -> Array[Int] {
+  let mut left = load64(block, 0) ^ keys[0]
+  let mut right = load64(block, 8) ^ keys[1]
+  let first = feistel6(left, right, keys, 2)
+  left = camellia_fl(first.0, keys[8])
+  right = camellia_flinv(first.1, keys[9])
+  let second = feistel6(left, right, keys, 10)
+  left = camellia_fl(second.0, keys[16])
+  right = camellia_flinv(second.1, keys[17])
+  let third = feistel6(left, right, keys, 18)
+  left = camellia_fl(third.0, keys[24])
+  right = camellia_flinv(third.1, keys[25])
+  let fourth = feistel6(left, right, keys, 26)
+  let out : Array[Int] = []
+  store64(out, fourth.1 ^ keys[32])
+  store64(out, fourth.0 ^ keys[33])
+  out
 }
 
 ///|

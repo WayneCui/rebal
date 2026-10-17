@@ -235,6 +235,8 @@ fn cipher_kind(name : String) -> (Int, Bool, Bool)? {
     Some((32, true, false))
   } else if name == "camellia-128-ecb" {
     Some((16, false, true))
+  } else if name == "camellia-192-ecb" {
+    Some((24, false, true))
   } else {
     None
   }
@@ -321,9 +323,12 @@ fn crypt_absorb(slot : CryptSlot, bytes : Array[Int]) -> Unit raise EvalError {
 
 ///|
 fn install_key(slot : CryptSlot, key : Array[Int]) -> Unit raise EvalError {
-  if slot.camellia {
+  if slot.camellia && slot.key_len == 16 {
     slot.cam_enc = camellia128_subkeys(key)
     slot.cam_dec = camellia128_decrypt_keys(slot.cam_enc)
+  } else if slot.camellia {
+    slot.cam_enc = camellia192_subkeys(key)
+    slot.cam_dec = camellia192_decrypt_keys(slot.cam_enc)
   } else {
     slot.rounds = aes_rounds(key)
   }
@@ -335,7 +340,11 @@ fn install_key(slot : CryptSlot, key : Array[Int]) -> Unit raise EvalError {
 fn crypt_block(slot : CryptSlot) -> Array[Int] raise EvalError {
   if slot.camellia {
     let keys = if slot.encrypting { slot.cam_enc } else { slot.cam_dec }
-    camellia128_crypt(keys, slot.pending)
+    if slot.key_len == 16 {
+      camellia128_crypt(keys, slot.pending)
+    } else {
+      camellia192_crypt(keys, slot.pending)
+    }
   } else if !slot.cbc {
     if slot.encrypting {
       aes_encrypt(slot.rounds, slot.pending)
