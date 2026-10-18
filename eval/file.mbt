@@ -224,7 +224,7 @@ fn perform_save(
 
 ///|
 /// `/compress false` is the zlib payload. `true` prefixes the boot header.
-/// `'script` molds that payload as base 64. A custom header is not accepted.
+/// `'script` molds that payload as base 64. `/header` supplies the fields.
 fn save_bytes(
   env : Env,
   script : String,
@@ -234,10 +234,10 @@ fn save_bytes(
   let (mode, length, spec) = save_mode(env, active, args)
   match spec {
     Some(header) =>
-      if length || mode is Some(_) {
+      if length {
         raise EvalError::Cannot("save")
       } else {
-        save_with_header(env, script, header)
+        save_with_header(env, script, header, mode)
       }
     None =>
       match mode {

@@ -84,6 +84,18 @@ test "save/compress writes zlib, a header, or a base-64 script" {
 }
 
 ///|
+test "a header compresses the body when options contain compress" {
+  // mezz-save.reb. The checksum is of the script before zlib.
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "s: save/header/compress none [print \"Hello REBOL!\"] [checksum: true] true t: save/header/compress none 1 [options: [foo]] true u: save/header none 1 [options: [compress]] (reduce [(load s) = [print \"Hello REBOL!\"] ((pick load/header s 1)/options) = [compress] ((pick load/header s 1)/checksum) = #{4DC8C9EE0414047082FF60E6A26A908DC7873FCD} (save/header/compress none 1 [checksum: true] false) = save/header none 1 [checksum: true] (load t) = 1 ((pick load/header t 1)/options) = [foo compress] (load u) = 1 (load save/header/compress none [1] [checksum: true] 'script) = 1]) = reduce [true true true true true true true true]",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "save/header stores a SHA1 checksum and load checks it" {
   // load-test.r3 "Script checksum verification".
   let env = @eval.Env::new()
