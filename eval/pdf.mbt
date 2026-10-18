@@ -67,7 +67,7 @@ fn pdf_document(env : Env, bytes : Array[Int]) -> @value.Cell? raise EvalError {
                       version,
                       objects,
                       refs,
-                      pdf_linearized(env, bytes, objects, trailer),
+                      pdf_linearized(env, bytes, objects, refs, trailer),
                       start_at,
                     )
                   }
@@ -80,7 +80,7 @@ fn pdf_document(env : Env, bytes : Array[Int]) -> @value.Cell? raise EvalError {
                 version,
                 objects,
                 refs,
-                pdf_linearized(env, bytes, objects, trailer),
+                pdf_linearized(env, bytes, objects, refs, trailer),
                 start_at,
               )
             }
@@ -242,6 +242,7 @@ fn pdf_linearized(
   env : Env,
   bytes : Array[Int],
   objects : @value.MapValue,
+  refs : @value.Series,
   trailer : @value.Cell,
 ) -> @value.Cell raise EvalError {
   if objects.length() == 0 {
@@ -250,20 +251,186 @@ fn pdf_linearized(
   match objects.value(0) {
     Some(@value.Map(map)) =>
       if pdf_truthy(pdf_map_field(map, "linearized")) {
+        let mut current = trailer
+        if objects.length() >= 2 {
+          match objects.value(1) {
+            Some(@value.Object(frame)) =>
+              if pdf_spec_is(env, frame, "xref") {
+                current = pdf_xref_stream(env, frame, refs)
+              }
+            _ => ()
+          }
+        }
         match pdf_map_field(map, "t") {
           Some(@value.Integer(offset)) =>
             match
               pdf_object(env, bytes, pdf_gap(bytes, offset.to_int()), objects) {
               Some((_, cell)) => cell
-              None => trailer
+              None => current
             }
-          _ => trailer
+          _ => current
         }
       } else {
         trailer
       }
     _ => trailer
   }
+}
+
+///|
+/// An XRef stream's `W` array is three field widths. Each entry becomes
+/// `[id×field3 type field2]`, and the stream bytes are consumed.
+fn pdf_xref_stream(
+  env : Env,
+  frame : @value.Frame,
+  refs : @value.Series,
+) -> @value.Cell raise EvalError {
+  let spec = match frame_field(env, frame, "spec") {
+    Some(@value.Map(map)) => map
+    _ => return @value.Cell::None
+  }
+  let widths = match pdf_map_field(spec, "w") {
+    Some(cell) =>
+      match pdf_int_block(cell) {
+        Some(values) =>
+          if values.length() >= 3 {
+            values
+          } else {
+            return pdf_xref_trailer(env, spec)
+          }
+        None => return pdf_xref_trailer(env, spec)
+      }
+    None => return pdf_xref_trailer(env, spec)
+  }
+  let mut data = match frame_field(env, frame, "data") {
+    Some(@value.Seq(series, index)) if series.datatype() == @value.Binary =>
+      bytes_from(series, index)
+    _ => []
+  }
+  let ranges = match pdf_map_field(spec, "index") {
+    Some(cell) =>
+      match pdf_int_block(cell) {
+        Some(values) => values
+        None => []
+      }
+    None =>
+      match pdf_map_field(spec, "size") {
+        Some(@value.Integer(size)) => [0L, size]
+        _ => []
+      }
+  }
+  let mut range_at = 0
+  while range_at + 1 < ranges.length() {
+    let mut id = ranges[range_at]
+    let mut count = ranges[range_at + 1]
+    while count > 0L {
+      if data.length() <
+        widths[0].to_int() + widths[1].to_int() + widths[2].to_int() {
+        count = 0L
+      } else {
+        let kind = pdf_be(data, 0, widths[0].to_int())
+        data = pdf_drop(data, widths[0].to_int())
+        let second = pdf_be(data, 0, widths[1].to_int())
+        data = pdf_drop(data, widths[1].to_int())
+        let third = pdf_be(data, 0, widths[2].to_int())
+        data = pdf_drop(data, widths[2].to_int())
+        let paired = if kind == 2L { 0L } else { third }
+        refs.push_item(@value.Pair(id, paired)) |> ignore
+        refs.push_item(@value.Integer(kind)) |> ignore
+        refs.push_item(@value.Integer(second)) |> ignore
+        id = id + 1L
+        count = count - 1L
+      }
+    }
+    range_at = range_at + 2
+  }
+  put_field(env, frame, "data", binary_cell(data))
+  pdf_xref_trailer(env, spec)
+}
+
+///|
+fn pdf_xref_trailer(env : Env, spec : @value.MapValue) -> @value.Cell {
+  let trailer = @value.MapValue::make()
+  trailer.put(
+    pdf_name_cell(env, "Size"),
+    pdf_or_none(pdf_map_field(spec, "size")),
+  )
+  trailer.put(
+    pdf_name_cell(env, "Root"),
+    pdf_or_none(pdf_map_field(spec, "root")),
+  )
+  trailer.put(
+    pdf_name_cell(env, "Info"),
+    pdf_or_none(pdf_map_field(spec, "info")),
+  )
+  trailer.put(pdf_name_cell(env, "ID"), pdf_or_none(pdf_map_field(spec, "id")))
+  @value.Map(trailer)
+}
+
+///|
+fn pdf_or_none(cell : @value.Cell?) -> @value.Cell {
+  match cell {
+    Some(value) => value
+    None => @value.Cell::None
+  }
+}
+
+///|
+fn pdf_spec_is(env : Env, frame : @value.Frame, name : String) -> Bool {
+  match frame_field(env, frame, "spec") {
+    Some(@value.Map(map)) =>
+      match pdf_map_field(map, "type") {
+        Some(@value.Sym(_, lexeme)) => lexeme.spelling().to_lower() == name
+        _ => false
+      }
+    _ => false
+  }
+}
+
+///|
+fn pdf_int_block(cell : @value.Cell) -> Array[Int64]? {
+  match cell {
+    @value.Seq(series, index) if series.datatype() == @value.Block => {
+      let values : Array[Int64] = []
+      let mut cursor = index
+      let mut ok = true
+      while ok && cursor < series.length() {
+        match series.item(cursor) {
+          Some(@value.Integer(number)) => values.push(number)
+          _ => ok = false
+        }
+        cursor = cursor + 1
+      }
+      if ok {
+        Some(values)
+      } else {
+        None
+      }
+    }
+    _ => None
+  }
+}
+
+///|
+fn pdf_be(bytes : Array[Int], at : Int, width : Int) -> Int64 {
+  let mut value = 0L
+  let mut index = 0
+  while index < width && at + index < bytes.length() {
+    value = value * 256L + bytes[at + index].to_int64()
+    index = index + 1
+  }
+  value
+}
+
+///|
+fn pdf_drop(bytes : Array[Int], width : Int) -> Array[Int] {
+  let rest : Array[Int] = []
+  let mut index = width
+  while index < bytes.length() {
+    rest.push(bytes[index])
+    index = index + 1
+  }
+  rest
 }
 
 ///|
