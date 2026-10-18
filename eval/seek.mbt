@@ -41,7 +41,25 @@ fn perform_find(
   } else {
     None
   }
-  from_action(
-    @action.seek(args[0], args[1], last, reverse, match_only, tail, only, limit),
-  )
+  match args[0] {
+    @value.Typeset(types) =>
+      if last || reverse || match_only || tail || only || part {
+        raise EvalError::Cannot("find")
+      } else {
+        typeset_find(types, args[1])
+      }
+    _ =>
+      from_action(
+        @action.seek(
+          args[0],
+          args[1],
+          last,
+          reverse,
+          match_only,
+          tail,
+          only,
+          limit,
+        ),
+      )
+  }
 }

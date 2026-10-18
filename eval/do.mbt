@@ -537,7 +537,10 @@ fn apply(
   } else if func.code() == native_append {
     from_action(@action.append(args[0], args[1]))
   } else if func.code() == native_find {
-    from_action(@action.find(args[0], args[1]))
+    match args[0] {
+      @value.Typeset(types) => typeset_find(types, args[1])
+      _ => from_action(@action.find(args[0], args[1]))
+    }
   } else if func.code() == native_pick {
     from_action(@action.pick(args[0], args[1]))
   } else if func.code() == native_length {
@@ -665,7 +668,10 @@ fn apply(
   } else if func.code() == native_series_q {
     perform_series_q(args[0])
   } else if func.code() == native_tail_q {
-    from_action(@action.tail_q(args[0]))
+    match args[0] {
+      @value.Typeset(types) => @value.Logic(types.empty())
+      _ => from_action(@action.tail_q(args[0]))
+    }
   } else if func.code() == native_poke {
     from_action(@action.poke(args[0], args[1], args[2]))
   } else if func.code() == native_get {

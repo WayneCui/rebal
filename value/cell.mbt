@@ -26,6 +26,7 @@ pub(all) enum Cell {
   Vector(Vector)
   Image(Image)
   Struct(StructValue)
+  Typeset(Typeset)
 }
 
 ///|
@@ -64,6 +65,7 @@ pub fn Cell::datatype(self : Cell) -> Datatype {
     Vector(_) => Vector
     Image(_) => Image
     Struct(_) => Struct
+    Typeset(_) => Typeset
   }
 }
 

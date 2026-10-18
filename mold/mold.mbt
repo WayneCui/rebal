@@ -87,6 +87,7 @@ fn write_cell(
       @value.Vector(vector) => write_vector(buf, vector, molded)
       @value.Image(image) => write_image(buf, image)
       @value.Struct(fields) => write_struct(buf, fields)
+      @value.Typeset(types) => write_typeset(buf, types)
       @value.Map(map) => write_map(buf, map, molded, depth)
       @value.Error(error) => {
         buf.write_string("make error! [id: ")
@@ -748,6 +749,19 @@ fn write_struct_value(buf : StringBuilder, cell : @value.Cell) -> Unit {
 }
 
 ///|
+fn write_typeset(buf : StringBuilder, types : @value.Typeset) -> Unit {
+  buf.write_string("make typeset! [")
+  let ordered = types.ordered()
+  for index in 0..<ordered.length() {
+    if index > 0 {
+      buf.write_char(' ')
+    }
+    buf.write_string(type_name(ordered[index]))
+  }
+  buf.write_string("]")
+}
+
+///|
 fn write_bitset(buf : StringBuilder, bits : @value.Bitset) -> Unit {
   buf.write_string("make bitset! #{")
   for index in 0..<32 {
@@ -801,5 +815,6 @@ pub fn type_name(datatype : @value.Datatype) -> String {
     @value.Vector => "vector!"
     @value.Image => "image!"
     @value.Struct => "struct!"
+    @value.Typeset => "typeset!"
   }
 }
