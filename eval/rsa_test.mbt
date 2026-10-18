@@ -96,3 +96,15 @@ test "release makes an rsa handle unusable" {
     is @value.Logic(true),
   )
 }
+
+///|
+test "rsa reads a modulus and a signature that are not at the head" {
+  // rsa-test.r3 "Test input which isn't exactly at its head".
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "mod: #{0BADCAFEEB8A8654FAE3935DBC163A6C9F37839E799B66FB86B920C7E3CB2CEE80446BE60772924403C2F3640A2228F3FF4448F52569611A2655479AEE25F3F493FC6D8F} key: rsa-init at mod 5 next #{FF010001} msg: #{41686F6A21} sig: #{19EC225FCE58972FABCE7F741D22A34946A401F903C6D2E4E91781806132CDE40411DA73E53CDE7ACE6C9325DE658BB9E820CF4D9CE50997A92DF27FF0B8A82D} ok: rsa/verify key msg sig msg: insert msg #{0BADCAFE} sig: insert sig #{0BADCAFE} (reduce [ok rsa/verify key msg sig]) = reduce [true true]",
+    )
+    is @value.Logic(true),
+  )
+}
