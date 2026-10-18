@@ -83,6 +83,8 @@ fn perform_load(
     decode_ppk(env, text_series(read_file(loaded_path(source))), None)
   } else if text_file(source) {
     load_text(source)
+  } else if markup_file(source) {
+    decode_markup(source)
   } else {
     match source {
       @value.Seq(series, index) if series.datatype() == @value.Binary =>
@@ -211,7 +213,29 @@ fn key_file(source : @value.Cell) -> Bool raise EvalError {
 ///|
 /// %.txt and %.cgi are the text codec, as in base-defs.reb.
 fn text_file(source : @value.Cell) -> Bool raise EvalError {
-  suffix_is(source, ".txt") || suffix_is(source, ".cgi")
+  let name = file_suffix(source)
+  name == ".txt" || name == ".cgi"
+}
+
+///|
+/// Markup suffixes from base-defs.reb. The native codec cannot encode them.
+fn markup_file(source : @value.Cell) -> Bool raise EvalError {
+  match file_suffix(source) {
+    ".html" | ".htm" | ".xsl" | ".wml" | ".sgml" | ".asp" | ".php" => true
+    _ => false
+  }
+}
+
+///|
+fn file_suffix(source : @value.Cell) -> String raise EvalError {
+  match source {
+    @value.Seq(series, _) if series.datatype() == @value.File =>
+      match perform_suffix(source) {
+        @value.Seq(named, index) => text_from(named, index).to_lower()
+        _ => ""
+      }
+    _ => ""
+  }
 }
 
 ///|
@@ -247,6 +271,9 @@ fn perform_save(
   match place {
     @value.Cell::None => bytes
     @value.Seq(series, index) if series.datatype() == @value.File => {
+      if markup_file(place) && !named(env, active, "header") {
+        raise EvalError::Caused("invalid-arg", @mold.mold_text(args[1]))
+      }
       let body = if text_file(place) && !named(env, active, "header") {
         encoded_text(args[1])
       } else {

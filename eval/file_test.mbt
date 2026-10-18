@@ -191,6 +191,21 @@ test "a script header turns yes, no, and none into values" {
 }
 
 ///|
+test "an html suffix loads as markup and cannot be saved as a script" {
+  // base-defs.reb. Saving one of these suffixes without /header is invalid-arg.
+  @eval.write_file("/tmp/rebal-m.html", "<a>b</c>")
+  @eval.write_file("/tmp/rebal-m.htm", "<!--hi-->x")
+  @eval.write_file("/tmp/rebal-m.HTML", "<a>b</c>")
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "(reduce [(load %/tmp/rebal-m.html) = [<a> \"b\" </c>] (load %/tmp/rebal-m.htm) = [<!--hi--> \"x\"] (load %/tmp/rebal-m.HTML) = [<a> \"b\" </c>] (load/header %/tmp/rebal-m.html) = [<a> \"b\" </c>] ((try [save %/tmp/rebal-m.html \"x\"])/id) = 'invalid-arg]) = reduce [true true true true true]",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "save writes text for a .txt or .cgi file and a script otherwise" {
   // mezz-save.reb. A text suffix encodes the value. /header still writes a script.
   let env = @eval.Env::new()
