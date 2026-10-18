@@ -191,6 +191,42 @@ test "a script header turns yes, no, and none into values" {
 }
 
 ///|
+test "a .tar suffix loads an archive and cannot encode one" {
+  // codec-tar.reb. Saving is not implemented in the codec.
+  @eval.write_binary("/tmp/rebal-t.tar", sample_tar())
+  @eval.write_binary("/tmp/rebal-T.TAR", sample_tar())
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "a: load %/tmp/rebal-t.tar b: load %/tmp/rebal-T.TAR (reduce [(pick a 1) = %test.txt (pick pick a 2 1) = #{7465737474657374} (pick b 1) = %test.txt ((try [save %/tmp/rebal-t.tar [1]])/id) = 'not-done]) = reduce [true true true true]",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
+fn sample_tar() -> Array[Int] {
+  let bytes : Array[Int] = []
+  for _ in 0..<1024 {
+    bytes.push(0)
+  }
+  put_text(bytes, 0, "test.txt")
+  put_text(bytes, 124, "00000000010")
+  put_text(bytes, 257, "ustar")
+  put_text(bytes, 512, "testtest")
+  bytes
+}
+
+///|
+fn put_text(bytes : Array[Int], at : Int, text : String) -> Unit {
+  let mut index = at
+  for char in text {
+    bytes[index] = char.to_int()
+    index = index + 1
+  }
+}
+
+///|
 test "a .gz suffix saves and loads a gzip binary" {
   // codec-gzip.reb. Only a binary is accepted. The bytes round-trip.
   let env = @eval.Env::new()

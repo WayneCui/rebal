@@ -32,6 +32,8 @@ pub fn tls_serve() -> Int
 
 pub fn udp_echo() -> Int
 
+pub fn write_binary(String, Array[Int]) -> Unit raise EvalError
+
 pub fn write_file(String, String) -> Unit raise EvalError
 
 // Errors

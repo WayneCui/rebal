@@ -38,7 +38,7 @@ fn read_binary(path : String) -> Array[Int] raise EvalError {
 }
 
 ///|
-fn write_binary(path : String, bytes : Array[Int]) -> Unit raise EvalError {
+pub fn write_binary(path : String, bytes : Array[Int]) -> Unit raise EvalError {
   if c_write_bytes(path, path.length(), latin_text(bytes), bytes.length()) == 0 {
     ()
   } else {
@@ -121,6 +121,12 @@ fn perform_load(
     decode_json(env, text_series(source_text(source)))
   } else if gzip_file(source) {
     binary_cell(gzip_unpack(read_binary(loaded_path(source))))
+  } else if tar_suffix(source) {
+    decode_tar(
+      binary_cell(read_binary(loaded_path(source))),
+      false,
+      @value.Cell::None,
+    )
   } else {
     match source {
       @value.Seq(series, index) if series.datatype() == @value.Binary =>
@@ -267,6 +273,12 @@ fn gzip_file(source : @value.Cell) -> Bool raise EvalError {
 }
 
 ///|
+/// %.tar is a ustar archive, as in codec-tar.reb. There is no encoder.
+fn tar_suffix(source : @value.Cell) -> Bool raise EvalError {
+  file_suffix(source) == ".tar"
+}
+
+///|
 fn markup_file(source : @value.Cell) -> Bool raise EvalError {
   match file_suffix(source) {
     ".html" | ".htm" | ".xsl" | ".wml" | ".sgml" | ".asp" | ".php" => true
@@ -323,6 +335,9 @@ fn perform_save(
       if gzip_file(place) && !named(env, active, "header") {
         write_binary(path, gzip_saved(args[1]))
         return place
+      }
+      if tar_suffix(place) && !named(env, active, "header") {
+        raise EvalError::Caused("not-done", "tar")
       }
       if markup_file(place) && !named(env, active, "header") {
         raise EvalError::Caused("invalid-arg", @mold.mold_text(args[1]))
