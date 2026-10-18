@@ -316,6 +316,10 @@ fn cipher_kind(name : String) -> (Int, Bool, Bool, Bool, Bool, Bool, Bool)? {
     Some((16, false, true, false, false, true, false))
   } else if name == "aes-128-gcm" {
     Some((16, false, false, false, false, false, true))
+  } else if name == "aes-192-gcm" {
+    Some((24, false, false, false, false, false, true))
+  } else if name == "aes-256-gcm" {
+    Some((32, false, false, false, false, false, true))
   } else {
     None
   }

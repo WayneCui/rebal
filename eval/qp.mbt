@@ -35,6 +35,7 @@ fn perform_encode(
 ) -> @value.Cell raise EvalError {
   let mut uri = false
   let mut form : @value.Cell? = None
+  let mut pass : @value.Cell? = None
   let mut cursor = 2
   for sym in active {
     let name = env.symbols.canon(sym)
@@ -42,6 +43,9 @@ fn perform_encode(
       uri = true
     } else if name == "as" {
       form = Some(args[cursor])
+      cursor = cursor + 1
+    } else if name == "key" {
+      pass = Some(args[cursor])
       cursor = cursor + 1
     } else {
       raise EvalError::Cannot("encode")
@@ -77,6 +81,14 @@ fn perform_encode(
     }
     let _ = form
     encode_text(args[1])
+  } else if kind == "safe" {
+    if uri || form is Some(_) {
+      raise EvalError::Cannot("encode")
+    }
+    match pass {
+      Some(secret) => encode_safe(env, args[1], safe_secret(secret))
+      None => raise EvalError::Cannot("encode")
+    }
   } else {
     raise EvalError::Cannot("access")
   }

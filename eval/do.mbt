@@ -427,11 +427,14 @@ fn save_extra(env : Env, active : Array[Int]) -> Int {
 
 ///|
 fn encode_extra(env : Env, active : Array[Int]) -> Int {
+  let mut extra = 0
   if named(env, active, "as") {
-    1
-  } else {
-    0
+    extra = extra + 1
   }
+  if named(env, active, "key") {
+    extra = extra + 1
+  }
+  extra
 }
 
 ///|

@@ -33,7 +33,7 @@ fn perform_decode(
     @value.Sym(_, lexeme) => env.symbols.canon(lexeme.sym())
     _ => raise EvalError::Cannot("decode")
   }
-  if has_password(password) && kind != "ppk" {
+  if has_password(password) && kind != "ppk" && kind != "safe" {
     raise EvalError::Cannot("decode")
   }
   if only && kind != "tar" {
@@ -137,6 +137,15 @@ fn perform_decode(
       raise EvalError::Cannot("decode")
     }
     return decode_ar(args[1])
+  }
+  if kind == "safe" {
+    if binary {
+      raise EvalError::Cannot("decode")
+    }
+    match password {
+      Some(secret) => return decode_safe(env, args[1], secret)
+      None => return @value.Cell::None
+    }
   }
   if kind != "pkix" {
     raise EvalError::Cannot("access")
