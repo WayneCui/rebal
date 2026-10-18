@@ -111,6 +111,12 @@ fn perform_decode(
     }
     return decode_plist(env, args[1])
   }
+  if kind == "provision" {
+    if binary {
+      raise EvalError::Cannot("decode")
+    }
+    return decode_provision(env, args[1])
+  }
   if kind != "pkix" {
     raise EvalError::Cannot("access")
   }
