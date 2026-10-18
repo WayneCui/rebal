@@ -129,6 +129,8 @@ fn perform_load(
     )
   } else if zip_suffix(source) {
     zip_block(read_binary(loaded_path(source)))
+  } else if der_suffix(source) {
+    decode_der(env, binary_cell(read_binary(loaded_path(source))))
   } else {
     match source {
       @value.Seq(series, index) if series.datatype() == @value.Binary =>
@@ -282,6 +284,15 @@ fn tar_suffix(source : @value.Cell) -> Bool raise EvalError {
 
 ///|
 /// Suffixes from codec-zip.reb. A save stores one file, uncompressed.
+/// %.der and the other binary certificate suffixes from codec-der.reb.
+fn der_suffix(source : @value.Cell) -> Bool raise EvalError {
+  match file_suffix(source) {
+    ".p12" | ".pfx" | ".cer" | ".der" | ".jks" | ".p7s" => true
+    _ => false
+  }
+}
+
+///|
 fn zip_suffix(source : @value.Cell) -> Bool raise EvalError {
   match file_suffix(source) {
     ".zip"
@@ -361,6 +372,9 @@ fn perform_save(
       if zip_suffix(place) && !named(env, active, "header") {
         write_binary(path, zip_saved(args[1]))
         return place
+      }
+      if der_suffix(place) && !named(env, active, "header") {
+        raise EvalError::Caused("not-done", "der")
       }
       if markup_file(place) && !named(env, active, "header") {
         raise EvalError::Caused("invalid-arg", @mold.mold_text(args[1]))

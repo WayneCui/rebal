@@ -191,6 +191,22 @@ test "a script header turns yes, no, and none into values" {
 }
 
 ///|
+test "a DER suffix loads the certificate bytes and cannot encode them" {
+  // codec-der.reb. There is no encoder. A short value stays none.
+  @eval.write_binary("/tmp/rebal-a.der", [0x30, 0x03, 0x02, 0x01, 0x01])
+  @eval.write_binary("/tmp/rebal-a.cer", [0x30, 0x00])
+  @eval.write_binary("/tmp/rebal-a.PFX", [0x30, 0x03, 0x02, 0x01, 0x01])
+  @eval.write_binary("/tmp/rebal-a.jks", [0x30])
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "(reduce [(load %/tmp/rebal-a.der) = [sequence [integer #{01}]] (load %/tmp/rebal-a.cer) = [sequence []] (load %/tmp/rebal-a.PFX) = [sequence [integer #{01}]] none? load %/tmp/rebal-a.jks ((try [save %/tmp/rebal-a.der #{3000}])/id) = 'not-done]) = reduce [true true true true true]",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "a .zip suffix stores one file and loads it back" {
   // codec-zip.reb. The member is stored, not deflated. A non-file is refused.
   @eval.write_file("/tmp/rebal-one.txt", "hi")
