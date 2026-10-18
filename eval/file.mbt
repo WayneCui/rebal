@@ -109,13 +109,37 @@ fn perform_save(
   place : @value.Cell,
   value : @value.Cell,
 ) -> @value.Cell raise EvalError {
+  let script = save_script(value)
+  let bytes = binary_cell(utf8_bytes(script))
   match place {
+    @value.Cell::None => bytes
     @value.Seq(series, index) if series.datatype() == @value.File => {
-      write_file(text_from(series, index), @mold.mold_text(value) + "\n")
+      write_file(text_from(series, index), script)
       place
     }
+    @value.Seq(series, _) if series.datatype() == @value.Binary =>
+      match @series.append(place, bytes) {
+        Some(saved) => saved
+        None => raise EvalError::Cannot("save")
+      }
+    @value.Seq(series, _) if series.datatype() == @value.String =>
+      match @series.append(place, @mold.cell(@mold.mold_text(bytes))) {
+        Some(saved) => saved
+        None => raise EvalError::Cannot("save")
+      }
     _ => raise EvalError::Cannot("save")
   }
+}
+
+///|
+/// `mold/only` plus a newline. A block is written without its outer brackets.
+fn save_script(value : @value.Cell) -> String {
+  let molded = match value {
+    @value.Seq(series, _) if series.datatype() == @value.Block =>
+      text_contents(@mold.mold_text(value))
+    _ => @mold.mold_text(value)
+  }
+  molded + "\n"
 }
 
 ///|
@@ -125,6 +149,10 @@ fn source_text(source : @value.Cell) -> String raise EvalError {
       text_from(series, index)
     @value.Seq(series, index) if series.datatype() == @value.File =>
       read_file(text_from(series, index))
+    @value.Seq(series, index) if series.datatype() == @value.Binary =>
+      qp_text(bytes_from(series, index)) catch {
+        _ => raise EvalError::Cannot("load")
+      }
     _ => raise EvalError::Cannot("load")
   }
 }

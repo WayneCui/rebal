@@ -58,3 +58,15 @@ test "load, save, and do of a script file" {
   }
   assert_true(bad)
 }
+
+///|
+test "save into a binary round-trips through load" {
+  // codecs-test.r3 "SAVE to binary!". none returns the script bytes.
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "(reduce [(load save #{} \"1\") = \"1\" (load save #{} #{CAFE}) = #{CAFE} (load save #{} [1 2]) = [1 2] (save none \"1\") = #{2231220A} (save #{} #{CAFE}) = #{237B434146457D0A}]) = reduce [true true true true true]",
+    )
+    is @value.Logic(true),
+  )
+}
