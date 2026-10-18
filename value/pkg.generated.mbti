@@ -52,6 +52,7 @@ pub(all) enum Cell {
   Module(ModuleValue)
   Port(PortValue)
   Handle(HandleValue)
+  Vector(Vector)
 }
 pub fn Cell::datatype(Self) -> Datatype
 pub fn Cell::equal(Self, Self) -> Bool
@@ -100,6 +101,7 @@ pub(all) enum Datatype {
   Closure
   Port
   Handle
+  Vector
 } derive(Eq)
 pub fn Datatype::equal(Self, Self) -> Bool
 pub fn Datatype::not_equal(Self, Self) -> Bool
@@ -322,6 +324,34 @@ pub struct Symbols {
 pub fn Symbols::canon(Self, Int) -> String
 pub fn Symbols::intern(Self, String) -> Int
 pub fn Symbols::new() -> Self
+
+pub struct Vector {
+  kind : VectorKind
+  ints : Array[Int64]
+  floats : Array[Double]
+}
+pub fn Vector::at(Self, Int) -> Cell?
+pub fn Vector::floats(VectorKind, Array[Double]) -> Self
+pub fn Vector::ints(VectorKind, Array[Int64]) -> Self
+pub fn Vector::kind(Self) -> VectorKind
+pub fn Vector::length(Self) -> Int
+pub fn Vector::mismatched(Self, Self) -> Bool
+pub fn Vector::same(Self, Self) -> Bool
+
+pub(all) enum VectorKind {
+  Int8
+  Int16
+  Int32
+  Int64
+  Uint8
+  Uint16
+  Uint32
+  Uint64
+  Float32
+  Float64
+}
+pub fn VectorKind::float(Self) -> Bool
+pub fn VectorKind::label(Self) -> String
 
 // Type aliases
 
