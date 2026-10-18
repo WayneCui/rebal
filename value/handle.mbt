@@ -158,10 +158,97 @@ pub fn Rc4Key::released(self : Rc4Key) -> Bool {
 }
 
 ///|
+
+///|
+/// P-256 key pair. Copies share the numbers, so `ecdh/init` on an alias
+/// replaces the pair everyone sees.
+pub struct EcdhKey {
+  priv label : Array[String]
+  priv d : Array[Int]
+  priv x : Array[Int]
+  priv y : Array[Int]
+  priv closed : Array[Int]
+}
+
+///|
+pub fn EcdhKey::fresh(
+  curve : String,
+  secret : Array[Int],
+  px : Array[Int],
+  py : Array[Int],
+) -> EcdhKey {
+  { label: [curve], d: secret, x: px, y: py, closed: [0], }
+}
+
+///|
+pub fn EcdhKey::restart(
+  self : EcdhKey,
+  curve : String,
+  secret : Array[Int],
+  px : Array[Int],
+  py : Array[Int],
+) -> Unit {
+  self.label[0] = curve
+  refill(self.d, secret)
+  refill(self.x, px)
+  refill(self.y, py)
+  self.closed[0] = 0
+}
+
+///|
+pub fn EcdhKey::curve(self : EcdhKey) -> String {
+  self.label[0]
+}
+
+///|
+pub fn EcdhKey::scalar(self : EcdhKey) -> Array[Int] {
+  self.d
+}
+
+///|
+pub fn EcdhKey::px(self : EcdhKey) -> Array[Int] {
+  self.x
+}
+
+///|
+pub fn EcdhKey::py(self : EcdhKey) -> Array[Int] {
+  self.y
+}
+
+///|
+pub fn EcdhKey::same(self : EcdhKey, other : EcdhKey) -> Bool {
+  self.label[0] == other.label[0] &&
+  same_bytes(self.d, other.d) &&
+  same_bytes(self.x, other.x) &&
+  same_bytes(self.y, other.y)
+}
+
+///|
+pub fn EcdhKey::release(self : EcdhKey) -> Unit {
+  self.closed[0] = 1
+}
+
+///|
+pub fn EcdhKey::released(self : EcdhKey) -> Bool {
+  self.closed[0] != 0
+}
+
+///|
+fn refill(dest : Array[Int], src : Array[Int]) -> Unit {
+  while dest.length() > 0 {
+    dest.pop() |> ignore
+  }
+  for byte in src {
+    dest.push(byte)
+  }
+}
+
+///|
 pub(all) enum HandleValue {
   Rsa(RsaKey)
   Dhm(DhKey)
   Rc4(Rc4Key)
+  Ecdh(EcdhKey)
 }
 
 ///|
@@ -170,6 +257,7 @@ pub fn HandleValue::same(self : HandleValue, other : HandleValue) -> Bool {
     (Rsa(a), Rsa(b)) => a.same(b)
     (Dhm(a), Dhm(b)) => a.same(b)
     (Rc4(a), Rc4(b)) => a.same(b)
+    (Ecdh(a), Ecdh(b)) => a.same(b)
     _ => false
   }
 }
@@ -180,6 +268,7 @@ pub fn HandleValue::kind(self : HandleValue) -> String {
     Rsa(_) => "rsa"
     Dhm(_) => "dhm"
     Rc4(_) => "rc4"
+    Ecdh(_) => "ecdh"
   }
 }
 
@@ -209,6 +298,7 @@ pub fn HandleValue::release(self : HandleValue) -> Unit {
     Rsa(key) => key.release()
     Dhm(key) => key.release()
     Rc4(key) => key.release()
+    Ecdh(key) => key.release()
   }
 }
 
@@ -218,6 +308,7 @@ pub fn HandleValue::released(self : HandleValue) -> Bool {
     Rsa(key) => key.released()
     Dhm(key) => key.released()
     Rc4(key) => key.released()
+    Ecdh(key) => key.released()
   }
 }
 

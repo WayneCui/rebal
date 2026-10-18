@@ -229,7 +229,8 @@ fn call(
     func.code() != native_rsa_init &&
     func.code() != native_rsa &&
     func.code() != native_rc4 &&
-    func.code() != native_dh {
+    func.code() != native_dh &&
+    func.code() != native_ecdh {
     raise EvalError::Cannot("func")
   }
   let args : Array[@value.Cell] = []
@@ -264,6 +265,8 @@ fn call(
     func.arity() + rc4_extra(env, active)
   } else if func.code() == native_dh {
     func.arity() + dh_extra(env, active)
+  } else if func.code() == native_ecdh {
+    func.arity() + ecdh_extra(env, active)
   } else if func.code() == 0 {
     taken_count(func, active)
   } else {
@@ -346,6 +349,8 @@ fn call(
     (perform_dh_init(env, args), cursor)
   } else if func.code() == native_dh {
     (perform_dh(env, args, active), cursor)
+  } else if func.code() == native_ecdh {
+    (perform_ecdh(env, args, active), cursor)
   } else if func.code() == 0 {
     (call_user(env, func, args, active), cursor)
   } else {

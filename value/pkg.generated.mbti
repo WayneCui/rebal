@@ -136,6 +136,19 @@ pub fn DhKey::released(Self) -> Bool
 pub fn DhKey::same(Self, Self) -> Bool
 pub fn DhKey::with_pair(Array[Int], Array[Int], Array[Int], Array[Int]) -> Self?
 
+pub struct EcdhKey {
+  // private fields
+}
+pub fn EcdhKey::curve(Self) -> String
+pub fn EcdhKey::fresh(String, Array[Int], Array[Int], Array[Int]) -> Self
+pub fn EcdhKey::px(Self) -> Array[Int]
+pub fn EcdhKey::py(Self) -> Array[Int]
+pub fn EcdhKey::release(Self) -> Unit
+pub fn EcdhKey::released(Self) -> Bool
+pub fn EcdhKey::restart(Self, String, Array[Int], Array[Int], Array[Int]) -> Unit
+pub fn EcdhKey::same(Self, Self) -> Bool
+pub fn EcdhKey::scalar(Self) -> Array[Int]
+
 pub struct ErrorValue {
   id : String
   arg1 : String
@@ -189,6 +202,7 @@ pub(all) enum HandleValue {
   Rsa(RsaKey)
   Dhm(DhKey)
   Rc4(Rc4Key)
+  Ecdh(EcdhKey)
 }
 pub fn HandleValue::kind(Self) -> String
 pub fn HandleValue::release(Self) -> Unit

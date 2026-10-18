@@ -488,6 +488,9 @@ let native_dh_init : Int = 160
 let native_dh : Int = 161
 
 ///|
+let native_ecdh : Int = 162
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -528,6 +531,7 @@ pub fn Env::new() -> Env {
   define_native(env, "rc4", 0, false, native_rc4)
   define_native(env, "dh-init", 2, false, native_dh_init)
   define_native(env, "dh", 1, false, native_dh)
+  define_native(env, "ecdh", 1, false, native_ecdh)
   define_native(env, "copy", 1, false, native_copy)
   define_native(env, "insert", 2, false, native_insert)
   define_native(env, "remove", 1, false, native_remove)
