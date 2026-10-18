@@ -84,6 +84,18 @@ test "save/compress writes zlib, a header, or a base-64 script" {
 }
 
 ///|
+test "save/length records how many script bytes follow the header" {
+  // load-test.r3 "Save/length". The body is `print "Hello REBOL!"` plus a newline.
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "s: save/length none [print \"Hello REBOL!\"] (reduce [s = #{5245424F4C205B0A202020206C656E6774683A2032310A5D0A7072696E74202248656C6C6F205245424F4C21220A} (load s) = [print \"Hello REBOL!\"] ((pick load/header s 1)/length) = 21]) = reduce [true true true]",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "a header length keeps only that many body bytes" {
   // load-test.r3 "Length-specified script embedding".
   let env = @eval.Env::new()

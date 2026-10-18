@@ -231,10 +231,22 @@ fn save_bytes(
   active : Array[Int],
   args : Array[@value.Cell],
 ) -> Array[Int] raise EvalError {
-  match save_mode(env, active, args) {
-    None => utf8_bytes(script)
-    Some(mode) => save_compressed(env, script, mode)
+  let (mode, length) = save_mode(env, active, args)
+  match mode {
+    None => if length { save_with_length(script) } else { utf8_bytes(script) }
+    Some(chosen) =>
+      match chosen {
+        @value.Logic(false) if length => save_with_length(script)
+        _ => save_compressed(env, script, chosen)
+      }
   }
+}
+
+///|
+/// `/length` records how many bytes the molded script occupies.
+fn save_with_length(script : String) -> Array[Int] {
+  let size = utf8_bytes(script).length()
+  utf8_bytes("REBOL [\n    length: " + size.to_string() + "\n]\n" + script)
 }
 
 ///|
@@ -242,19 +254,22 @@ fn save_mode(
   env : Env,
   active : Array[Int],
   args : Array[@value.Cell],
-) -> @value.Cell? raise EvalError {
+) -> (@value.Cell?, Bool) raise EvalError {
   let mut mode : @value.Cell? = None
+  let mut length = false
   let mut cursor = 2
   for sym in active {
     let name = env.symbols.canon(sym)
     if name == "compress" {
       mode = Some(args[cursor])
       cursor = cursor + 1
+    } else if name == "length" {
+      length = true
     } else {
       raise EvalError::Cannot("save")
     }
   }
-  mode
+  (mode, length)
 }
 
 ///|
