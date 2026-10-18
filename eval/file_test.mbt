@@ -84,6 +84,18 @@ test "save/compress writes zlib, a header, or a base-64 script" {
 }
 
 ///|
+test "a script header turns yes, no, and none into values" {
+  // load-test.r3 issue-655. construct, not evaluation.
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "o: pick load/header {rebol [a: true b: yes c: no d: false e: none f: foo g: on h: off] print 'hello} 1 (reduce [(type? o/a) = logic! o/a o/b not o/c not o/d none? o/e (type? o/f) = word! o/g not o/h]) = reduce [true true true true true true true true true]",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "load/as markup splits tags from the text between them" {
   // load-test.r3 "load/as markup". An unclosed tag drops the `<`.
   let env = @eval.Env::new()

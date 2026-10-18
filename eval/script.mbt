@@ -73,7 +73,7 @@ fn script_header(env : Env, source : String) -> @value.Cell raise EvalError {
           @value.Sym(@value.SetWord, lexeme) => {
             let name = env.symbols.canon(lexeme.sym())
             let slot = frame.ensure(lexeme.sym())
-            frame.set(slot, items[index + 1]) |> ignore
+            frame.set(slot, header_value(env, items[index + 1])) |> ignore
             if name == "version" {
               saw_version = true
             }
@@ -95,6 +95,22 @@ fn script_header(env : Env, source : String) -> @value.Cell raise EvalError {
     script_put(env, frame, "title", text_series("Untitled"))
   }
   @value.Object(frame)
+}
+
+///|
+/// A header is constructed, not evaluated. `true`, `on`, and `yes` are
+/// logic true; `false`, `off`, and `no` are logic false; `none` is none.
+fn header_value(env : Env, cell : @value.Cell) -> @value.Cell {
+  match cell {
+    @value.Sym(@value.Word, lexeme) =>
+      match env.symbols.canon(lexeme.sym()) {
+        "none" => @value.Cell::None
+        "true" | "on" | "yes" => @value.Logic(true)
+        "false" | "off" | "no" => @value.Logic(false)
+        _ => cell
+      }
+    _ => cell
+  }
 }
 
 ///|
