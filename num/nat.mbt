@@ -198,6 +198,27 @@ fn shr_limbs(limbs : Array[UInt64], bits : Int) -> Array[UInt64] {
 }
 
 ///|
+fn smaller_mag(left : Nat, right : Nat) -> Bool {
+  if left.limbs.length() != right.limbs.length() {
+    left.limbs.length() < right.limbs.length()
+  } else {
+    let mut index = left.limbs.length() - 1
+    let mut less = false
+    let mut same = true
+    while index >= 0 && same {
+      if left.limbs[index] < right.limbs[index] {
+        less = true
+        same = false
+      } else if left.limbs[index] > right.limbs[index] {
+        same = false
+      }
+      index = index - 1
+    }
+    less
+  }
+}
+
+///|
 fn norm_shift(limb : UInt64) -> Int {
   let mut shift = 0
   let mut value = limb
@@ -212,8 +233,8 @@ fn norm_shift(limb : UInt64) -> Int {
 fn divmod(dividend : Nat, divisor : Nat) -> (Nat, Nat) {
   if divisor.limbs.length() == 0 {
     (zero_nat(), zero_nat())
-  } else if dividend.limbs.length() == 0 {
-    (zero_nat(), zero_nat())
+  } else if dividend.limbs.length() == 0 || smaller_mag(dividend, divisor) {
+    (zero_nat(), { limbs: copy_limbs(dividend.limbs), })
   } else {
     let shift = norm_shift(divisor.limbs[divisor.limbs.length() - 1])
     let left = shl_limbs(dividend.limbs, shift)

@@ -82,3 +82,15 @@ test "a 32-byte power matches the residue" {
     ),
   )
 }
+
+///|
+test "a smaller same-width value is already its remainder" {
+  let modulus = hex_bytes(
+    "FFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFF",
+  )
+  let value = hex_bytes(
+    "FFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFD",
+  )
+  let got = @num.Nat::from_bytes(value).remainder(@num.Nat::from_bytes(modulus))
+  assert_eq(got.be_bytes(32), value)
+}
