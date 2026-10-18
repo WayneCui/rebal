@@ -226,7 +226,8 @@ fn call(
     func.code() != native_enbase &&
     func.code() != native_debase &&
     func.code() != native_decode &&
-    func.code() != native_rsa_init {
+    func.code() != native_rsa_init &&
+    func.code() != native_rsa {
     raise EvalError::Cannot("func")
   }
   let args : Array[@value.Cell] = []
@@ -255,6 +256,8 @@ fn call(
     func.arity() + decode_extra(env, active)
   } else if func.code() == native_rsa_init {
     func.arity() + rsa_init_extra(env, active)
+  } else if func.code() == native_rsa {
+    func.arity() + rsa_extra(env, active)
   } else if func.code() == 0 {
     taken_count(func, active)
   } else {
@@ -327,6 +330,8 @@ fn call(
     (perform_decode(env, args, active), cursor)
   } else if func.code() == native_rsa_init {
     (perform_rsa_init(env, args, active), cursor)
+  } else if func.code() == native_rsa {
+    (perform_rsa(env, args, active), cursor)
   } else if func.code() == 0 {
     (call_user(env, func, args, active), cursor)
   } else {

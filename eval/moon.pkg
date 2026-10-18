@@ -2,6 +2,7 @@ import {
   "rebal/action",
   "rebal/bind",
   "rebal/mold",
+  "rebal/num",
   "rebal/scan",
   "rebal/series",
   "rebal/value",
