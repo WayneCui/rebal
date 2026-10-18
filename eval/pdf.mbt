@@ -224,7 +224,11 @@ fn pdf_object(
         Some((cell, next)) => {
           cursor = pdf_gap(bytes, next)
           if pdf_keyword(bytes, cursor, "endobj") {
-            objects.put(key, cell)
+            if pdf_is_objstm(env, cell) {
+              pdf_import_objstm(env, cell, objects)
+            } else {
+              objects.put(key, cell)
+            }
             Some((cursor + 6, cell))
           } else {
             None
@@ -407,6 +411,55 @@ fn pdf_or_none(cell : @value.Cell?) -> @value.Cell {
   match cell {
     Some(value) => value
     None => @value.Cell::None
+  }
+}
+
+///|
+fn pdf_is_objstm(env : Env, cell : @value.Cell) -> Bool {
+  match cell {
+    @value.Object(frame) => pdf_spec_is(env, frame, "objstm")
+    _ => false
+  }
+}
+
+///|
+/// The stream itself is not kept. Each `id offset` pair names one value
+/// stored after the byte `First`.
+fn pdf_import_objstm(
+  env : Env,
+  cell : @value.Cell,
+  objects : @value.MapValue,
+) -> Unit raise EvalError {
+  let frame = match cell {
+    @value.Object(frame) => frame
+    _ => return
+  }
+  let spec = match frame_field(env, frame, "spec") {
+    Some(@value.Map(map)) => map
+    _ => return
+  }
+  let data = pdf_flate_data(env, frame, spec)
+  let first = match pdf_map_field(spec, "first") {
+    Some(@value.Integer(n)) if n >= 0L => n.to_int()
+    _ => return
+  }
+  if first > data.length() {
+    return
+  }
+  let numbers = match pdf_int_block(load(env, pdf_latin(data, 0, first))) {
+    Some(values) => values
+    None => return
+  }
+  let mut index = 0
+  while index + 1 < numbers.length() {
+    let at = first + numbers[index + 1].to_int()
+    if at >= 0 && at <= data.length() {
+      match pdf_value(env, data, at, objects) {
+        Some((inner, _)) => objects.put(@value.Pair(numbers[index], 0L), inner)
+        None => ()
+      }
+    }
+    index = index + 2
   }
 }
 
