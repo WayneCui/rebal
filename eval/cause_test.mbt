@@ -1,4 +1,15 @@
 ///|
+test "a path reads an error id and its first argument" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "e: try [encoding? \"ab\"] c: try [cause-error 'script 'too-small 3] (reduce [e/id = 'expect-arg e/arg1 = \"encoding?\" c/id = 'too-small c/arg1 = \"3\" (type? try [e/type]) = error!]) = reduce [true true true true true]",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "cause-error raises an error try can catch" {
   let env = @eval.Env::new()
   match @eval.run(env, "try [cause-error 'script 'too-small 3]") {

@@ -56,7 +56,7 @@ fn walk_path(
   let mut cursor = index + 1
   while cursor < until {
     match series.item(cursor) {
-      Some(selector) => current = path_step(current, selector)
+      Some(selector) => current = path_step(env, current, selector)
       None => raise EvalError::InvalidPath("path")
     }
     cursor = cursor + 1
@@ -84,6 +84,7 @@ fn path_head(
 
 ///|
 fn path_step(
+  env : Env,
   current : @value.Cell,
   selector : @value.Cell,
 ) -> @value.Cell raise EvalError {
@@ -93,6 +94,7 @@ fn path_step(
         @value.Sym(_, lexeme) => object_field(frame, lexeme)
         _ => raise EvalError::InvalidPath("object")
       }
+    @value.Error(error) => error_field(env, error, selector)
     @value.Seq(series, index) => step_series(series, index, selector)
     @value.Pair(x, y) => pair_field(x, y, selector)
     @value.Map(map) =>
@@ -102,6 +104,32 @@ fn path_step(
       }
     @value.Port(port) => port_field(port, selector)
     _ => raise EvalError::InvalidPath("path")
+  }
+}
+
+///|
+/// `error!` exposes `id` as a word and `arg1` as the stored text.
+fn error_field(
+  env : Env,
+  error : @value.ErrorValue,
+  selector : @value.Cell,
+) -> @value.Cell raise EvalError {
+  match selector {
+    @value.Sym(_, lexeme) => {
+      let name = env.symbols.canon(lexeme.sym())
+      if name == "id" {
+        codec_word(env, error.id)
+      } else if name == "arg1" {
+        if error.arg1 == "" {
+          @value.Cell::None
+        } else {
+          text_series(error.arg1)
+        }
+      } else {
+        raise EvalError::InvalidPath(lexeme.spelling())
+      }
+    }
+    _ => raise EvalError::InvalidPath("error")
   }
 }
 
