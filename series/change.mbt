@@ -40,6 +40,13 @@ fn splice(series : @value.Series, index : Int, value : @value.Cell) -> Int? {
           series.insert_code(index + i, span[i]) |> ignore
         }
         Some(span.length())
+      } else if series.datatype() == @value.Binary &&
+        source.datatype() == @value.Binary {
+        let span = byte_span(source, source_index)
+        for i in 0..<span.length() {
+          series.insert_byte(index + i, span[i]) |> ignore
+        }
+        Some(span.length())
       } else {
         splice_one(series, index, value)
       }

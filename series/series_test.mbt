@@ -91,6 +91,32 @@ test "pick poke insert and remove" {
 }
 
 ///|
+fn binary_of(bytes : Array[Int]) -> @value.Cell {
+  let series = @value.Series::binary()
+  for byte in bytes {
+    series.push_byte(byte.to_byte()) |> ignore
+  }
+  @value.Seq(series, 0)
+}
+
+///|
+test "insert and append splice binary into binary" {
+  let host = binary_of([0x01, 0x02])
+  let past = @series.insert(host, binary_of([0xAA, 0xBB])).unwrap()
+  assert_true(past.equal(binary_of([0x01, 0x02])))
+  assert_true(
+    @series.head(host).unwrap().equal(binary_of([0xAA, 0xBB, 0x01, 0x02])),
+  )
+  let tail = @series.next(binary_of([0xAA, 0xBB, 0xCC])).unwrap()
+  let mid = binary_of([0x01])
+  @series.insert(mid, tail) |> ignore
+  assert_true(@series.head(mid).unwrap().equal(binary_of([0xBB, 0xCC, 0x01])))
+  let grown = binary_of([0x01])
+  let back = @series.append(grown, grown).unwrap()
+  assert_true(back.equal(binary_of([0x01, 0x01])))
+}
+
+///|
 test "copy does not share later appends" {
   let block = block_of([@value.Cell::Integer(1L)])
   let copied = @series.copy(block).unwrap()
