@@ -1,0 +1,11 @@
+///|
+test "pdf objects keep names, references, streams, and the trailer" {
+  // codec-pdf.reb. A stream is an object with spec and data. Names stay words.
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "cat: decode 'pdf #{255044462D312E340A312030206F626A0A3C3C202F54797065202F436174616C6F67202F5061676573203220302052202F436F756E742030203E3E0A656E646F626A0A2525454F460A} values: decode 'pdf #{255044462D312E340A312030206F626A0A3C3C202F532028415C6E4229202F48203C343836393E202F41205B747275652066616C7365206E756C6C202D3220312E355D202F4E202F4E616D65203E3E0A656E646F626A0A2525454F460A} dated: decode 'pdf #{255044462D312E340A312030206F626A0A3C3C202F442028443A32303230303332353131303030345A29203E3E0A656E646F626A0A2525454F460A} streamed: decode 'pdf #{255044462D312E340A312030206F626A0A3C3C202F54797065202F584F626A656374203E3E0A656E646F626A0A322030206F626A0A3C3C202F4C656E6774682035203E3E0A73747265616D0A68656C6C6F0A656E6473747265616D0A656E646F626A0A2525454F460A} trailed: decode 'pdf #{255044462D312E340A312030206F626A0A3C3C202F54797065202F436174616C6F67203E3E0A656E646F626A0A787265660A3020320A303030303030303030302036353533352066200A30303030303030303039203030303030206E200A747261696C65720A3C3C202F53697A652032202F526F6F74203120302052203E3E0A7374617274787265660A35320A2525454F460A} stream: select streamed/objects 2x0 row: select values/objects 1x0 doc: select cat/objects 1x0 (reduce [cat/version = \"1.4\" cat/file-size = 73 doc/Type = 'Catalog doc/Pages = 2x0 doc/Count = 0 none? cat/trailer none? cat/startxref row/S = \"A^/B\" row/H = #{4869} row/A = reduce [true false none -2 1.5] row/N = 'Name (select dated/objects 1x0)/D = 25-Mar-2020/11:00:04 stream/spec/Length = 5 stream/data = #{68656C6C6F} trailed/trailer/Size = 2 trailed/trailer/Root = 1x0 trailed/startxref = 52 trailed/referencies = [0 65535 #\"f\" 9 0 #\"n\"] none? decode 'pdf #{00} ((try [decode 'pdf \"a\"])/id) = 'expect-arg ((try [decode 'pdf \"a\"])/arg1) = \"decode\" ((try [save %/tmp/rebal-doc.pdf 1])/id) = 'not-done ((try [encode 'pdf cat])/id) = 'not-done]) = reduce [true true true true true true true true true true true true true true true true true true true true true true true]",
+    )
+    is @value.Logic(true),
+  )
+}

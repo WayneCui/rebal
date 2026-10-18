@@ -150,6 +150,8 @@ fn perform_load(
     )
   } else if zip_suffix(source) {
     zip_block(read_binary(loaded_path(source)))
+  } else if pdf_file(source) {
+    decode_pdf(env, binary_cell(read_binary(loaded_path(source))))
   } else if der_suffix(source) {
     decode_der(env, binary_cell(read_binary(loaded_path(source))))
   } else if ico_suffix(source) {
@@ -415,6 +417,11 @@ fn ar_loaded(bytes : Array[Int]) -> @value.Cell raise EvalError {
 }
 
 ///|
+fn pdf_file(source : @value.Cell) -> Bool raise EvalError {
+  file_suffix(source) == ".pdf"
+}
+
+///|
 fn der_suffix(source : @value.Cell) -> Bool raise EvalError {
   match file_suffix(source) {
     ".p12" | ".pfx" | ".cer" | ".der" | ".jks" | ".p7s" => true
@@ -509,6 +516,9 @@ fn perform_save(
       if zip_suffix(place) && !named(env, active, "header") {
         write_binary(path, zip_saved(args[1]))
         return place
+      }
+      if pdf_file(place) && !named(env, active, "header") {
+        raise EvalError::Caused("not-done", "pdf")
       }
       if der_suffix(place) && !named(env, active, "header") {
         raise EvalError::Caused("not-done", "der")

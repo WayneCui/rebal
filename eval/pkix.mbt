@@ -132,6 +132,12 @@ fn perform_decode(
     }
     return decode_tar(args[1], only, only_value)
   }
+  if kind == "pdf" {
+    if binary {
+      raise EvalError::Cannot("decode")
+    }
+    return decode_pdf(env, args[1])
+  }
   if kind == "bbcode" {
     if binary {
       raise EvalError::Cannot("decode")
