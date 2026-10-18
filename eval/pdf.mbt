@@ -302,11 +302,7 @@ fn pdf_xref_stream(
       }
     None => return pdf_xref_trailer(env, spec)
   }
-  let mut data = match frame_field(env, frame, "data") {
-    Some(@value.Seq(series, index)) if series.datatype() == @value.Binary =>
-      bytes_from(series, index)
-    _ => []
-  }
+  let mut data = pdf_flate_data(env, frame, spec)
   let ranges = match pdf_map_field(spec, "index") {
     Some(cell) =>
       match pdf_int_block(cell) {
@@ -346,6 +342,45 @@ fn pdf_xref_stream(
   }
   put_field(env, frame, "data", binary_cell(data))
   pdf_xref_trailer(env, spec)
+}
+
+///|
+
+///|
+/// `FlateDecode` drops the two zlib header bytes and inflates the rest.
+/// The filter is cleared and `Length` becomes the inflated size. A bad
+/// stream is left as it was.
+fn pdf_flate_data(
+  env : Env,
+  frame : @value.Frame,
+  spec : @value.MapValue,
+) -> Array[Int] {
+  let stored = match frame_field(env, frame, "data") {
+    Some(@value.Seq(series, index)) if series.datatype() == @value.Binary =>
+      bytes_from(series, index)
+    _ => []
+  }
+  match pdf_map_field(spec, "filter") {
+    Some(@value.Sym(_, lexeme)) =>
+      if lexeme.spelling().to_lower() == "flatedecode" && stored.length() >= 2 {
+        let body = pdf_drop(stored, 2)
+        let plain = c_zlib_decompress(latin_text(body), body.length(), -15)
+        if c_zlib_code() == 0 {
+          let inflated = codes_of(plain)
+          spec.put(pdf_name_cell(env, "Filter"), @value.Cell::None)
+          spec.put(
+            pdf_name_cell(env, "Length"),
+            @value.Integer(inflated.length().to_int64()),
+          )
+          inflated
+        } else {
+          stored
+        }
+      } else {
+        stored
+      }
+    _ => stored
+  }
 }
 
 ///|
