@@ -127,6 +127,8 @@ fn perform_load(
       false,
       @value.Cell::None,
     )
+  } else if zip_suffix(source) {
+    zip_block(read_binary(loaded_path(source)))
   } else {
     match source {
       @value.Seq(series, index) if series.datatype() == @value.Binary =>
@@ -279,6 +281,23 @@ fn tar_suffix(source : @value.Cell) -> Bool raise EvalError {
 }
 
 ///|
+/// Suffixes from codec-zip.reb. A save stores one file, uncompressed.
+fn zip_suffix(source : @value.Cell) -> Bool raise EvalError {
+  match file_suffix(source) {
+    ".zip"
+    | ".aar"
+    | ".jar"
+    | ".apk"
+    | ".zipx"
+    | ".appx"
+    | ".epub"
+    | ".docx"
+    | ".swc" => true
+    _ => false
+  }
+}
+
+///|
 fn markup_file(source : @value.Cell) -> Bool raise EvalError {
   match file_suffix(source) {
     ".html" | ".htm" | ".xsl" | ".wml" | ".sgml" | ".asp" | ".php" => true
@@ -338,6 +357,10 @@ fn perform_save(
       }
       if tar_suffix(place) && !named(env, active, "header") {
         raise EvalError::Caused("not-done", "tar")
+      }
+      if zip_suffix(place) && !named(env, active, "header") {
+        write_binary(path, zip_saved(args[1]))
+        return place
       }
       if markup_file(place) && !named(env, active, "header") {
         raise EvalError::Caused("invalid-arg", @mold.mold_text(args[1]))

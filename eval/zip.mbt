@@ -7,6 +7,24 @@ priv struct ZipPart {
 }
 
 ///|
+/// `save` of a zip suffix stores one file's bytes. Other values are refused.
+fn zip_saved(value : @value.Cell) -> Array[Int] raise EvalError {
+  match value {
+    @value.Seq(series, index) if series.datatype() == @value.File =>
+      zip_bytes([
+        zip_part(value, binary_cell(read_binary(text_from(series, index)))),
+      ])
+    _ =>
+      raise EvalError::Caused(
+        "message",
+        "found " +
+        @mold.mold_text(@value.Type(value.datatype())) +
+        " where file! expected",
+      )
+  }
+}
+
+///|
 /// `compress block 'zip` stores each `file!` and its text or binary.
 /// Refinements are refused. Deflate inside the archive is not used.
 fn zip_compress(

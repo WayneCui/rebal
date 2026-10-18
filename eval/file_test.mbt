@@ -191,6 +191,19 @@ test "a script header turns yes, no, and none into values" {
 }
 
 ///|
+test "a .zip suffix stores one file and loads it back" {
+  // codec-zip.reb. The member is stored, not deflated. A non-file is refused.
+  @eval.write_file("/tmp/rebal-one.txt", "hi")
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "z: save %/tmp/rebal-out.zip %/tmp/rebal-one.txt (reduce [z = %/tmp/rebal-out.zip (pick load z 1) = %/tmp/rebal-one.txt (pick pick load z 2 3) = #{6869} (pick load save %/tmp/rebal-out.ZIP %/tmp/rebal-one.txt 1) = %/tmp/rebal-one.txt ((try [save %/tmp/rebal-out.zip 1])/id) = 'message ((try [save %/tmp/rebal-out.zip 1])/arg1) = {found integer! where file! expected}]) = reduce [true true true true true true]",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "a .tar suffix loads an archive and cannot encode one" {
   // codec-tar.reb. Saving is not implemented in the codec.
   @eval.write_binary("/tmp/rebal-t.tar", sample_tar())
