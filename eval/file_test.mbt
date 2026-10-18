@@ -70,3 +70,15 @@ test "save into a binary round-trips through load" {
     is @value.Logic(true),
   )
 }
+
+///|
+test "save/compress writes zlib, a header, or a base-64 script" {
+  // codecs-test.r3 "SAVE/compress". false is the payload alone.
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "(reduce [(save/compress none [print \"Hello World!\"] false) = #{789C2B28CACC2B5150F248CDC9C95708CF2FCA495154E20200526B06D9} (load decompress save/compress none [print \"Hello World!\"] false 'zlib) = [print \"Hello World!\"] (save/compress none [print \"Hello World!\"] true) = #{5245424F4C205B0A202020206F7074696F6E733A205B636F6D70726573735D0A5D0A789C2B28CACC2B5150F248CDC9C95708CF2FCA495154E20200526B06D9} (save/compress none [print \"Hello World!\"] 'script) = #{5245424F4C205B0A202020206F7074696F6E733A205B636F6D70726573735D0A5D0A3634237B654A77724B4D724D4B314651386B6A4E79636C58434D3876796B6C52564F494341464A7242746B3D7D}]) = reduce [true true true true]",
+    )
+    is @value.Logic(true),
+  )
+}

@@ -232,7 +232,8 @@ fn call(
     func.code() != native_dh &&
     func.code() != native_ecdh &&
     func.code() != native_ecdsa &&
-    func.code() != native_encode {
+    func.code() != native_encode &&
+    func.code() != native_save {
     raise EvalError::Cannot("func")
   }
   let args : Array[@value.Cell] = []
@@ -261,6 +262,8 @@ fn call(
     func.arity() + decode_extra(env, active)
   } else if func.code() == native_encode {
     func.arity() + encode_extra(env, active)
+  } else if func.code() == native_save {
+    func.arity() + save_extra(env, active)
   } else if func.code() == native_rsa_init {
     func.arity() + rsa_init_extra(env, active)
   } else if func.code() == native_rsa {
@@ -361,6 +364,8 @@ fn call(
     (perform_ecdsa(env, args, active), cursor)
   } else if func.code() == native_encode {
     (perform_encode(env, args, active), cursor)
+  } else if func.code() == native_save {
+    (perform_save(env, args, active), cursor)
   } else if func.code() == 0 {
     (call_user(env, func, args, active), cursor)
   } else {
@@ -389,6 +394,15 @@ fn named(env : Env, active : Array[Int], spelling : String) -> Bool {
     }
   }
   found
+}
+
+///|
+fn save_extra(env : Env, active : Array[Int]) -> Int {
+  if named(env, active, "compress") {
+    1
+  } else {
+    0
+  }
 }
 
 ///|
@@ -732,7 +746,7 @@ fn apply(
   } else if func.code() == native_load {
     perform_load(env, args[0])
   } else if func.code() == native_save {
-    perform_save(args[0], args[1])
+    perform_save(env, args, [])
   } else if func.code() == native_module {
     perform_module(env, args[0], args[1])
   } else if func.code() == native_import {

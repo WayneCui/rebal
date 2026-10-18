@@ -106,11 +106,13 @@ fn loaded_path(source : @value.Cell) -> String raise EvalError {
 
 ///|
 fn perform_save(
-  place : @value.Cell,
-  value : @value.Cell,
+  env : Env,
+  args : Array[@value.Cell],
+  active : Array[Int],
 ) -> @value.Cell raise EvalError {
-  let script = save_script(value)
-  let bytes = binary_cell(utf8_bytes(script))
+  let place = args[0]
+  let script = save_script(args[1])
+  let bytes = binary_cell(save_bytes(env, script, active, args))
   match place {
     @value.Cell::None => bytes
     @value.Seq(series, index) if series.datatype() == @value.File => {
@@ -129,6 +131,85 @@ fn perform_save(
       }
     _ => raise EvalError::Cannot("save")
   }
+}
+
+///|
+/// `/compress false` is the zlib payload. `true` prefixes the boot header.
+/// `'script` molds that payload as base 64. A custom header is not accepted.
+fn save_bytes(
+  env : Env,
+  script : String,
+  active : Array[Int],
+  args : Array[@value.Cell],
+) -> Array[Int] raise EvalError {
+  match save_mode(env, active, args) {
+    None => utf8_bytes(script)
+    Some(mode) => save_compressed(env, script, mode)
+  }
+}
+
+///|
+fn save_mode(
+  env : Env,
+  active : Array[Int],
+  args : Array[@value.Cell],
+) -> @value.Cell? raise EvalError {
+  let mut mode : @value.Cell? = None
+  let mut cursor = 2
+  for sym in active {
+    let name = env.symbols.canon(sym)
+    if name == "compress" {
+      mode = Some(args[cursor])
+      cursor = cursor + 1
+    } else {
+      raise EvalError::Cannot("save")
+    }
+  }
+  mode
+}
+
+///|
+fn save_compressed(
+  env : Env,
+  script : String,
+  mode : @value.Cell,
+) -> Array[Int] raise EvalError {
+  let packed = save_zlib(script)
+  match mode {
+    @value.Logic(false) => packed
+    @value.Logic(true) => save_cat(save_header(), packed)
+    @value.Sym(_, lexeme) =>
+      if env.symbols.canon(lexeme.sym()) == "script" {
+        utf8_bytes(save_header() + "64#{" + encode_base64(packed, false) + "}")
+      } else {
+        save_cat(save_header(), packed)
+      }
+    _ => raise EvalError::Cannot("save")
+  }
+}
+
+///|
+fn save_zlib(script : String) -> Array[Int] raise EvalError {
+  let bytes = utf8_bytes(script)
+  let packed = c_zlib_compress(latin_text(bytes), bytes.length(), -1, 15)
+  if c_zlib_code() != 0 {
+    raise EvalError::Cannot("save")
+  }
+  codes_of(packed)
+}
+
+///|
+fn save_header() -> String {
+  "REBOL [\n    options: [compress]\n]\n"
+}
+
+///|
+fn save_cat(prefix : String, bytes : Array[Int]) -> Array[Int] {
+  let out = utf8_bytes(prefix)
+  for byte in bytes {
+    out.push(byte)
+  }
+  out
 }
 
 ///|
