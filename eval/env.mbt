@@ -720,6 +720,7 @@ pub fn Env::new() -> Env {
   install(env, "image!", @value.Type(@value.Image))
   install(env, "struct!", @value.Type(@value.Struct))
   install(env, "typeset!", @value.Type(@value.Typeset))
+  install_typesets(env)
   install(env, "module!", @value.Type(@value.Module))
   install(env, "error!", @value.Type(@value.Error))
   install(env, "sys", @value.Object(@value.Frame::new()))

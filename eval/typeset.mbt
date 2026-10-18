@@ -1,28 +1,24 @@
 ///|
 /// `make typeset! [block! map! object!]`. Repeated names collapse.
 /// A word that is not a datatype is `invalid-arg`. A non-block is `bad-make-arg`.
-fn make_typeset(spec : @value.Cell) -> @value.Cell raise EvalError {
+fn make_typeset(env : Env, spec : @value.Cell) -> @value.Cell raise EvalError {
   match spec {
     @value.Seq(series, index) if series.datatype() == @value.Block =>
-      typeset_block(series, index)
+      typeset_block(env, series, index)
     _ => raise EvalError::Caused("bad-make-arg", "typeset!")
   }
 }
 
 ///|
 fn typeset_block(
+  env : Env,
   series : @value.Series,
   index : Int,
 ) -> @value.Cell raise EvalError {
   let types : Array[@value.Datatype] = []
   for cursor in index..<series.length() {
     match series.item(cursor) {
-      Some(item) => {
-        let datatype = typeset_member(item)
-        if !typeset_has(types, datatype) {
-          types.push(datatype)
-        }
-      }
+      Some(item) => typeset_add(env, types, item)
       None => ()
     }
   }
@@ -30,15 +26,39 @@ fn typeset_block(
 }
 
 ///|
-fn typeset_member(cell : @value.Cell) -> @value.Datatype raise EvalError {
+/// A bound word uses its value. A typeset is merged in. An unbound word is
+/// accepted when its spelling is a datatype name.
+fn typeset_add(
+  env : Env,
+  types : Array[@value.Datatype],
+  cell : @value.Cell,
+) -> Unit raise EvalError {
   match cell {
-    @value.Type(datatype) => datatype
+    @value.Type(datatype) => typeset_push(types, datatype)
+    @value.Typeset(set) =>
+      for datatype in set.ordered() {
+        typeset_push(types, datatype)
+      }
     @value.Sym(_, lexeme) =>
-      match datatype_named(lexeme.spelling().to_lower()) {
-        Some(datatype) => datatype
-        None => raise EvalError::Caused("invalid-arg", "")
+      match quiet(env, lexeme) {
+        Some(value) => typeset_add(env, types, value)
+        None =>
+          match datatype_named(lexeme.spelling().to_lower()) {
+            Some(datatype) => typeset_push(types, datatype)
+            None => raise EvalError::Caused("invalid-arg", "")
+          }
       }
     _ => raise EvalError::Caused("invalid-arg", "")
+  }
+}
+
+///|
+fn typeset_push(
+  types : Array[@value.Datatype],
+  datatype : @value.Datatype,
+) -> Unit {
+  if !typeset_has(types, datatype) {
+    types.push(datatype)
   }
 }
 
@@ -65,6 +85,130 @@ fn typeset_find(
     @value.Type(datatype) => @value.Logic(types.contains(datatype))
     _ => raise EvalError::Caused("invalid-arg", "")
   }
+}
+
+///|
+
+///|
+/// Presets from `Init_Typesets`, limited to datatypes this interpreter has.
+fn install_typesets(env : Env) -> Unit {
+  install_typeset(env, "number!", [
+    @value.Integer,
+    @value.Decimal,
+    @value.Percent,
+  ])
+  install_typeset(env, "scalar!", [
+    @value.Integer,
+    @value.Decimal,
+    @value.Percent,
+    @value.Money,
+    @value.Char,
+    @value.Pair,
+    @value.Tuple,
+    @value.Time,
+    @value.Date,
+  ])
+  install_typeset(env, "any-word!", [
+    @value.Word,
+    @value.SetWord,
+    @value.GetWord,
+    @value.LitWord,
+    @value.Refinement,
+    @value.Issue,
+  ])
+  install_typeset(env, "any-path!", [@value.Path, @value.SetPath])
+  install_typeset(env, "any-function!", [
+    @value.Op,
+    @value.Closure,
+    @value.Function,
+  ])
+  install_typeset(env, "any-string!", [
+    @value.String,
+    @value.File,
+    @value.Email,
+    @value.Url,
+    @value.Tag,
+  ])
+  install_typeset(env, "any-block!", [
+    @value.Block,
+    @value.Paren,
+    @value.Path,
+    @value.SetPath,
+  ])
+  install_typeset(env, "series!", [
+    @value.Binary,
+    @value.String,
+    @value.File,
+    @value.Email,
+    @value.Url,
+    @value.Tag,
+    @value.Image,
+    @value.Vector,
+    @value.Block,
+    @value.Paren,
+    @value.Path,
+    @value.SetPath,
+  ])
+  install_typeset(env, "any-object!", [
+    @value.Object,
+    @value.Module,
+    @value.Error,
+    @value.Port,
+  ])
+  install_typeset(env, "any-type!", [
+    @value.Unset,
+    @value.None,
+    @value.Logic,
+    @value.Integer,
+    @value.Decimal,
+    @value.Percent,
+    @value.Money,
+    @value.Char,
+    @value.Pair,
+    @value.Tuple,
+    @value.Time,
+    @value.Date,
+    @value.Binary,
+    @value.String,
+    @value.File,
+    @value.Email,
+    @value.Url,
+    @value.Tag,
+    @value.Bitset,
+    @value.Image,
+    @value.Vector,
+    @value.Block,
+    @value.Paren,
+    @value.Path,
+    @value.SetPath,
+    @value.Map,
+    @value.Datatype,
+    @value.Typeset,
+    @value.Word,
+    @value.SetWord,
+    @value.GetWord,
+    @value.LitWord,
+    @value.Refinement,
+    @value.Issue,
+    @value.Op,
+    @value.Closure,
+    @value.Function,
+    @value.Object,
+    @value.Module,
+    @value.Error,
+    @value.Port,
+    @value.Handle,
+    @value.Struct,
+  ])
+}
+
+///|
+fn install_typeset(
+  env : Env,
+  name : String,
+  types : Array[@value.Datatype],
+) -> Unit {
+  install(env, name, @value.Typeset(@value.Typeset::make(types)))
 }
 
 ///|
