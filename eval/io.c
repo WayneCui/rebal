@@ -16,6 +16,23 @@
 
 static int32_t rebal_status = 0;
 
+int32_t rebal_random_byte(void) {
+  static FILE *src;
+  if (src == NULL) {
+    src = fopen("/dev/urandom", "rb");
+    if (src == NULL) {
+      return 0;
+    }
+  }
+  int byte = fgetc(src);
+  if (byte < 0) {
+    fclose(src);
+    src = NULL;
+    return 0;
+  }
+  return byte;
+}
+
 int32_t rebal_io_status(void) { return rebal_status; }
 
 char *rebal_to_utf8(const uint16_t *src, int32_t len) {

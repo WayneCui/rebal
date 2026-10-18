@@ -21,3 +21,15 @@ test "rsa sign and verify use pkcs1 and sha256" {
     is @value.Logic(true),
   )
 }
+
+///|
+test "rsa encrypt and decrypt round trip with pkcs1 padding" {
+  // rsa-test.r3 "RSA encrypt" and "RSA decrypt". Padding bytes come from the system generator.
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "n: #{EB8A8654FAE3935DBC163A6C9F37839E799B66FB86B920C7E3CB2CEE80446BE60772924403C2F3640A2228F3FF4448F52569611A2655479AEE25F3F493FC6D8F} e: #{010001} d: #{B4E6B9713F17D630E1AA38C90027C4E0CC093CB8E5A9FDB14814DDB777B015252720006E7305669204B62B4172522524B55248F736094297479C114DE52BEBE1} p: #{FDDE07331BB719B8F9EABE6AB8EB8A53B432F3A080CA61D2D343F00E4AA71759} q: #{ED85157EC471E3601421BAC1462A674C9ADF4D74C4E68E03B3B8A40F05E9F727} pri: rsa-init/private n e d p q pub: rsa-init n e msg: #{41686F6A21} secret: rsa/encrypt pub msg other: rsa/encrypt pri msg (reduce [rsa/decrypt pri secret none? rsa/decrypt pub secret rsa/decrypt pri other secret <> other none? rsa/encrypt pub #{111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111}]) = reduce [msg true msg true true]",
+    )
+    is @value.Logic(true),
+  )
+}
