@@ -144,11 +144,7 @@ fn perform_load(
   } else if password is Some(_) {
     raise EvalError::Cannot("load")
   } else {
-    match source {
-      @value.Seq(series, index) if series.datatype() == @value.Binary =>
-        load_bytes(env, drop_bom(bytes_from(series, index)), header, all)
-      _ => load_bytes(env, utf8_bytes(source_text(source)), header, all)
-    }
+    load_bytes(env, loaded_script_bytes(source), header, all)
   }
 }
 
@@ -237,10 +233,18 @@ fn load_script(
   header : Bool,
   all : Bool,
 ) -> @value.Cell raise EvalError {
+  load_bytes(env, loaded_script_bytes(source), header, all)
+}
+
+///|
+/// A file is the bytes on disk, so a compressed script is not decoded as text.
+fn loaded_script_bytes(source : @value.Cell) -> Array[Int] raise EvalError {
   match source {
     @value.Seq(series, index) if series.datatype() == @value.Binary =>
-      load_bytes(env, drop_bom(bytes_from(series, index)), header, all)
-    _ => load_bytes(env, utf8_bytes(source_text(source)), header, all)
+      drop_bom(bytes_from(series, index))
+    @value.Seq(series, index) if series.datatype() == @value.File =>
+      drop_bom(read_binary(text_from(series, index)))
+    _ => utf8_bytes(source_text(source))
   }
 }
 
@@ -404,7 +408,8 @@ fn perform_save(
 ) -> @value.Cell raise EvalError {
   let place = args[0]
   let script = save_script(args[1])
-  let bytes = binary_cell(save_bytes(env, script, active, args))
+  let payload = save_bytes(env, script, active, args)
+  let bytes = binary_cell(payload)
   let secret = keyed_password(env, active, args)
   match place {
     @value.Cell::None =>
@@ -452,14 +457,13 @@ fn perform_save(
       if markup_file(place) && !named(env, active, "header") {
         raise EvalError::Caused("invalid-arg", @mold.mold_text(args[1]))
       }
-      let body = if text_file(place) && !named(env, active, "header") {
-        encoded_text(args[1])
+      if text_file(place) && !named(env, active, "header") {
+        write_file(path, encoded_text(args[1]))
       } else if json_file(place) && !named(env, active, "header") {
-        encoded_json(env, args[1])
+        write_file(path, encoded_json(env, args[1]))
       } else {
-        script
+        write_binary(path, payload)
       }
-      write_file(path, body)
       place
     }
     @value.Seq(series, _) if series.datatype() == @value.Binary =>

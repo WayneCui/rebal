@@ -328,7 +328,15 @@ fn perform_do(env : Env, cell : @value.Cell) -> @value.Cell raise EvalError {
     @value.Seq(series, index) if series.datatype() == @value.String =>
       do_text(env, text_from(series, index))
     @value.Seq(series, index) if series.datatype() == @value.File =>
-      do_text(env, read_file(text_from(series, index)))
+      eval(
+        env,
+        load_bytes(
+          env,
+          drop_bom(read_binary(text_from(series, index))),
+          false,
+          false,
+        ),
+      )
     _ => cell
   }
 }

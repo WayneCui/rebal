@@ -1,4 +1,16 @@
 ///|
+test "a script file keeps its header and compression" {
+  // mezz-save.reb writes the finished bytes. load and do read those bytes.
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "h: save/header %/tmp/rebal-h.r3 [1 + 2] [title: \"t\"] c: save/compress %/tmp/rebal-c.r3 [1 + 2] true (reduce [(load h) = [1 + 2] ((pick load/header h 1)/title) = \"t\" (do h) = 3 (load c) = [1 + 2] (do c) = 3]) = reduce [true true true true true]",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "load, save, and do of a script file" {
   let env = @eval.Env::new()
   @eval.write_file("/tmp/rebal-script.r3", "Rebol [title: {t}]\n1 + 2\n")
