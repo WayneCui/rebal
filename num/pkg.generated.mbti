@@ -2,11 +2,17 @@
 package "rebal/num"
 
 // Values
+pub fn p256_add(Array[Int], Array[Int], Array[Int], Array[Int]) -> (Array[Int], Array[Int])?
+
 pub fn p256_base_mul(Array[Int]) -> (Array[Int], Array[Int])?
 
 pub fn p256_mul(Array[Int], Array[Int], Array[Int]) -> (Array[Int], Array[Int])?
 
 pub fn p256_on_curve(Array[Int], Array[Int]) -> Bool
+
+pub fn p256_sign_rs(Array[Int], Array[Int], Array[Int]) -> (Array[Int], Array[Int])?
+
+pub fn p256_verify_rs(Array[Int], Array[Int], Array[Int], Array[Int], Array[Int]) -> Bool
 
 // Errors
 

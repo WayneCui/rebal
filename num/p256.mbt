@@ -41,6 +41,134 @@ pub fn p256_on_curve(x : Array[Int], y : Array[Int]) -> Bool {
 }
 
 ///|
+/// Affine addition. The point at infinity comes back as `None`.
+pub fn p256_add(
+  x1 : Array[Int],
+  y1 : Array[Int],
+  x2 : Array[Int],
+  y2 : Array[Int],
+) -> (Array[Int], Array[Int])? {
+  if !p256_on_curve(x1, y1) || !p256_on_curve(x2, y2) {
+    None
+  } else {
+    let first : Jac = {
+      x: fe_norm(x1),
+      y: fe_norm(y1),
+      z: small(1),
+      inf: false,
+    }
+    match jac_affine(jac_add(first, fe_norm(x2), fe_norm(y2))) {
+      None => None
+      Some((x, y)) => Some((x.be_bytes(32), y.be_bytes(32)))
+    }
+  }
+}
+
+///|
+/// ECDSA `(r, s)` for an explicit nonce. Each integer is 32 bytes, big-endian.
+pub fn p256_sign_rs(
+  secret : Array[Int],
+  hash : Array[Int],
+  nonce : Array[Int],
+) -> (Array[Int], Array[Int])? {
+  if !p256_scalar_ok(secret) || !p256_scalar_ok(nonce) {
+    None
+  } else {
+    match p256_base_mul(nonce) {
+      None => None
+      Some((rx, _)) => rs_from_x(secret, hash, nonce, rx)
+    }
+  }
+}
+
+///|
+pub fn p256_verify_rs(
+  x : Array[Int],
+  y : Array[Int],
+  hash : Array[Int],
+  r : Array[Int],
+  s : Array[Int],
+) -> Bool {
+  let order = p256_n()
+  let rv = Nat::from_bytes(r)
+  let sv = Nat::from_bytes(s)
+  if !p256_on_curve(x, y) ||
+    nat_zero(rv) ||
+    nat_zero(sv) ||
+    nat_cmp(rv, order) >= 0 ||
+    nat_cmp(sv, order) >= 0 {
+    false
+  } else {
+    let w = nat_inv(sv, order)
+    let e = Nat::from_bytes(hash).remainder(order)
+    let u1 = product(e, w).remainder(order)
+    let u2 = product(rv, w).remainder(order)
+    match rs_point(u1, u2, x, y) {
+      None => false
+      Some((px, _)) => nat_cmp(Nat::from_bytes(px).remainder(order), rv) == 0
+    }
+  }
+}
+
+///|
+fn rs_from_x(
+  secret : Array[Int],
+  hash : Array[Int],
+  nonce : Array[Int],
+  rx : Array[Int],
+) -> (Array[Int], Array[Int])? {
+  let order = p256_n()
+  let r = Nat::from_bytes(rx).remainder(order)
+  if nat_zero(r) {
+    None
+  } else {
+    let e = Nat::from_bytes(hash).remainder(order)
+    let sum = fe_n(nat_add(e, product(r, Nat::from_bytes(secret))))
+    let s = product(nat_inv(Nat::from_bytes(nonce), order), sum).remainder(
+      order,
+    )
+    if nat_zero(s) {
+      None
+    } else {
+      Some((r.be_bytes(32), s.be_bytes(32)))
+    }
+  }
+}
+
+///|
+fn rs_point(
+  u1 : Nat,
+  u2 : Nat,
+  x : Array[Int],
+  y : Array[Int],
+) -> (Array[Int], Array[Int])? {
+  if nat_zero(u1) {
+    p256_mul(u2.be_bytes(32), x, y)
+  } else if nat_zero(u2) {
+    p256_base_mul(u1.be_bytes(32))
+  } else {
+    match p256_base_mul(u1.be_bytes(32)) {
+      None => None
+      Some((x1, y1)) =>
+        match p256_mul(u2.be_bytes(32), x, y) {
+          None => None
+          Some((x2, y2)) => p256_add(x1, y1, x2, y2)
+        }
+    }
+  }
+}
+
+///|
+fn nat_inv(value : Nat, order : Nat) -> Nat {
+  Nat::mod_exp(value, nat_sub(order, small(2)), order)
+}
+
+///|
+fn fe_n(value : Nat) -> Nat {
+  value.remainder(p256_n())
+}
+
+///|
 priv struct Jac {
   x : Nat
   y : Nat
