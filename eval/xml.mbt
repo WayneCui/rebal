@@ -16,16 +16,12 @@ fn decode_xml(env : Env, value : @value.Cell) -> @value.Cell raise EvalError {
     codes.push(char.to_int())
   }
   let info = @value.MapValue::make()
-  let mut cursor = xml_skip(codes, 0)
-  if xml_starts(codes, cursor, "<?xml") {
-    cursor = xml_declaration(env, codes, cursor + 5, info)
-    cursor = xml_skip(codes, cursor)
-  }
+  let cursor = xml_prolog(env, codes, info)
   if cursor >= codes.length() || codes[cursor] != '<'.to_int() {
     raise EvalError::Cannot("decode")
   }
   let (root, after) = xml_element(env, codes, cursor)
-  if xml_skip(codes, after) != codes.length() {
+  if xml_trailer(codes, after) != codes.length() {
     raise EvalError::Cannot("decode")
   }
   let block = @value.Series::block()
@@ -35,6 +31,146 @@ fn decode_xml(env : Env, value : @value.Cell) -> @value.Cell raise EvalError {
   kids.push_item(root) |> ignore
   block.push_item(@value.Seq(kids, 0)) |> ignore
   @value.Seq(block, 0)
+}
+
+///|
+/// A declaration counts only at the start. A later `<?xml` is an ordinary
+/// processing instruction, which is why a leading comment leaves version unset.
+fn xml_prolog(
+  env : Env,
+  codes : Array[Int],
+  info : @value.MapValue,
+) -> Int raise EvalError {
+  let mut cursor = xml_skip(codes, 0)
+  if xml_starts(codes, cursor, "<?xml") {
+    cursor = xml_declaration(env, codes, cursor + 5, info)
+  }
+  let mut seen = false
+  let mut scanning = true
+  while scanning {
+    cursor = xml_skip(codes, cursor)
+    let (misc, after) = xml_misc(codes, cursor)
+    if misc {
+      cursor = after
+    } else if xml_starts(codes, cursor, "<!DOCTYPE") {
+      if seen {
+        raise EvalError::Cannot("decode")
+      }
+      cursor = xml_doctype(env, codes, cursor, info)
+      seen = true
+    } else {
+      scanning = false
+    }
+  }
+  cursor
+}
+
+///|
+fn xml_trailer(codes : Array[Int], at : Int) -> Int raise EvalError {
+  let mut cursor = at
+  let mut scanning = true
+  while scanning {
+    cursor = xml_skip(codes, cursor)
+    let (misc, after) = xml_misc(codes, cursor)
+    if misc {
+      cursor = after
+    } else {
+      scanning = false
+    }
+  }
+  cursor
+}
+
+///|
+fn xml_misc(codes : Array[Int], at : Int) -> (Bool, Int) raise EvalError {
+  if xml_starts(codes, at, "<!--") {
+    (true, xml_find(codes, at + 4, "-->"))
+  } else if xml_starts(codes, at, "<?") {
+    (true, xml_find(codes, at + 2, "?>"))
+  } else {
+    (false, at)
+  }
+}
+
+///|
+fn xml_doctype(
+  env : Env,
+  codes : Array[Int],
+  at : Int,
+  info : @value.MapValue,
+) -> Int raise EvalError {
+  let mut cursor = at + 9
+  if cursor >= codes.length() || !xml_space(codes[cursor]) {
+    raise EvalError::Cannot("decode")
+  }
+  cursor = xml_skip(codes, cursor)
+  let (name, named) = xml_name(codes, cursor)
+  info.put(xml_word(env, "doctype"), text_series(name))
+  cursor = xml_skip(codes, named)
+  if xml_starts(codes, cursor, "SYSTEM") {
+    cursor = xml_literal(codes, cursor + 6)
+    let (sysid, after) = xml_quoted(codes, cursor)
+    info.put(xml_word(env, "sysid"), text_series(sysid))
+    cursor = after
+  } else if xml_starts(codes, cursor, "PUBLIC") {
+    cursor = xml_literal(codes, cursor + 6)
+    let (pubid, after_pub) = xml_quoted(codes, cursor)
+    info.put(xml_word(env, "pubid"), text_series(pubid))
+    if after_pub >= codes.length() || !xml_space(codes[after_pub]) {
+      raise EvalError::Cannot("decode")
+    }
+    cursor = xml_skip(codes, after_pub)
+    let (sysid, after_sys) = xml_quoted(codes, cursor)
+    info.put(xml_word(env, "sysid"), text_series(sysid))
+    cursor = after_sys
+  }
+  cursor = xml_skip(codes, cursor)
+  if cursor < codes.length() && codes[cursor] == '['.to_int() {
+    let end = xml_find(codes, cursor + 1, "]")
+    info.put(
+      xml_word(env, "subset"),
+      text_series(xml_slice(codes, cursor + 1, end - 1)),
+    )
+    cursor = xml_skip(codes, end)
+  }
+  if cursor >= codes.length() || codes[cursor] != '>'.to_int() {
+    raise EvalError::Cannot("decode")
+  }
+  cursor + 1
+}
+
+///|
+fn xml_literal(codes : Array[Int], at : Int) -> Int raise EvalError {
+  if at >= codes.length() || !xml_space(codes[at]) {
+    raise EvalError::Cannot("decode")
+  }
+  xml_skip(codes, at)
+}
+
+///|
+fn xml_find(
+  codes : Array[Int],
+  at : Int,
+  marker : String,
+) -> Int raise EvalError {
+  let mut cursor = at
+  let mut found = false
+  while cursor < codes.length() && !found {
+    if xml_starts(codes, cursor, marker) {
+      found = true
+    } else {
+      cursor = cursor + 1
+    }
+  }
+  if !found {
+    raise EvalError::Cannot("decode")
+  }
+  let mut width = 0
+  for char in marker {
+    let _ = char
+    width = width + 1
+  }
+  cursor + width
 }
 
 ///|
