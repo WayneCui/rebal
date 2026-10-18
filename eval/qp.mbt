@@ -66,6 +66,11 @@ fn perform_encode(
       raise EvalError::Cannot("encode")
     }
     encode_unix(args[1], form)
+  } else if kind == "json" {
+    if uri || form is Some(_) {
+      raise EvalError::Cannot("encode")
+    }
+    encode_json(args[1])
   } else {
     raise EvalError::Cannot("access")
   }
