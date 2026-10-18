@@ -5,6 +5,8 @@ pub struct Func {
   lits : Array[Bool]
   refines : Array[Int]
   refine_args : Array[Array[Int]]
+  spec_words : Array[Int]
+  spec_kinds : Array[Int]
   body : Series
   infix : Bool
   code : Int
@@ -20,6 +22,8 @@ pub fn Func::make(
   lits : Array[Bool],
   refines : Array[Int],
   refine_args : Array[Array[Int]],
+  spec_words : Array[Int],
+  spec_kinds : Array[Int],
   body : Series,
   infix : Bool,
   frame : Frame,
@@ -31,6 +35,8 @@ pub fn Func::make(
     lits,
     refines,
     refine_args,
+    spec_words,
+    spec_kinds,
     body,
     infix,
     code: 0,
@@ -51,6 +57,8 @@ pub fn Func::native(arity : Int, infix : Bool, code : Int) -> Func {
     lits: [],
     refines: [],
     refine_args: [],
+    spec_words: [],
+    spec_kinds: [],
     body: Series::block(),
     infix,
     code,
@@ -106,6 +114,18 @@ pub fn Func::refine_args(self : Func) -> Array[Array[Int]] {
 }
 
 ///|
+/// Spec words in source order. Kinds are 0 for a word, 1 for a refinement,
+/// and 2 for a lit-word.
+pub fn Func::spec_words(self : Func) -> Array[Int] {
+  self.spec_words
+}
+
+///|
+pub fn Func::spec_kinds(self : Func) -> Array[Int] {
+  self.spec_kinds
+}
+
+///|
 pub fn Func::body(self : Func) -> Series {
   self.body
 }
@@ -124,6 +144,8 @@ pub fn Func::as_op(self : Func) -> Func {
     lits: self.lits,
     refines: self.refines,
     refine_args: self.refine_args,
+    spec_words: self.spec_words,
+    spec_kinds: self.spec_kinds,
     body: self.body,
     infix: true,
     code: self.code,

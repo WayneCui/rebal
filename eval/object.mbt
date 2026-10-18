@@ -73,9 +73,29 @@ fn words_of(env : Env, value : @value.Cell) -> @value.Cell raise EvalError {
           None => ()
         }
       }
+    @value.Function(func) =>
+      for index in 0..<func.spec_words().length() {
+        let sym = func.spec_words()[index]
+        let kind = func.spec_kinds()[index]
+        block.push_item(func_spec_word(env, sym, kind)) |> ignore
+      }
     _ => raise EvalError::Caused("expect-arg", "words-of")
   }
   @value.Seq(block, 0)
+}
+
+///|
+fn func_spec_word(env : Env, sym : Int, kind : Int) -> @value.Cell {
+  let spelling = env.symbols.canon(sym)
+  let lexeme = @value.Lexeme::make(sym, spelling)
+  let datatype = if kind == 1 {
+    @value.Refinement
+  } else if kind == 2 {
+    @value.LitWord
+  } else {
+    @value.Word
+  }
+  @value.Sym(datatype, lexeme)
 }
 
 ///|

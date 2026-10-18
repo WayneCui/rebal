@@ -4,7 +4,7 @@ test "words-of lists object fields and map keys in order" {
   let env = @eval.Env::new()
   assert_true(
     @eval.run(
-      env, "(reduce [(words-of make object! [b: 2 a: 1]) = [b a] (words-of make object! []) = [] (words-of make map! [b: 2 a: 1]) = [b a] (words-of make map! [\"x\" 1 a: 2]) = [\"x\" a] ((try [words-of 1])/id) = 'expect-arg]) = reduce [true true true true true]",
+      env, "(reduce [(words-of make object! [b: 2 a: 1]) = [b a] (words-of make object! []) = [] (words-of make map! [b: 2 a: 1]) = [b a] (words-of make map! [\"x\" 1 a: 2]) = [\"x\" a] (words-of func [a /b c] [a]) = [a /b c] (words-of func [a /local b /c d] []) = [a /local b /c d] (words-of func [a [integer!] 'b] []) = [a 'b] (words-of does [1]) = [] (words-of make op! func [a b] [a]) = [a b] ((try [words-of 1])/id) = 'expect-arg]) = reduce [true true true true true true true true true true]",
     )
     is @value.Logic(true),
   )

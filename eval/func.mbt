@@ -33,6 +33,8 @@ fn build_func(
           names.lits,
           names.refines,
           names.refine_args,
+          names.words,
+          names.kinds,
           series,
           false,
           frame,
@@ -52,6 +54,8 @@ priv struct FuncSpec {
   locals : Array[Int]
   refines : Array[Int]
   refine_args : Array[Array[Int]]
+  words : Array[Int]
+  kinds : Array[Int]
 }
 
 ///|
@@ -67,6 +71,8 @@ fn spec_names(env : Env, spec : @value.Cell) -> FuncSpec raise EvalError {
         locals: [],
         refines: [],
         refine_args: [],
+        words: [],
+        kinds: [],
       }
       let mut cursor = index
       let mut mode = 0
@@ -93,6 +99,8 @@ fn spec_names(env : Env, spec : @value.Cell) -> FuncSpec raise EvalError {
               cursor,
             )
           Some(@value.Sym(@value.Refinement, lexeme)) => {
+            built.words.push(lexeme.sym())
+            built.kinds.push(1)
             if lexeme.spelling() == "local" {
               mode = -1
             } else {
@@ -122,6 +130,8 @@ fn push_param(
   cursor : Int,
 ) -> Int raise EvalError {
   let next = cursor + 1
+  built.words.push(sym)
+  built.kinds.push(if lit { 2 } else { 0 })
   if mode == 0 {
     built.args.push(sym)
     built.lits.push(lit)
