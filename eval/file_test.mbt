@@ -191,6 +191,22 @@ test "a script header turns yes, no, and none into values" {
 }
 
 ///|
+test "a .crt suffix loads a certificate and cannot encode one" {
+  // codec-crt.reb. PEM armor and a bare byte both go through the certificate codec.
+  @eval.write_file(
+    "/tmp/rebal-atlantis.crt", "-----BEGIN CERTIFICATE-----\nMIIBmTCCAUegAwIBAgIBKjAJBgUrDgMCHQUAMBMxETAPBgNVBAMTCEF0bGFudGlz\nMB4XDTEyMDcwOTAzMTAzOFoXDTEzMDcwOTAzMTAzN1owEzERMA8GA1UEAxMIQXRs\nYW50aXMwXDANBgkqhkiG9w0BAQEFAANLADBIAkEAu+BXo+miabDIHHx+yquqzqNh\nRyn/XtkJIIHVcYtHvIX+S1x5ErgMoHehycpoxbErZmVR4GCq1S2diNmRFZCRtQID\nAQABo4GJMIGGMAwGA1UdEwEB/wQCMAAwIAYDVR0EAQH/BBYwFDAOMAwGCisGAQQB\ngjcCARUDAgeAMB0GA1UdJQQWMBQGCCsGAQUFBwMCBggrBgEFBQcDAzA1BgNVHQEE\nLjAsgBA0jOnSSuIHYmnVryHAdywMoRUwEzERMA8GA1UEAxMIQXRsYW50aXOCASow\nCQYFKw4DAh0FAANBAKi6HRBaNEL5R0n56nvfclQNaXiDT174uf+lojzA4lhVInc0\nILwpnZ1izL4MlI9eCSHhVQBHEp2uQdXJB+d5Byg=\n-----END CERTIFICATE-----\n",
+  )
+  @eval.write_binary("/tmp/rebal-blank.CRT", [0x00])
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "c: load %/tmp/rebal-atlantis.crt b: load %/tmp/rebal-blank.CRT (reduce [(type? c) = object! c/subject/commonName = {Atlantis} c/serial-number = #{2A} (type? b) = object! none? b/version ((try [save %/tmp/rebal-atlantis.crt #{00}])/id) = 'not-done]) = reduce [true true true true true true]",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "an ar suffix loads members and refuses a broken archive" {
   // codec-ar.reb. A zero timestamp is none. Odd sizes keep one padding byte.
   @eval.write_binary("/tmp/rebal-m.ar", sample_ar())

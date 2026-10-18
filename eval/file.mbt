@@ -133,6 +133,8 @@ fn perform_load(
     decode_der(env, binary_cell(read_binary(loaded_path(source))))
   } else if ar_suffix(source) {
     ar_loaded(read_binary(loaded_path(source)))
+  } else if crt_suffix(source) {
+    decode_crt(env, binary_cell(read_binary(loaded_path(source))))
   } else {
     match source {
       @value.Seq(series, index) if series.datatype() == @value.Binary =>
@@ -288,6 +290,12 @@ fn tar_suffix(source : @value.Cell) -> Bool raise EvalError {
 /// Suffixes from codec-zip.reb. A save stores one file, uncompressed.
 /// %.der and the other binary certificate suffixes from codec-der.reb.
 /// %.ar, %.a, %.lib, and %.deb are Unix archives, as in codec-ar.reb.
+/// %.crt is an X.509 certificate, as in codec-crt.reb.
+fn crt_suffix(source : @value.Cell) -> Bool raise EvalError {
+  file_suffix(source) == ".crt"
+}
+
+///|
 fn ar_suffix(source : @value.Cell) -> Bool raise EvalError {
   match file_suffix(source) {
     ".ar" | ".a" | ".lib" | ".deb" => true
@@ -399,6 +407,9 @@ fn perform_save(
       }
       if ar_suffix(place) && !named(env, active, "header") {
         raise EvalError::Caused("not-done", "ar")
+      }
+      if crt_suffix(place) && !named(env, active, "header") {
+        raise EvalError::Caused("not-done", "crt")
       }
       if markup_file(place) && !named(env, active, "header") {
         raise EvalError::Caused("invalid-arg", @mold.mold_text(args[1]))
