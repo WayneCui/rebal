@@ -1,0 +1,19 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "rebal/num"
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct Nat {
+  limbs : Array[UInt64]
+}
+pub fn Nat::be_bytes(Self, Int) -> Array[Int]
+pub fn Nat::from_bytes(Array[Int]) -> Self
+pub fn Nat::mod_exp(Self, Self, Self) -> Self
+pub fn Nat::remainder(Self, Self) -> Self
+
+// Type aliases
+
+// Traits
