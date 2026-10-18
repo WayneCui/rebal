@@ -40,7 +40,7 @@ extern "C" fn c_random_byte() -> Int = "rebal_random_byte"
 /// `rsa/sign` and `rsa/verify` use PKCS#1 v1.5. The digest defaults to SHA-256.
 /// `/hash` selects md5, sha1, sha256, sha384, or sha512.
 /// `rsa/encrypt` and `rsa/decrypt` use PKCS#1 v1.5 type 2 padding.
-/// `/oaep` switches encrypt and decrypt to RSAES-OAEP with that same digest.
+/// `/oaep` or `/pss` selects PKCS#1 v2.1: OAEP for encrypt, PSS for sign.
 /// Signing or decrypting without a private exponent returns `none`.
 fn perform_rsa(
   env : Env,
@@ -53,27 +53,32 @@ fn perform_rsa(
       let key = rsa_key(args[0])
       let data = payload_bytes(args[1], "rsa")
       if call.action == "sign" {
-        if call.oaep {
-          @value.None
+        let coded = if call.v21 {
+          rsa_pss_sign(key, data, call.digest)
         } else {
-          match rsa_sign(key, data, call.digest) {
-            Some(bytes) => binary_cell(bytes)
-            None => @value.None
-          }
+          rsa_sign(key, data, call.digest)
         }
-      } else if call.action == "verify" && call.oaep {
-        @value.None
+        match coded {
+          Some(bytes) => binary_cell(bytes)
+          None => @value.None
+        }
       } else if call.action == "verify" {
         match call.signature {
           None => raise EvalError::Cannot("rsa")
-          Some(signature) =>
-            match rsa_verify(key, data, signature, call.digest) {
+          Some(signature) => {
+            let verdict = if call.v21 {
+              rsa_pss_verify(key, data, signature, call.digest)
+            } else {
+              rsa_verify(key, data, signature, call.digest)
+            }
+            match verdict {
               None => @value.None
               Some(flag) => @value.Logic(flag)
             }
+          }
         }
       } else if call.action == "encrypt" {
-        let coded = if call.oaep {
+        let coded = if call.v21 {
           rsa_oaep_encrypt(key, data, call.digest)
         } else {
           rsa_encrypt(key, data)
@@ -83,7 +88,7 @@ fn perform_rsa(
           None => @value.None
         }
       } else {
-        let coded = if call.oaep {
+        let coded = if call.v21 {
           rsa_oaep_decrypt(key, data, call.digest)
         } else {
           rsa_decrypt(key, data)
@@ -102,7 +107,7 @@ priv struct RsaCall {
   action : String
   digest : String
   signature : Array[Int]?
-  oaep : Bool
+  v21 : Bool
 }
 
 ///|
@@ -127,7 +132,7 @@ fn rsa_call(
   let mut digest = "sha256"
   let mut signature : Array[Int]? = None
   let mut known = true
-  let mut oaep = false
+  let mut v21 = false
   let mut cursor = 2
   for sym in active {
     let name = env.symbols.canon(sym)
@@ -149,8 +154,8 @@ fn rsa_call(
         None => known = false
       }
       cursor = cursor + 1
-    } else if name == "oaep" {
-      oaep = true
+    } else if name == "oaep" || name == "pss" {
+      v21 = true
     } else {
       raise EvalError::Cannot("rsa")
     }
@@ -158,7 +163,7 @@ fn rsa_call(
   if action == "" {
     raise EvalError::Cannot("rsa")
   } else if known {
-    Some({ action, digest, signature, oaep, })
+    Some({ action, digest, signature, v21, })
   } else {
     None
   }
