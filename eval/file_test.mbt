@@ -119,6 +119,18 @@ test "save/header stores a SHA1 checksum and load checks it" {
 }
 
 ///|
+test "save/length counts the bytes that follow a custom header" {
+  // mezz-save.reb. Compression and base 64 are included in the count.
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "s: save/length/header none [print \"Hello REBOL!\"] [title: \"t\"] c: save/header/length none [1] [checksum: true] z: save/length/compress none [1] true (reduce [s = #{5245424F4C205B0A202020207469746C653A202274220A202020206C656E6774683A2032310A5D0A7072696E74202248656C6C6F205245424F4C21220A} (load s) = [print \"Hello REBOL!\"] ((pick load/header s 1)/title) = \"t\" ((pick load/header s 1)/length) = 21 c = #{5245424F4C205B0A20202020636865636B73756D3A20237B453546413434463242333143314642353533423630323145373336304430374435443931464635457D0A202020206C656E6774683A20320A5D0A310A} (save/header/length none [1] [length: 5]) = #{5245424F4C205B0A202020206C656E6774683A20320A5D0A310A} (save/header/compress/length none [1] [options: [compress]] false) = #{5245424F4C205B0A202020206F7074696F6E733A205B5D0A202020206C656E6774683A20320A5D0A310A} (load z) = 1 ((pick load/header z 1)/options) = [compress] ((pick load/header z 1)/length) = length? compress \"1^/\" 'zlib]) = reduce [true true true true true true true true true true]",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "save/length records how many script bytes follow the header" {
   // load-test.r3 "Save/length". The body is `print "Hello REBOL!"` plus a newline.
   let env = @eval.Env::new()

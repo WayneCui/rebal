@@ -14,15 +14,16 @@ fn save_with_header(
   script : String,
   spec : @value.Cell,
   mode : @value.Cell?,
+  length : Bool,
 ) -> Array[Int] raise EvalError {
   let plain = utf8_bytes(script)
   let fields = header_fields(env, spec)
   let compressing = header_apply_compress(env, fields, mode)
-  let lines = header_mold(fields, plain)
-  save_cat(
-    header_text(lines),
-    header_body(env, script, plain, mode, compressing),
-  )
+  let body = header_body(env, script, plain, mode, compressing)
+  if length {
+    header_set_length(fields, body.length())
+  }
+  save_cat(header_text(header_mold(fields, plain)), body)
 }
 
 ///|
@@ -86,6 +87,30 @@ fn header_method(chosen : @value.Cell) -> Bool {
     @value.Sym(@value.Word, _) => true
     _ => false
   }
+}
+
+///|
+/// `/length` stores how many bytes follow the header. An earlier `length:`
+/// is overwritten. The count includes zlib or base-64, when those are used.
+fn header_set_length(fields : Array[SaveField], size : Int) -> Unit {
+  let value = @value.Cell::Integer(size.to_int64())
+  match header_named(fields, "length") {
+    Some(index) => fields[index].value = value
+    None => fields.push({ spelling: "length", canon: "length", value, })
+  }
+}
+
+///|
+fn header_named(fields : Array[SaveField], canon : String) -> Int? {
+  let mut found : Int? = None
+  let mut index = 0
+  while found is None && index < fields.length() {
+    if fields[index].canon == canon {
+      found = Some(index)
+    }
+    index = index + 1
+  }
+  found
 }
 
 ///|
@@ -156,15 +181,7 @@ fn header_script_word(env : Env, mode : @value.Cell?) -> Bool {
 
 ///|
 fn header_options(fields : Array[SaveField]) -> Int? {
-  let mut found : Int? = None
-  let mut index = 0
-  while found is None && index < fields.length() {
-    if fields[index].canon == "options" {
-      found = Some(index)
-    }
-    index = index + 1
-  }
-  found
+  header_named(fields, "options")
 }
 
 ///|

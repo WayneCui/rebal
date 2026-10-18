@@ -232,35 +232,18 @@ fn save_bytes(
   args : Array[@value.Cell],
 ) -> Array[Int] raise EvalError {
   let (mode, length, spec) = save_mode(env, active, args)
-  match spec {
-    Some(header) =>
-      if length {
-        raise EvalError::Cannot("save")
-      } else {
-        save_with_header(env, script, header, mode)
-      }
-    None =>
-      match mode {
-        None =>
-          if length {
-            save_with_length(script)
-          } else {
-            utf8_bytes(script)
-          }
-        Some(chosen) =>
-          match chosen {
-            @value.Logic(false) if length => save_with_length(script)
-            _ => save_compressed(env, script, chosen)
-          }
-      }
+  let header = match spec {
+    Some(given) => given
+    None => @value.Seq(@value.Series::block(), 0)
   }
-}
-
-///|
-/// `/length` records how many bytes the molded script occupies.
-fn save_with_length(script : String) -> Array[Int] {
-  let size = utf8_bytes(script).length()
-  utf8_bytes("REBOL [\n    length: " + size.to_string() + "\n]\n" + script)
+  if length || spec is Some(_) {
+    save_with_header(env, script, header, mode, length)
+  } else {
+    match mode {
+      None => utf8_bytes(script)
+      Some(chosen) => save_compressed(env, script, chosen)
+    }
+  }
 }
 
 ///|
