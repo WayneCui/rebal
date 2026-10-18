@@ -187,6 +187,84 @@ moonbit_string_t rebal_read_text(moonbit_string_t path, int32_t path_len) {
   return text;
 }
 
+moonbit_string_t rebal_read_bytes(moonbit_string_t path, int32_t path_len) {
+  rebal_status = 0;
+  char *cpath = rebal_to_utf8(path, path_len);
+  if (cpath == NULL) {
+    rebal_status = 2;
+    return moonbit_make_string(0, 0);
+  }
+  FILE *file = fopen(cpath, "rb");
+  free(cpath);
+  if (file == NULL) {
+    rebal_status = 1;
+    return moonbit_make_string(0, 0);
+  }
+  if (fseek(file, 0, SEEK_END) != 0) {
+    fclose(file);
+    rebal_status = 2;
+    return moonbit_make_string(0, 0);
+  }
+  long size = ftell(file);
+  if (size < 0 || fseek(file, 0, SEEK_SET) != 0) {
+    fclose(file);
+    rebal_status = 2;
+    return moonbit_make_string(0, 0);
+  }
+  unsigned char *data = (unsigned char *)malloc((size_t)size + 1);
+  if (data == NULL) {
+    fclose(file);
+    rebal_status = 2;
+    return moonbit_make_string(0, 0);
+  }
+  size_t got = fread(data, 1, (size_t)size, file);
+  fclose(file);
+  moonbit_string_t text = moonbit_make_string((int32_t)got, 0);
+  for (size_t i = 0; i < got; i++) {
+    text[i] = data[i];
+  }
+  free(data);
+  return text;
+}
+
+int32_t rebal_write_bytes(
+  moonbit_string_t path,
+  int32_t path_len,
+  moonbit_string_t data,
+  int32_t data_len
+) {
+  char *cpath = rebal_to_utf8(path, path_len);
+  if (cpath == NULL) {
+    return 1;
+  }
+  if (data_len < 0) {
+    data_len = 0;
+  }
+  unsigned char *body = (unsigned char *)malloc((size_t)data_len + 1);
+  if (body == NULL) {
+    free(cpath);
+    return 1;
+  }
+  for (int32_t i = 0; i < data_len; i++) {
+    if (data[i] > 255) {
+      free(cpath);
+      free(body);
+      return 1;
+    }
+    body[i] = (unsigned char)data[i];
+  }
+  FILE *file = fopen(cpath, "wb");
+  free(cpath);
+  if (file == NULL) {
+    free(body);
+    return 1;
+  }
+  size_t wrote = fwrite(body, 1, (size_t)data_len, file);
+  free(body);
+  int failed = fclose(file) != 0 || wrote != (size_t)data_len;
+  return failed ? 1 : 0;
+}
+
 int32_t rebal_write_text(
   moonbit_string_t path,
   int32_t path_len,

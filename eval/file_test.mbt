@@ -191,6 +191,18 @@ test "a script header turns yes, no, and none into values" {
 }
 
 ///|
+test "a .gz suffix saves and loads a gzip binary" {
+  // codec-gzip.reb. Only a binary is accepted. The bytes round-trip.
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "f: save %/tmp/rebal-g.gz #{616263} (reduce [f = %/tmp/rebal-g.gz (load f) = #{616263} (load save %/tmp/rebal-g.gz #{}) = #{} (load save %/tmp/rebal-G.GZ #{00FF}) = #{00FF} ((try [save %/tmp/rebal-g.gz \"abc\"])/id) = 'expect-arg]) = reduce [true true true true true]",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "a .json suffix saves and loads JSON" {
   // codec-json.reb. A word in a block is a string. none is null.
   @eval.write_file("/tmp/rebal-bad.json", "{")

@@ -15,6 +15,38 @@ extern "C" fn c_write_text(
 ) -> Int = "rebal_write_text"
 
 ///|
+#borrow(path)
+extern "C" fn c_read_bytes(path : String, path_len : Int) -> String = "rebal_read_bytes"
+
+///|
+#borrow(path, data)
+extern "C" fn c_write_bytes(
+  path : String,
+  path_len : Int,
+  data : String,
+  data_len : Int,
+) -> Int = "rebal_write_bytes"
+
+///|
+fn read_binary(path : String) -> Array[Int] raise EvalError {
+  let text = c_read_bytes(path, path.length())
+  if c_io_status() == 0 {
+    codes_of(text)
+  } else {
+    raise EvalError::Cannot("access")
+  }
+}
+
+///|
+fn write_binary(path : String, bytes : Array[Int]) -> Unit raise EvalError {
+  if c_write_bytes(path, path.length(), latin_text(bytes), bytes.length()) == 0 {
+    ()
+  } else {
+    raise EvalError::Cannot("access")
+  }
+}
+
+///|
 fn read_file(path : String) -> String raise EvalError {
   let text = c_read_text(path, path.length())
   if c_io_status() == 0 {
@@ -87,6 +119,8 @@ fn perform_load(
     decode_markup(source)
   } else if json_file(source) {
     decode_json(env, text_series(source_text(source)))
+  } else if gzip_file(source) {
+    binary_cell(gzip_unpack(read_binary(loaded_path(source))))
   } else {
     match source {
       @value.Seq(series, index) if series.datatype() == @value.Binary =>
@@ -227,6 +261,12 @@ fn json_file(source : @value.Cell) -> Bool raise EvalError {
 }
 
 ///|
+/// %.gz is gzip, as in codec-gzip.reb. The payload is raw bytes, not text.
+fn gzip_file(source : @value.Cell) -> Bool raise EvalError {
+  file_suffix(source) == ".gz"
+}
+
+///|
 fn markup_file(source : @value.Cell) -> Bool raise EvalError {
   match file_suffix(source) {
     ".html" | ".htm" | ".xsl" | ".wml" | ".sgml" | ".asp" | ".php" => true
@@ -279,6 +319,11 @@ fn perform_save(
   match place {
     @value.Cell::None => bytes
     @value.Seq(series, index) if series.datatype() == @value.File => {
+      let path = text_from(series, index)
+      if gzip_file(place) && !named(env, active, "header") {
+        write_binary(path, gzip_saved(args[1]))
+        return place
+      }
       if markup_file(place) && !named(env, active, "header") {
         raise EvalError::Caused("invalid-arg", @mold.mold_text(args[1]))
       }
@@ -289,7 +334,7 @@ fn perform_save(
       } else {
         script
       }
-      write_file(text_from(series, index), body)
+      write_file(path, body)
       place
     }
     @value.Seq(series, _) if series.datatype() == @value.Binary =>

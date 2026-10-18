@@ -21,6 +21,34 @@ extern "C" fn c_zlib_decompress(
 ///|
 /// Compresses a string or a binary. The method word is `zlib`, `deflate`,
 /// `gzip`, or `zip`.
+/// `save` of a `.gz` file compresses a binary. Anything else is refused.
+fn gzip_saved(value : @value.Cell) -> Array[Int] raise EvalError {
+  match value {
+    @value.Seq(series, index) if series.datatype() == @value.Binary =>
+      gzip_pack(bytes_from(series, index))
+    _ => raise EvalError::Caused("expect-arg", "encode")
+  }
+}
+
+///|
+fn gzip_pack(bytes : Array[Int]) -> Array[Int] raise EvalError {
+  let packed = c_zlib_compress(latin_text(bytes), bytes.length(), -1, 31)
+  if c_zlib_code() != 0 {
+    raise EvalError::Cannot("save")
+  }
+  codes_of(packed)
+}
+
+///|
+fn gzip_unpack(bytes : Array[Int]) -> Array[Int] raise EvalError {
+  let plain = c_zlib_decompress(latin_text(bytes), bytes.length(), 31)
+  if c_zlib_code() != 0 {
+    raise EvalError::Cannot("load")
+  }
+  codes_of(plain)
+}
+
+///|
 fn perform_compress(
   env : Env,
   args : Array[@value.Cell],
