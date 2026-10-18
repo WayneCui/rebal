@@ -84,3 +84,15 @@ test "rsa hash sha512 signs the rebol api server certificate" {
     is @value.Logic(true),
   )
 }
+
+///|
+test "release makes an rsa handle unusable" {
+  // rsa-test.r3 "RSA key release". A copy shares the freed handle.
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "n: #{EB8A8654FAE3935DBC163A6C9F37839E799B66FB86B920C7E3CB2CEE80446BE60772924403C2F3640A2228F3FF4448F52569611A2655479AEE25F3F493FC6D8F} e: #{010001} key: rsa-init n e copy: key (reduce [release key release 1 (type? try [rsa/encrypt key #{41686F6A21}]) (type? try [query copy 'type])]) = reduce [true false error! error!]",
+    )
+    is @value.Logic(true),
+  )
+}

@@ -332,6 +332,8 @@ fn call(
     (perform_rsa_init(env, args, active), cursor)
   } else if func.code() == native_rsa {
     (perform_rsa(env, args, active), cursor)
+  } else if func.code() == native_release {
+    (perform_release(args[0]), cursor)
   } else if func.code() == 0 {
     (call_user(env, func, args, active), cursor)
   } else {
@@ -719,6 +721,8 @@ fn apply(
     perform_browse(args[0])
   } else if func.code() == native_wildcard {
     perform_wildcard(env, args[0], args[1])
+  } else if func.code() == native_release {
+    perform_release(args[0])
   } else {
     raise EvalError::Cannot("function")
   }

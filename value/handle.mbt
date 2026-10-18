@@ -7,12 +7,13 @@ pub struct RsaKey {
   d : Array[Int]
   p : Array[Int]
   q : Array[Int]
+  priv closed : Array[Int]
 }
 
 ///|
 pub fn RsaKey::new(n : Array[Int], e : Array[Int]) -> RsaKey? {
   if public_ok(n, e) {
-    Some({ n, e, d: [], p: [], q: [], })
+    Some({ n, e, d: [], p: [], q: [], closed: [0], })
   } else {
     None
   }
@@ -31,7 +32,7 @@ pub fn RsaKey::from_private(
     magnitude_bits(d) >= 2 &&
     magnitude_bits(p) >= 2 &&
     magnitude_bits(q) >= 2 {
-    Some({ n, e, d, p, q, })
+    Some({ n, e, d, p, q, closed: [0], })
   } else {
     None
   }
@@ -43,12 +44,13 @@ pub fn RsaKey::from_private(
 pub struct DhKey {
   p : Array[Int]
   g : Array[Int]
+  priv closed : Array[Int]
 }
 
 ///|
 pub fn DhKey::new(p : Array[Int], g : Array[Int]) -> DhKey? {
   if magnitude_bits(p) >= 128 && magnitude_bits(g) >= 1 && less_magnitude(g, p) {
-    Some({ p, g, })
+    Some({ p, g, closed: [0], })
   } else {
     None
   }
@@ -79,6 +81,42 @@ pub fn HandleValue::kind(self : HandleValue) -> String {
   match self {
     Rsa(_) => "rsa"
     Dhm(_) => "dhm"
+  }
+}
+
+///|
+pub fn RsaKey::release(self : RsaKey) -> Unit {
+  self.closed[0] = 1
+}
+
+///|
+pub fn RsaKey::released(self : RsaKey) -> Bool {
+  self.closed[0] != 0
+}
+
+///|
+pub fn DhKey::release(self : DhKey) -> Unit {
+  self.closed[0] = 1
+}
+
+///|
+pub fn DhKey::released(self : DhKey) -> Bool {
+  self.closed[0] != 0
+}
+
+///|
+pub fn HandleValue::release(self : HandleValue) -> Unit {
+  match self {
+    Rsa(key) => key.release()
+    Dhm(key) => key.release()
+  }
+}
+
+///|
+pub fn HandleValue::released(self : HandleValue) -> Bool {
+  match self {
+    Rsa(key) => key.released()
+    Dhm(key) => key.released()
   }
 }
 

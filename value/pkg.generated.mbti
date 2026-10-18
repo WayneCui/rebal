@@ -126,8 +126,11 @@ pub fn DateValue::zone(Self) -> Int?
 pub struct DhKey {
   p : Array[Int]
   g : Array[Int]
+  // private fields
 }
 pub fn DhKey::new(Array[Int], Array[Int]) -> Self?
+pub fn DhKey::release(Self) -> Unit
+pub fn DhKey::released(Self) -> Bool
 pub fn DhKey::same(Self, Self) -> Bool
 
 pub struct ErrorValue {
@@ -184,6 +187,8 @@ pub(all) enum HandleValue {
   Dhm(DhKey)
 }
 pub fn HandleValue::kind(Self) -> String
+pub fn HandleValue::release(Self) -> Unit
+pub fn HandleValue::released(Self) -> Bool
 pub fn HandleValue::same(Self, Self) -> Bool
 
 pub struct Lexeme {
@@ -238,9 +243,12 @@ pub struct RsaKey {
   d : Array[Int]
   p : Array[Int]
   q : Array[Int]
+  // private fields
 }
 pub fn RsaKey::from_private(Array[Int], Array[Int], Array[Int], Array[Int], Array[Int]) -> Self?
 pub fn RsaKey::new(Array[Int], Array[Int]) -> Self?
+pub fn RsaKey::release(Self) -> Unit
+pub fn RsaKey::released(Self) -> Bool
 pub fn RsaKey::same(Self, Self) -> Bool
 
 pub struct Series {

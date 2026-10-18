@@ -84,6 +84,9 @@ fn query_handle(
   handle : @value.HandleValue,
   field : @value.Cell?,
 ) -> @value.Cell raise EvalError {
+  if handle.released() {
+    raise EvalError::Cannot("query")
+  }
   match field {
     Some(cell) =>
       if word_is(env, cell, "type") {

@@ -191,7 +191,16 @@ fn hash_name(env : Env, value : @value.Cell) -> String? {
 ///|
 fn rsa_key(value : @value.Cell) -> @value.RsaKey raise EvalError {
   match value {
-    @value.Handle(@value.Rsa(key)) => key
+    @value.Handle(handle) =>
+      match handle {
+        @value.Rsa(key) =>
+          if key.released() {
+            raise EvalError::Cannot("rsa")
+          } else {
+            key
+          }
+        _ => raise EvalError::Cannot("rsa")
+      }
     _ => raise EvalError::Cannot("rsa")
   }
 }
