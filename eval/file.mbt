@@ -119,6 +119,12 @@ fn perform_load(
     decode_markup(source)
   } else if json_file(source) {
     decode_json(env, text_series(source_text(source)))
+  } else if xml_file(source) {
+    decode_xml(env, text_series(source_text(source)))
+  } else if plist_file(source) {
+    decode_plist(env, text_series(source_text(source)))
+  } else if provision_file(source) {
+    decode_provision(env, binary_cell(read_binary(loaded_path(source))))
   } else if csv_file(source) {
     decode_csv(
       source,
@@ -309,6 +315,23 @@ fn srt_file(source : @value.Cell) -> Bool raise EvalError {
 }
 
 ///|
+fn xml_file(source : @value.Cell) -> Bool raise EvalError {
+  let suffix = file_suffix(source)
+  suffix == ".xml" || suffix == ".pom"
+}
+
+///|
+fn plist_file(source : @value.Cell) -> Bool raise EvalError {
+  file_suffix(source) == ".plist"
+}
+
+///|
+fn provision_file(source : @value.Cell) -> Bool raise EvalError {
+  let suffix = file_suffix(source)
+  suffix == ".mobileprovision" || suffix == ".provisionprofile"
+}
+
+///|
 fn csv_file(source : @value.Cell) -> Bool raise EvalError {
   let name = file_suffix(source)
   name == ".csv" || name == ".tsv"
@@ -491,6 +514,12 @@ fn perform_save(
             write_file(path, text_from(series, index))
           _ => raise EvalError::Cannot("save")
         }
+      } else if xml_file(place) && !named(env, active, "header") {
+        raise EvalError::Caused("not-done", "xml")
+      } else if plist_file(place) && !named(env, active, "header") {
+        raise EvalError::Caused("not-done", "plist")
+      } else if provision_file(place) && !named(env, active, "header") {
+        raise EvalError::Caused("not-done", "provision")
       } else if csv_file(place) && !named(env, active, "header") {
         let delimiter = if file_suffix(place) == ".tsv" {
           '\t'.to_int()
