@@ -131,6 +131,8 @@ fn perform_load(
     zip_block(read_binary(loaded_path(source)))
   } else if der_suffix(source) {
     decode_der(env, binary_cell(read_binary(loaded_path(source))))
+  } else if ar_suffix(source) {
+    ar_loaded(read_binary(loaded_path(source)))
   } else {
     match source {
       @value.Seq(series, index) if series.datatype() == @value.Binary =>
@@ -285,6 +287,25 @@ fn tar_suffix(source : @value.Cell) -> Bool raise EvalError {
 ///|
 /// Suffixes from codec-zip.reb. A save stores one file, uncompressed.
 /// %.der and the other binary certificate suffixes from codec-der.reb.
+/// %.ar, %.a, %.lib, and %.deb are Unix archives, as in codec-ar.reb.
+fn ar_suffix(source : @value.Cell) -> Bool raise EvalError {
+  match file_suffix(source) {
+    ".ar" | ".a" | ".lib" | ".deb" => true
+    _ => false
+  }
+}
+
+///|
+/// A broken archive makes `load` report that the codec produced nothing.
+fn ar_loaded(bytes : Array[Int]) -> @value.Cell raise EvalError {
+  let found = decode_ar(binary_cell(bytes))
+  match found {
+    @value.Cell::None => raise EvalError::Caused("no-codec", "ar")
+    _ => found
+  }
+}
+
+///|
 fn der_suffix(source : @value.Cell) -> Bool raise EvalError {
   match file_suffix(source) {
     ".p12" | ".pfx" | ".cer" | ".der" | ".jks" | ".p7s" => true
@@ -375,6 +396,9 @@ fn perform_save(
       }
       if der_suffix(place) && !named(env, active, "header") {
         raise EvalError::Caused("not-done", "der")
+      }
+      if ar_suffix(place) && !named(env, active, "header") {
+        raise EvalError::Caused("not-done", "ar")
       }
       if markup_file(place) && !named(env, active, "header") {
         raise EvalError::Caused("invalid-arg", @mold.mold_text(args[1]))

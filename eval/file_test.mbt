@@ -191,6 +191,69 @@ test "a script header turns yes, no, and none into values" {
 }
 
 ///|
+test "an ar suffix loads members and refuses a broken archive" {
+  // codec-ar.reb. A zero timestamp is none. Odd sizes keep one padding byte.
+  @eval.write_binary("/tmp/rebal-m.ar", sample_ar())
+  @eval.write_binary("/tmp/rebal-m.A", sample_ar())
+  @eval.write_binary("/tmp/rebal-bad.ar", [0x00])
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "a: load %/tmp/rebal-m.ar (reduce [(pick a 1) = %hi.txt/ (pick a 2) = reduce [none 0 0 644 #{6869}] (pick a 3) = %x (pick a 4) = reduce [18-Sep-2019/6:52:31 0 0 644 #{5A}] (pick a 5) = %o (pick a 6) = reduce [none 0 0 644 #{5A}] (load %/tmp/rebal-m.A) = a (decode 'ar #{213C617263683E0A}) = [] none? decode 'ar #{00} ((try [load %/tmp/rebal-bad.ar])/id) = 'no-codec ((try [load %/tmp/rebal-bad.ar])/arg1) = \"ar\" ((try [save %/tmp/rebal-m.ar #{00}])/id) = 'not-done]) = reduce [true true true true true true true true true true true true]",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
+fn sample_ar() -> Array[Int] {
+  let bytes : Array[Int] = []
+  for char in "!<arch>\n" {
+    bytes.push(char.to_int())
+  }
+  ar_add(bytes, "hi.txt/", [0x68, 0x69], "0")
+  ar_add(bytes, "x", [0x5A], "1568789551")
+  ar_add(bytes, "o", [0x5A], "0")
+  bytes
+}
+
+///|
+fn ar_add(
+  bytes : Array[Int],
+  name : String,
+  data : Array[Int],
+  date : String,
+) -> Unit {
+  ar_field_text(bytes, name, 16)
+  ar_field_text(bytes, date, 12)
+  ar_field_text(bytes, "0", 6)
+  ar_field_text(bytes, "0", 6)
+  ar_field_text(bytes, "644", 8)
+  ar_field_text(bytes, data.length().to_string(), 10)
+  bytes.push(0x60)
+  bytes.push(10)
+  for byte in data {
+    bytes.push(byte)
+  }
+  if data.length() % 2 != 0 {
+    bytes.push(10)
+  }
+}
+
+///|
+fn ar_field_text(bytes : Array[Int], text : String, width : Int) -> Unit {
+  let mut used = 0
+  for char in text {
+    bytes.push(char.to_int())
+    used = used + 1
+  }
+  while used < width {
+    bytes.push(' '.to_int())
+    used = used + 1
+  }
+}
+
+///|
 test "a DER suffix loads the certificate bytes and cannot encode them" {
   // codec-der.reb. There is no encoder. A short value stays none.
   @eval.write_binary("/tmp/rebal-a.der", [0x30, 0x03, 0x02, 0x01, 0x01])

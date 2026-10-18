@@ -132,6 +132,12 @@ fn perform_decode(
     }
     return decode_tar(args[1], only, only_value)
   }
+  if kind == "ar" {
+    if binary {
+      raise EvalError::Cannot("decode")
+    }
+    return decode_ar(args[1])
+  }
   if kind != "pkix" {
     raise EvalError::Cannot("access")
   }
