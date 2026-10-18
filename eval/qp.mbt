@@ -46,10 +46,16 @@ fn perform_encode(
     @value.Sym(_, lexeme) => env.symbols.canon(lexeme.sym())
     _ => raise EvalError::Cannot("encode")
   }
-  if kind != "quoted-printable" {
+  if kind == "quoted-printable" {
+    encode_quoted(args[1], uri)
+  } else if kind == "mime-field" {
+    if uri {
+      raise EvalError::Cannot("encode")
+    }
+    encode_mime_field(args[1])
+  } else {
     raise EvalError::Cannot("access")
   }
-  encode_quoted(args[1], uri)
 }
 
 ///|

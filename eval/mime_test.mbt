@@ -9,3 +9,15 @@ test "mime-field unfolds a header and decodes utf-8 words" {
     is @value.Logic(true),
   )
 }
+
+///|
+test "mime-field encode keeps a plain header and wraps the rest" {
+  // codecs-test.r3 encode path. Chunks are 17 code points, base64 from Rebol.
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "(reduce [(encode 'mime-field {Subject: Hello Mail}) = {Subject: Hello Mail} (encode 'mime-field {web pro žarošice}) = {=?UTF-8?B?d2ViIHBybyDFvmFyb8WhaWNl?=} (encode 'mime-field {Hello, Mail}) = {=?UTF-8?B?SGVsbG8sIE1haWw=?=} (encode 'mime-field {Labels: Doručené,Nepřečtené}) = \"Labels: =?UTF-8?B?RG9ydcSNZW7DqSxOZXDFmWXEjXRl?=^M^/ =?UTF-8?B?bsOp?=\" (decode 'mime-field encode 'mime-field {Labels: Doručené,Nepřečtené}) = {Labels: Doručené,Nepřečtené}]) = reduce [true true true true true]",
+    )
+    is @value.Logic(true),
+  )
+}

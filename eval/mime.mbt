@@ -1,4 +1,116 @@
 ///|
+/// Encode a header with UTF-8 base64 words of at most 17 code points.
+/// A field that is only a name, a colon, and safe text is returned unchanged.
+fn encode_mime_field(value : @value.Cell) -> @value.Cell raise EvalError {
+  match value {
+    @value.Seq(series, index) if @value.text_series(series.datatype()) => {
+      let text = text_from(series, index)
+      let codes : Array[Int] = []
+      for char in text {
+        codes.push(char.to_int())
+      }
+      if mime_plain(codes) {
+        value
+      } else {
+        typed_text(series.datatype(), mime_words(codes, true))
+      }
+    }
+    @value.Seq(series, index) if series.datatype() == @value.Binary => {
+      let codes = bytes_from(series, index)
+      if mime_plain(codes) {
+        value
+      } else {
+        binary_cell(utf8_bytes(mime_words(codes, false)))
+      }
+    }
+    _ => raise EvalError::Cannot("encode")
+  }
+}
+
+///|
+fn mime_plain(codes : Array[Int]) -> Bool {
+  let mut plain = true
+  for index in mime_prefix(codes)..<codes.length() {
+    if !mime_safe(codes[index]) {
+      plain = false
+    }
+  }
+  plain
+}
+
+///|
+fn mime_prefix(codes : Array[Int]) -> Int {
+  let mut cursor = 0
+  if cursor >= codes.length() || !mime_key(codes[cursor]) {
+    return 0
+  }
+  while cursor < codes.length() && mime_key(codes[cursor]) {
+    cursor = cursor + 1
+  }
+  if cursor >= codes.length() || codes[cursor] != ':'.to_int() {
+    return 0
+  }
+  cursor = cursor + 1
+  if cursor >= codes.length() || !mime_space(codes[cursor]) {
+    return 0
+  }
+  while cursor < codes.length() && mime_space(codes[cursor]) {
+    cursor = cursor + 1
+  }
+  cursor
+}
+
+///|
+fn mime_key(code : Int) -> Bool {
+  (code >= '0'.to_int() && code <= '9'.to_int()) ||
+  (code >= 'A'.to_int() && code <= 'Z'.to_int()) ||
+  (code >= 'a'.to_int() && code <= 'z'.to_int()) ||
+  code == '-'.to_int() ||
+  code == '_'.to_int()
+}
+
+///|
+fn mime_safe(code : Int) -> Bool {
+  code == ' '.to_int() ||
+  code == '\t'.to_int() ||
+  (code >= '0'.to_int() && code <= '9'.to_int()) ||
+  (code >= 'A'.to_int() && code <= 'Z'.to_int()) ||
+  (code >= 'a'.to_int() && code <= 'z'.to_int())
+}
+
+///|
+fn mime_words(codes : Array[Int], textual : Bool) -> String {
+  let start = mime_prefix(codes)
+  let buf = StringBuilder()
+  for index in 0..<start {
+    buf.write_char(codes[index].to_char().unwrap())
+  }
+  let mut cursor = start
+  while cursor < codes.length() {
+    let mut end = cursor + 17
+    if end > codes.length() {
+      end = codes.length()
+    }
+    let chunk : Array[Int] = []
+    for index in cursor..<end {
+      if textual {
+        push_utf8(chunk, codes[index])
+      } else {
+        chunk.push(codes[index])
+      }
+    }
+    if cursor > start {
+      buf.write_string("\r\n ")
+    }
+    buf.write_string("=?UTF-8?B?")
+    buf.write_string(encode_base64(chunk, false))
+    buf.write_string("?=")
+    cursor = end
+  }
+  buf.to_string()
+}
+
+///|
 /// MIME header field, as in codec-mime-field.reb.
 /// An encoded word is `=?charset?Q?text?=` or `=?charset?B?text?=`.
 /// A newline followed by spaces becomes one space, unless the next word is encoded.
