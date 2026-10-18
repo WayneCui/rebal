@@ -22,6 +22,8 @@ fn make_value(
     @value.Type(@value.Image) => make_image(spec)
     @value.Type(@value.Struct) => make_struct(spec)
     @value.Type(@value.Typeset) => make_typeset(env, spec)
+    @value.Type(@value.Event) => make_event(None, spec)
+    @value.Event(event) => make_event(Some(event), spec)
     _ => raise EvalError::Cannot("make")
   }
 }

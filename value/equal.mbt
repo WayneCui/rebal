@@ -38,6 +38,7 @@ fn equal_at(left : Cell, right : Cell, depth : Int) -> Bool {
       (Module(a), Module(b)) => physical_equal(a, b)
       (Port(a), Port(b)) => physical_equal(a, b)
       (Handle(a), Handle(b)) => a.kind() == b.kind()
+      (Event(a), Event(b)) => a.same(b)
       (Vector(a), Vector(b)) => a.same(b)
       (Image(a), Image(b)) => a.same(b)
       (Struct(a), Struct(b)) => a.same(b)

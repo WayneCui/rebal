@@ -109,6 +109,7 @@ fn path_step(
     @value.Image(image) => image_field(env, image, selector)
     @value.Struct(fields) => struct_field_at(env, fields, selector)
     @value.Handle(handle) => handle_field(env, handle, selector)
+    @value.Event(event) => event_field(env, event, selector)
     @value.Map(map) =>
       match map.get(selector) {
         Some(found) => found

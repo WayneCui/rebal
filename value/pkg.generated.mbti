@@ -52,6 +52,7 @@ pub(all) enum Cell {
   Module(ModuleValue)
   Port(PortValue)
   Handle(HandleValue)
+  Event(EventValue)
   Vector(Vector)
   Image(Image)
   Struct(StructValue)
@@ -104,6 +105,7 @@ pub(all) enum Datatype {
   Closure
   Port
   Handle
+  Event
   Vector
   Image
   Struct
@@ -163,6 +165,25 @@ pub struct ErrorValue {
   near : String
 }
 pub fn ErrorValue::make(String, String, String) -> Self
+
+pub struct EventValue {
+  names : Array[String]
+  xy : Array[Int]
+  codes : Array[Int]
+  ports : Array[Cell]
+}
+pub fn EventValue::blank() -> Self
+pub fn EventValue::code(Self) -> Int?
+pub fn EventValue::copy(Self) -> Self
+pub fn EventValue::kind(Self) -> String
+pub fn EventValue::offset(Self) -> (Int, Int)?
+pub fn EventValue::port(Self) -> Cell
+pub fn EventValue::same(Self, Self) -> Bool
+pub fn EventValue::set_code(Self, Int) -> Unit
+pub fn EventValue::set_kind(Self, String) -> Unit
+pub fn EventValue::set_offset(Self, Int, Int) -> Unit
+pub fn EventValue::set_port(Self, Cell) -> Unit
+pub fn EventValue::shows_key(Self) -> Bool
 
 pub struct Frame {
   slots : Array[Cell]

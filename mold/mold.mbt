@@ -83,6 +83,7 @@ fn write_cell(
         buf.write_string(handle.kind())
         buf.write_string(")")
       }
+      @value.Event(event) => write_event(buf, event)
       @value.Bitset(bits) => write_bitset(buf, bits)
       @value.Vector(vector) => write_vector(buf, vector, molded)
       @value.Image(image) => write_image(buf, image)
@@ -762,6 +763,53 @@ fn write_typeset(buf : StringBuilder, types : @value.Typeset) -> Unit {
 }
 
 ///|
+fn write_event(buf : StringBuilder, event : @value.EventValue) -> Unit {
+  buf.write_string("make event! [")
+  let mut spaced = false
+  let kind = event.kind()
+  if kind != "" {
+    buf.write_string("type: '")
+    buf.write_string(kind)
+    spaced = true
+  }
+  match event.offset() {
+    Some((x, y)) => {
+      if spaced {
+        buf.write_char(' ')
+      }
+      buf.write_string("offset: ")
+      buf.write_string(x.to_string())
+      buf.write_char('x')
+      buf.write_string(y.to_string())
+      spaced = true
+    }
+    None => ()
+  }
+  if event.shows_key() {
+    if spaced {
+      buf.write_char(' ')
+    }
+    buf.write_string("key: ")
+    match event.code() {
+      Some(code) => write_char_value(buf, code & 255, true)
+      None => ()
+    }
+    spaced = true
+  }
+  match event.code() {
+    Some(code) => {
+      if spaced {
+        buf.write_char(' ')
+      }
+      buf.write_string("code: ")
+      buf.write_string(code.to_string())
+    }
+    None => ()
+  }
+  buf.write_char(']')
+}
+
+///|
 fn write_bitset(buf : StringBuilder, bits : @value.Bitset) -> Unit {
   buf.write_string("make bitset! #{")
   for index in 0..<32 {
@@ -812,6 +860,7 @@ pub fn type_name(datatype : @value.Datatype) -> String {
     @value.Closure => "closure!"
     @value.Port => "port!"
     @value.Handle => "handle!"
+    @value.Event => "event!"
     @value.Vector => "vector!"
     @value.Image => "image!"
     @value.Struct => "struct!"

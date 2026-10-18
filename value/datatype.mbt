@@ -39,6 +39,7 @@ pub(all) enum Datatype {
   Closure
   Port
   Handle
+  Event
   Vector
   Image
   Struct

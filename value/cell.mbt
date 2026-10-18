@@ -23,6 +23,7 @@ pub(all) enum Cell {
   Module(ModuleValue)
   Port(PortValue)
   Handle(HandleValue)
+  Event(EventValue)
   Vector(Vector)
   Image(Image)
   Struct(StructValue)
@@ -62,6 +63,7 @@ pub fn Cell::datatype(self : Cell) -> Datatype {
     Module(_) => Module
     Port(_) => Port
     Handle(_) => Handle
+    Event(_) => Event
     Vector(_) => Vector
     Image(_) => Image
     Struct(_) => Struct

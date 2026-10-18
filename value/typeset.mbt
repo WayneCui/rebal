@@ -110,7 +110,8 @@ fn datatype_rank(datatype : Datatype) -> Int {
     Module => 39
     Error => 40
     Port => 41
-    Handle => 42
-    Struct => 43
+    Event => 42
+    Handle => 43
+    Struct => 44
   }
 }

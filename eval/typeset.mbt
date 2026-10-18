@@ -197,6 +197,7 @@ fn install_typesets(env : Env) -> Unit {
     @value.Module,
     @value.Error,
     @value.Port,
+    @value.Event,
     @value.Handle,
     @value.Struct,
   ])
@@ -255,6 +256,7 @@ fn datatype_named(name : String) -> @value.Datatype? {
     "module!" => Some(@value.Module)
     "error!" => Some(@value.Error)
     "port!" => Some(@value.Port)
+    "event!" => Some(@value.Event)
     "handle!" => Some(@value.Handle)
     "struct!" => Some(@value.Struct)
     _ => None
