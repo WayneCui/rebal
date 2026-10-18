@@ -518,7 +518,12 @@ fn perform_save(
         return place
       }
       if pdf_file(place) && !named(env, active, "header") {
-        raise EvalError::Caused("not-done", "pdf")
+        match encode_pdf(env, args[1]) {
+          @value.Seq(series, index) if series.datatype() == @value.Binary =>
+            write_binary(path, bytes_from(series, index))
+          _ => raise EvalError::Cannot("save")
+        }
+        return place
       }
       if der_suffix(place) && !named(env, active, "header") {
         raise EvalError::Caused("not-done", "der")

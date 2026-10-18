@@ -1114,3 +1114,464 @@ fn pdf_space(code : Int) -> Bool {
 fn pdf_break(code : Int) -> Bool {
   code == '\n'.to_int() || code == '\r'.to_int()
 }
+
+///|
+/// Writes a simple PDF. Objects stay in map order. The cross-reference
+/// table is sorted by object number. A document with no catalog is none.
+fn encode_pdf(env : Env, value : @value.Cell) -> @value.Cell raise EvalError {
+  match value {
+    @value.Object(frame) =>
+      match pdf_encode_frame(env, frame) {
+        Some(bytes) => binary_cell(bytes)
+        None => @value.Cell::None
+      }
+    _ => @value.Cell::None
+  }
+}
+
+///|
+priv struct PdfSpot {
+  id : Int64
+  gen : Int64
+  offset : Int
+}
+
+///|
+fn pdf_encode_frame(
+  env : Env,
+  frame : @value.Frame,
+) -> Array[Int]? raise EvalError {
+  let objects = match frame_field(env, frame, "objects") {
+    Some(@value.Map(map)) => map
+    _ => return None
+  }
+  let trailer = match pdf_trailer(env, objects, frame) {
+    Some(map) => map
+    None => return None
+  }
+  let version = match pdf_version(env, frame) {
+    Some(text) => text
+    None => return None
+  }
+  let out : Array[Int] = []
+  pdf_bytes(out, "%PDF-")
+  pdf_bytes(out, version)
+  out.push('\r'.to_int())
+  out.push('%'.to_int())
+  out.push(0xE2)
+  out.push(0xE3)
+  out.push(0xCF)
+  out.push(0xD3)
+  out.push('\r'.to_int())
+  out.push('\n'.to_int())
+  let spots : Array[PdfSpot] = []
+  for index in 0..<objects.length() {
+    match (objects.key(index), objects.value(index)) {
+      (Some(@value.Pair(id, gen)), Some(cell)) => {
+        let offset = out.length()
+        pdf_bytes(out, id.to_string() + " " + gen.to_string() + " obj\r")
+        pdf_emit(env, out, cell)
+        pdf_bytes(out, "\rendobj\r")
+        spots.push(PdfSpot::{ id, gen, offset, })
+      }
+      _ => ()
+    }
+  }
+  pdf_sort_spots(spots)
+  let xref_at = out.length()
+  pdf_write_xref(out, spots)
+  pdf_bytes(out, "trailer\r\n")
+  pdf_emit(env, out, @value.Map(trailer))
+  pdf_bytes(out, "\r\nstartxref\r\n")
+  pdf_bytes(out, xref_at.to_string())
+  pdf_bytes(out, "\r\n%%EOF\r\n")
+  Some(out)
+}
+
+///|
+fn pdf_trailer(
+  env : Env,
+  objects : @value.MapValue,
+  frame : @value.Frame,
+) -> @value.MapValue? {
+  let trailer = @value.MapValue::make()
+  match frame_field(env, frame, "trailer") {
+    Some(@value.Map(map)) =>
+      for index in 0..<map.length() {
+        match (map.key(index), map.value(index)) {
+          (Some(key), Some(value)) => trailer.put(key, value)
+          _ => ()
+        }
+      }
+    _ => ()
+  }
+  let rooted = match pdf_map_field(trailer, "root") {
+    Some(cell) => !(cell is @value.Cell::None)
+    None => false
+  }
+  if !rooted {
+    match pdf_catalog(objects) {
+      Some(key) => trailer.put(pdf_name_cell(env, "Root"), key)
+      None => return None
+    }
+  }
+  Some(trailer)
+}
+
+///|
+fn pdf_catalog(objects : @value.MapValue) -> @value.Cell? {
+  let mut found : @value.Cell? = None
+  for index in 0..<objects.length() {
+    if found is None {
+      match (objects.key(index), objects.value(index)) {
+        (Some(key), Some(@value.Map(map))) =>
+          match pdf_map_field(map, "type") {
+            Some(@value.Sym(_, lexeme)) =>
+              if lexeme.spelling().to_lower() == "catalog" {
+                found = Some(key)
+              }
+            _ => ()
+          }
+        _ => ()
+      }
+    }
+  }
+  found
+}
+
+///|
+fn pdf_map_field(map : @value.MapValue, name : String) -> @value.Cell? {
+  let mut found : @value.Cell? = None
+  for index in 0..<map.length() {
+    if found is None {
+      match map.key(index) {
+        Some(@value.Sym(_, lexeme)) =>
+          if lexeme.spelling().to_lower() == name {
+            found = map.value(index)
+          }
+        _ => ()
+      }
+    }
+  }
+  found
+}
+
+///|
+fn pdf_version(env : Env, frame : @value.Frame) -> String? raise EvalError {
+  let text = match frame_field(env, frame, "version") {
+    Some(@value.Seq(series, index)) if series.datatype() == @value.String =>
+      text_from(series, index)
+    Some(@value.Decimal(number)) => @mold.form_text(@value.Decimal(number))
+    None => "1.3"
+    _ => return None
+  }
+  if pdf_version_text(text) {
+    Some(text)
+  } else {
+    None
+  }
+}
+
+///|
+fn pdf_version_text(text : String) -> Bool {
+  let mut dot = false
+  let mut before = false
+  let mut after = false
+  for char in text {
+    if char == '.' {
+      if dot {
+        return false
+      }
+      dot = true
+    } else if char >= '0' && char <= '9' {
+      if dot {
+        after = true
+      } else {
+        before = true
+      }
+    } else {
+      return false
+    }
+  }
+  dot && before && after
+}
+
+///|
+fn pdf_emit(
+  env : Env,
+  out : Array[Int],
+  value : @value.Cell,
+) -> Unit raise EvalError {
+  match value {
+    @value.Sym(_, lexeme) => {
+      out.push('/'.to_int())
+      pdf_bytes(out, lexeme.spelling())
+    }
+    @value.Pair(id, gen) => {
+      pdf_indent(out)
+      pdf_bytes(out, id.to_string() + " " + gen.to_string() + " R")
+    }
+    @value.Integer(number) => {
+      pdf_indent(out)
+      pdf_bytes(out, number.to_string())
+    }
+    @value.Decimal(number) => {
+      pdf_indent(out)
+      pdf_bytes(out, @mold.form_text(@value.Decimal(number)))
+    }
+    @value.Logic(flag) => {
+      pdf_indent(out)
+      pdf_bytes(out, if flag { "true" } else { "false" })
+    }
+    @value.Seq(series, index) if series.datatype() == @value.Block => {
+      out.push('['.to_int())
+      for cursor in index..<series.length() {
+        match series.item(cursor) {
+          Some(item) => pdf_emit(env, out, item)
+          None => ()
+        }
+      }
+      out.push(']'.to_int())
+    }
+    @value.Seq(series, index) if series.datatype() == @value.String =>
+      pdf_emit_string(out, text_from(series, index))
+    @value.Seq(series, index) if series.datatype() == @value.Binary =>
+      pdf_emit_hex(out, bytes_from(series, index))
+    @value.Map(map) => pdf_emit_map(env, out, map)
+    @value.Object(frame) => pdf_emit_stream(env, out, frame)
+    _ => ()
+  }
+}
+
+///|
+fn pdf_emit_map(
+  env : Env,
+  out : Array[Int],
+  map : @value.MapValue,
+) -> Unit raise EvalError {
+  out.push('<'.to_int())
+  out.push('<'.to_int())
+  for index in 0..<map.length() {
+    match (map.key(index), map.value(index)) {
+      (Some(@value.Sym(_, lexeme)), Some(value)) =>
+        if !(value is @value.Cell::None) {
+          out.push('/'.to_int())
+          pdf_bytes(out, lexeme.spelling())
+          pdf_emit(env, out, value)
+        }
+      _ => ()
+    }
+  }
+  out.push('>'.to_int())
+  out.push('>'.to_int())
+}
+
+///|
+fn pdf_emit_stream(
+  env : Env,
+  out : Array[Int],
+  frame : @value.Frame,
+) -> Unit raise EvalError {
+  let data = match frame_field(env, frame, "data") {
+    Some(@value.Seq(series, index)) if series.datatype() == @value.Binary =>
+      bytes_from(series, index)
+    _ => []
+  }
+  out.push('<'.to_int())
+  out.push('<'.to_int())
+  let mut saw = false
+  match frame_field(env, frame, "spec") {
+    Some(@value.Map(map)) =>
+      for index in 0..<map.length() {
+        match (map.key(index), map.value(index)) {
+          (Some(@value.Sym(_, lexeme)), Some(value)) =>
+            if lexeme.spelling().to_lower() == "length" {
+              saw = true
+              pdf_bytes(out, "/Length")
+              pdf_indent(out)
+              pdf_bytes(out, data.length().to_string())
+            } else if !(value is @value.Cell::None) {
+              out.push('/'.to_int())
+              pdf_bytes(out, lexeme.spelling())
+              pdf_emit(env, out, value)
+            }
+          _ => ()
+        }
+      }
+    _ => ()
+  }
+  if !saw {
+    pdf_bytes(out, "/Length")
+    pdf_indent(out)
+    pdf_bytes(out, data.length().to_string())
+  }
+  out.push('>'.to_int())
+  out.push('>'.to_int())
+  pdf_bytes(out, "stream\r\n")
+  for byte in data {
+    out.push(byte)
+  }
+  pdf_bytes(out, "\r\nendstream")
+}
+
+///|
+fn pdf_emit_string(out : Array[Int], text : String) -> Unit {
+  out.push('('.to_int())
+  for char in text {
+    if char == '\n' {
+      pdf_bytes(out, "\\n")
+    } else if char == '\r' {
+      pdf_bytes(out, "\\r")
+    } else if char == '\t' {
+      pdf_bytes(out, "\\t")
+    } else if char == '\u{0008}' {
+      pdf_bytes(out, "\\b")
+    } else if char == '\u{000C}' {
+      pdf_bytes(out, "\\f")
+    } else if char == '(' || char == ')' || char == '\\' {
+      out.push('\\'.to_int())
+      out.push(char.to_int())
+    } else {
+      out.push(char.to_int())
+    }
+  }
+  out.push(')'.to_int())
+}
+
+///|
+fn pdf_emit_hex(out : Array[Int], bytes : Array[Int]) -> Unit {
+  out.push('<'.to_int())
+  for byte in bytes {
+    pdf_bytes(out, pdf_hex_byte(byte))
+  }
+  out.push('>'.to_int())
+}
+
+///|
+fn pdf_hex_byte(byte : Int) -> String {
+  let digits = "0123456789ABCDEF"
+  let high = byte / 16
+  let low = byte % 16
+  let mut text = ""
+  let mut index = 0
+  for char in digits {
+    if index == high || index == low {
+      if index == high {
+        text = text + char.to_string()
+      }
+      if index == low && high != low {
+        text = text + char.to_string()
+      } else if index == low && high == low && text.length() == 1 {
+        text = text + char.to_string()
+      }
+    }
+    index = index + 1
+  }
+  if text.length() == 1 {
+    text = text + text
+  }
+  text
+}
+
+///|
+fn pdf_indent(out : Array[Int]) -> Unit {
+  let last = if out.length() == 0 { -1 } else { out[out.length() - 1] }
+  if last != ' '.to_int() && last != '['.to_int() {
+    out.push(' '.to_int())
+  }
+}
+
+///|
+fn pdf_write_xref(out : Array[Int], spots : Array[PdfSpot]) -> Unit {
+  let end_id = pdf_xref_end(spots, 0, 0L)
+  pdf_bytes(out, "xref\r\n0 " + (end_id + 1L).to_string() + "\r\n")
+  pdf_bytes(out, "0000000000 65535 f\r\n")
+  let mut index = 0
+  let mut cursor = 0L
+  while cursor < end_id && index < spots.length() {
+    pdf_xref_use(out, spots[index])
+    index = index + 1
+    cursor = cursor + 1L
+  }
+  while index < spots.length() {
+    let mut id = spots[index].id
+    let far = pdf_xref_end(spots, index, id)
+    id = id - 1L
+    pdf_bytes(
+      out,
+      (id + 1L).to_string() + " " + (far - id).to_string() + "\r\n",
+    )
+    while id < far && index < spots.length() {
+      pdf_xref_use(out, spots[index])
+      index = index + 1
+      id = id + 1L
+    }
+  }
+}
+
+///|
+fn pdf_xref_use(out : Array[Int], spot : PdfSpot) -> Unit {
+  pdf_bytes(
+    out,
+    pdf_pad(spot.offset, 10) + " " + pdf_pad(spot.gen.to_int(), 5) + " n\r\n",
+  )
+}
+
+///|
+fn pdf_xref_end(spots : Array[PdfSpot], index : Int, start : Int64) -> Int64 {
+  let mut end = start
+  let mut cursor = index
+  while cursor < spots.length() {
+    let id = spots[cursor].id
+    if id - end <= 1L {
+      end = id
+      cursor = cursor + 1
+    } else {
+      break
+    }
+  }
+  end
+}
+
+///|
+fn pdf_sort_spots(spots : Array[PdfSpot]) -> Unit {
+  let mut index = 1
+  while index < spots.length() {
+    let mut cursor = index
+    while cursor > 0 && pdf_spot_before(spots[cursor], spots[cursor - 1]) {
+      let item = spots[cursor]
+      spots[cursor] = spots[cursor - 1]
+      spots[cursor - 1] = item
+      cursor = cursor - 1
+    }
+    index = index + 1
+  }
+}
+
+///|
+fn pdf_spot_before(left : PdfSpot, right : PdfSpot) -> Bool {
+  if left.id != right.id {
+    left.id < right.id
+  } else {
+    left.gen < right.gen
+  }
+}
+
+///|
+fn pdf_pad(number : Int, width : Int) -> String {
+  let text = number.to_string()
+  let mut padded = ""
+  let mut size = text.length()
+  while size < width {
+    padded = padded + "0"
+    size = size + 1
+  }
+  padded + text
+}
+
+///|
+fn pdf_bytes(out : Array[Int], text : String) -> Unit {
+  for char in text {
+    out.push(char.to_int())
+  }
+}

@@ -101,7 +101,11 @@ fn perform_encode(
     let _ = form
     encode_css(args[1])
   } else if kind == "pdf" {
-    raise EvalError::Caused("not-done", "pdf")
+    if uri || pass is Some(_) {
+      raise EvalError::Cannot("encode")
+    }
+    let _ = form
+    encode_pdf(env, args[1])
   } else if kind == "ico" {
     raise EvalError::Caused("not-done", "ico")
   } else if kind == "braille" {
