@@ -589,6 +589,10 @@ fn apply(
     from_action(@action.mold(args[0]))
   } else if func.code() == native_form {
     from_action(@action.form(args[0]))
+  } else if func.code() == native_print {
+    perform_print(env, args[0], true)
+  } else if func.code() == native_prin {
+    perform_print(env, args[0], false)
   } else if func.code() == native_type {
     @value.Type(args[0].datatype())
   } else if func.code() == native_try {

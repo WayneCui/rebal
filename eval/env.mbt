@@ -506,6 +506,12 @@ let native_words_of : Int = 166
 let native_mime_type : Int = 167
 
 ///|
+let native_print : Int = 168
+
+///|
+let native_prin : Int = 169
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -562,6 +568,8 @@ pub fn Env::new() -> Env {
   define_native(env, "do", 1, false, native_do)
   define_native(env, "mold", 1, false, native_mold)
   define_native(env, "form", 1, false, native_form)
+  define_native(env, "print", 1, false, native_print)
+  define_native(env, "prin", 1, false, native_prin)
   define_native(env, "type?", 1, false, native_type)
   define_native(env, "try", 1, false, native_try)
   define_native(env, "=", 2, true, native_equal)
