@@ -84,6 +84,18 @@ test "save/compress writes zlib, a header, or a base-64 script" {
 }
 
 ///|
+test "load maps over a block of sources" {
+  // load-test.r3 "Load of a block!".
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "b: load [\"print 'hello\" \"print 'there\"] (reduce [(type? b) = block! (pick b 1) = [print 'hello] (pick b 2) = [print 'there] (type? pick pick b 1 2) = lit-word! (load [\"1\"]) = [1] (load [\"1\" \"2 3\"]) = [1 [2 3]] (load/all [\"1\"]) = [[1]]]) = reduce [true true true true true true true]",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "load skips a UTF-8 BOM on a binary" {
   // load-test.r3 "load UTF8 string from binary with BOM".
   let env = @eval.Env::new()

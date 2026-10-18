@@ -47,6 +47,11 @@ fn perform_load(
 ) -> @value.Cell raise EvalError {
   let (header, all, kind) = load_flags(env, args, active)
   let source = args[0]
+  match source {
+    @value.Seq(series, index) if series.datatype() == @value.Block =>
+      return load_each(env, series, index, args, active)
+    _ => ()
+  }
   match kind {
     Some(name) =>
       if name == "markup" {
@@ -72,6 +77,31 @@ fn perform_load(
       _ => load_bytes(env, utf8_bytes(source_text(source)), header, all)
     }
   }
+}
+
+///|
+/// Each value in a block is loaded on its own. The results stay a block.
+fn load_each(
+  env : Env,
+  series : @value.Series,
+  index : Int,
+  args : Array[@value.Cell],
+  active : Array[Int],
+) -> @value.Cell raise EvalError {
+  let block = @value.Series::block()
+  for at in index..<series.length() {
+    match series.item(at) {
+      Some(item) => {
+        let nested : Array[@value.Cell] = [item]
+        for n in 1..<args.length() {
+          nested.push(args[n])
+        }
+        block.push_item(perform_load(env, nested, active)) |> ignore
+      }
+      None => ()
+    }
+  }
+  @value.Seq(block, 0)
 }
 
 ///|
