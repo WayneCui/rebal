@@ -85,6 +85,7 @@ fn write_cell(
       }
       @value.Bitset(bits) => write_bitset(buf, bits)
       @value.Vector(vector) => write_vector(buf, vector, molded)
+      @value.Image(image) => write_image(buf, image)
       @value.Map(map) => write_map(buf, map, molded, depth)
       @value.Error(error) => {
         buf.write_string("make error! [id: ")
@@ -649,6 +650,48 @@ fn write_vector(
 }
 
 ///|
+/// Form and mold both use construction syntax. Ten or more pixels break lines.
+fn write_image(buf : StringBuilder, image : @value.Image) -> Unit {
+  buf.write_string("make image! [")
+  buf.write_string(image.width().to_string())
+  buf.write_string("x")
+  buf.write_string(image.height().to_string())
+  buf.write_string(" #{")
+  let count = image.length()
+  let flat = count < 10
+  write_image_bytes(buf, image.channel_bytes("rgb"), 3, flat)
+  if image.has_alpha() {
+    if !flat {
+      buf.write_char('\n')
+    }
+    buf.write_string("} #{")
+    write_image_bytes(buf, image.channel_bytes("alpha"), 1, flat)
+  }
+  if !flat && count != 0 {
+    buf.write_char('\n')
+  }
+  buf.write_string("}]")
+}
+
+///|
+fn write_image_bytes(
+  buf : StringBuilder,
+  bytes : Array[Int],
+  stride : Int,
+  flat : Bool,
+) -> Unit {
+  let count = if stride == 0 { 0 } else { bytes.length() / stride }
+  for index in 0..<count {
+    if !flat && index % 10 == 0 {
+      buf.write_char('\n')
+    }
+    for offset in 0..<stride {
+      write_hex_byte(buf, bytes[index * stride + offset])
+    }
+  }
+}
+
+///|
 fn write_bitset(buf : StringBuilder, bits : @value.Bitset) -> Unit {
   buf.write_string("make bitset! #{")
   for index in 0..<32 {
@@ -700,5 +743,6 @@ pub fn type_name(datatype : @value.Datatype) -> String {
     @value.Port => "port!"
     @value.Handle => "handle!"
     @value.Vector => "vector!"
+    @value.Image => "image!"
   }
 }

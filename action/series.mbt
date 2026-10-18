@@ -126,6 +126,28 @@ pub fn pick(
           }
         _ => Err(Cannot("pick"))
       }
+    @value.Image(image) =>
+      match index {
+        @value.Integer(n) =>
+          match fit_int(@value.Integer(n)) {
+            Some(at) =>
+              match image.tuple_at(at) {
+                Some(pixel) => Ok(pixel)
+                None => Ok(@value.None)
+              }
+            None => Err(Cannot("pick"))
+          }
+        @value.Pair(x, y) =>
+          match (fit_int(@value.Integer(x)), fit_int(@value.Integer(y))) {
+            (Some(px), Some(py)) =>
+              match image.tuple_at_xy(px, py) {
+                Some(pixel) => Ok(pixel)
+                None => Ok(@value.None)
+              }
+            _ => Err(Cannot("pick"))
+          }
+        _ => Err(Cannot("pick"))
+      }
     @value.Pair(x, y) =>
       match fit_int(index) {
         Some(1) => Ok(@value.Integer(x))
@@ -155,6 +177,7 @@ pub fn length(series : @value.Cell) -> Result[@value.Cell, ActionError] {
   match series {
     @value.Map(map) => Ok(@value.Integer(map.length().to_int64()))
     @value.Vector(vector) => Ok(@value.Integer(vector.length().to_int64()))
+    @value.Image(image) => Ok(@value.Integer(image.length().to_int64()))
     _ => length_series(series)
   }
 }

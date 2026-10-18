@@ -19,6 +19,7 @@ fn make_value(
     @value.Type(@value.Bitset) => to_bitset(spec)
     @value.Type(@value.Map) => to_map(spec)
     @value.Type(@value.Vector) => make_vector(spec)
+    @value.Type(@value.Image) => make_image(spec)
     _ => raise EvalError::Cannot("make")
   }
 }

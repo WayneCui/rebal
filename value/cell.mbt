@@ -24,6 +24,7 @@ pub(all) enum Cell {
   Port(PortValue)
   Handle(HandleValue)
   Vector(Vector)
+  Image(Image)
 }
 
 ///|
@@ -60,6 +61,7 @@ pub fn Cell::datatype(self : Cell) -> Datatype {
     Port(_) => Port
     Handle(_) => Handle
     Vector(_) => Vector
+    Image(_) => Image
   }
 }
 

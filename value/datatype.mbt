@@ -40,6 +40,7 @@ pub(all) enum Datatype {
   Port
   Handle
   Vector
+  Image
 } derive(Eq)
 
 ///|

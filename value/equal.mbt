@@ -39,6 +39,7 @@ fn equal_at(left : Cell, right : Cell, depth : Int) -> Bool {
       (Port(a), Port(b)) => physical_equal(a, b)
       (Handle(a), Handle(b)) => a.same(b)
       (Vector(a), Vector(b)) => a.same(b)
+      (Image(a), Image(b)) => a.same(b)
       _ => false
     }
   }

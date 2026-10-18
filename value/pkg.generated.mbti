@@ -53,6 +53,7 @@ pub(all) enum Cell {
   Port(PortValue)
   Handle(HandleValue)
   Vector(Vector)
+  Image(Image)
 }
 pub fn Cell::datatype(Self) -> Datatype
 pub fn Cell::equal(Self, Self) -> Bool
@@ -102,6 +103,7 @@ pub(all) enum Datatype {
   Port
   Handle
   Vector
+  Image
 } derive(Eq)
 pub fn Datatype::equal(Self, Self) -> Bool
 pub fn Datatype::not_equal(Self, Self) -> Bool
@@ -216,6 +218,25 @@ pub fn HandleValue::kind(Self) -> String
 pub fn HandleValue::release(Self) -> Unit
 pub fn HandleValue::released(Self) -> Bool
 pub fn HandleValue::same(Self, Self) -> Bool
+
+pub struct Image {
+  width : Int
+  height : Int
+  pixels : Array[Int]
+}
+pub fn Image::channel_bytes(Self, String) -> Array[Int]
+pub fn Image::fill_alpha(Self, Int) -> Unit
+pub fn Image::fill_tuple(Self, Array[Int]) -> Unit
+pub fn Image::has_alpha(Self) -> Bool
+pub fn Image::height(Self) -> Int
+pub fn Image::length(Self) -> Int
+pub fn Image::load_alpha(Self, Array[Int]) -> Unit
+pub fn Image::load_rgb(Self, Array[Int]) -> Unit
+pub fn Image::same(Self, Self) -> Bool
+pub fn Image::tuple_at(Self, Int) -> Cell?
+pub fn Image::tuple_at_xy(Self, Int, Int) -> Cell?
+pub fn Image::white(Int, Int) -> Self
+pub fn Image::width(Self) -> Int
 
 pub struct Lexeme {
   sym : Int
