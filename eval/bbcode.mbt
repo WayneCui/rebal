@@ -94,6 +94,10 @@ fn bb_step(
     Some(next) => return next
     None => ()
   }
+  match bb_csv(codes, at, html, opened) {
+    Some(next) => return next
+    None => ()
+  }
   match bb_tag(codes, at, html, opened) {
     Some(next) => return next
     None => ()
@@ -369,6 +373,370 @@ priv struct BbTag {
   name : String
   short : String
   next : Int
+}
+
+///|
+fn bb_csv(
+  codes : Array[Int],
+  at : Int,
+  html : Array[String],
+  opened : Array[String],
+) -> Int? {
+  if !css_starts(codes, at, "[csv") {
+    return None
+  }
+  let cursor = at + 4
+  if cursor < codes.length() && bb_name_char(codes[cursor]) {
+    return None
+  }
+  match bb_csv_head(codes, cursor) {
+    None => None
+    Some(head) =>
+      match bb_find(codes, head.content, "[/csv") {
+        None => None
+        Some(close_at) => {
+          bb_close_p(html, opened)
+          bb_close(html, opened, None)
+          bb_csv_emit(html, codes, head, close_at)
+          Some(close_at)
+        }
+      }
+  }
+}
+
+///|
+priv struct BbCsv {
+  class : String
+  align : String
+  style : String
+  divider : Int
+  widths : Array[Int]?
+  coltype : String
+  content : Int
+}
+
+///|
+fn bb_csv_head(codes : Array[Int], at : Int) -> BbCsv? {
+  let mut cursor = at
+  let mut class = ""
+  let mut align = ""
+  let mut style = ""
+  let mut divider = '\t'.to_int()
+  let mut widths : Array[Int]? = None
+  let mut coltype = ""
+  if cursor < codes.length() && codes[cursor] == '='.to_int() {
+    match bb_attr_value(codes, cursor + 1) {
+      Some((_, next)) => cursor = next
+      None => return None
+    }
+  }
+  let mut failed = false
+  while !failed {
+    cursor = bb_attr_space(codes, cursor)
+    if cursor < codes.length() && codes[cursor] == ']'.to_int() {
+      failed = false
+      break
+    }
+    match bb_attr_name(codes, cursor) {
+      None => failed = true
+      Some((name, next)) => {
+        cursor = bb_attr_space(codes, next)
+        if cursor >= codes.length() || codes[cursor] != '='.to_int() {
+          failed = true
+        } else {
+          match bb_attr_value(codes, cursor + 1) {
+            None => failed = true
+            Some((value, end)) => {
+              if name == "class" {
+                class = value
+              } else if name == "align" {
+                align = value
+              } else if name == "style" {
+                style = value
+              } else if name == "divider" && value.length() > 0 {
+                divider = bb_first_code(value)
+              } else if name == "widths" {
+                widths = Some(bb_width_list(value))
+              } else if name == "coltype" {
+                coltype = value
+              }
+              cursor = end
+            }
+          }
+        }
+      }
+    }
+  }
+  if failed || cursor >= codes.length() || codes[cursor] != ']'.to_int() {
+    None
+  } else {
+    Some(BbCsv::{
+      class,
+      align,
+      style,
+      divider,
+      widths,
+      coltype,
+      content: cursor + 1,
+    })
+  }
+}
+
+///|
+fn bb_attr_value(codes : Array[Int], at : Int) -> (String, Int)? {
+  if at >= codes.length() {
+    return None
+  }
+  let quote = codes[at]
+  if quote == '"'.to_int() || quote == '\''.to_int() {
+    let mut cursor = at + 1
+    let mut closed = false
+    while cursor < codes.length() && !closed {
+      let code = codes[cursor]
+      if code == quote {
+        closed = true
+      } else if code == '<'.to_int() ||
+        code == '>'.to_int() ||
+        code == ']'.to_int() {
+        break
+      } else {
+        cursor = cursor + 1
+      }
+    }
+    if closed {
+      return Some((css_span(codes, at + 1, cursor), cursor + 1))
+    }
+  }
+  let mut cursor = at
+  while cursor < codes.length() && bb_unquoted(codes[cursor]) {
+    cursor = cursor + 1
+  }
+  Some((css_span(codes, at, cursor), cursor))
+}
+
+///|
+fn bb_unquoted(code : Int) -> Bool {
+  code != ' '.to_int() &&
+  code != '<'.to_int() &&
+  code != '>'.to_int() &&
+  code != ']'.to_int()
+}
+
+///|
+fn bb_attr_space(codes : Array[Int], at : Int) -> Int {
+  let mut cursor = at
+  while cursor < codes.length() && bb_attr_gap(codes[cursor]) {
+    cursor = cursor + 1
+  }
+  cursor
+}
+
+///|
+fn bb_attr_gap(code : Int) -> Bool {
+  (code >= 1 && code <= 32) || code == 127
+}
+
+///|
+fn bb_attr_name(codes : Array[Int], at : Int) -> (String, Int)? {
+  match bb_name(codes, at) {
+    Some(end) => Some((css_span(codes, at, end), end))
+    None => None
+  }
+}
+
+///|
+fn bb_first_code(text : String) -> Int {
+  let mut code = '\t'.to_int()
+  let mut taken = false
+  for char in text {
+    if !taken {
+      code = char.to_int()
+      taken = true
+    }
+  }
+  code
+}
+
+///|
+fn bb_width_list(text : String) -> Array[Int] {
+  let widths : Array[Int] = []
+  let mut number = 0
+  let mut saw = false
+  let mut bad = false
+  for char in text {
+    if char == ' ' || char == '\t' || char == '\n' || char == '\r' {
+      if saw && !bad {
+        widths.push(number)
+      } else if saw || bad {
+        widths.push(-1)
+      }
+      number = 0
+      saw = false
+      bad = false
+    } else if !bad && char >= '0' && char <= '9' {
+      number = number * 10 + (char.to_int() - '0'.to_int())
+      saw = true
+    } else {
+      bad = true
+      saw = true
+    }
+  }
+  if saw && !bad {
+    widths.push(number)
+  } else if saw || bad {
+    widths.push(-1)
+  }
+  widths
+}
+
+///|
+fn bb_csv_emit(
+  html : Array[String],
+  codes : Array[Int],
+  head : BbCsv,
+  close_at : Int,
+) -> Unit {
+  let mut open = "<table"
+  if head.class != "" {
+    open = open + " class=\"" + bb_escape(head.class) + "\""
+  }
+  if head.align != "" {
+    open = open + " align=\"" + bb_escape(head.align) + "\""
+  }
+  if head.style != "" {
+    open = open + " style=\"" + bb_escape(head.style) + "\""
+  }
+  html.push(open + ">\n")
+  bb_csv_columns(html, head.coltype)
+  let trimmed = bb_trim(codes, head.content, close_at)
+  let rows = bb_csv_rows(codes, trimmed.0, trimmed.1, head.divider)
+  let mut index = 0
+  for row in rows {
+    let tag = if index == 0 { "th" } else { "td" }
+    let mut line = "<tr>"
+    let mut column = 0
+    for cell in row {
+      let width = bb_csv_width(head.widths, index, column)
+      line = line + "<" + tag + width + ">" + cell + "</" + tag + ">"
+      column = column + 1
+    }
+    html.push(line + "</tr>\n")
+    index = index + 1
+  }
+  html.push("</table>")
+}
+
+///|
+fn bb_csv_columns(html : Array[String], coltype : String) -> Unit {
+  for char in coltype {
+    if char == 'c' {
+      html.push("<col align=\"center\">\n")
+    } else if char == 'l' {
+      html.push("<col align=\"left\">\n")
+    } else if char == 'r' {
+      html.push("<col align=\"right\">\n")
+    } else if char == 'j' {
+      html.push("<col align=\"justify\">\n")
+    } else {
+      break
+    }
+  }
+}
+
+///|
+fn bb_csv_width(widths : Array[Int]?, row : Int, column : Int) -> String {
+  if row != 0 {
+    ""
+  } else {
+    match widths {
+      None => ""
+      Some(list) =>
+        if column < list.length() && list[column] >= 0 {
+          " width=" + list[column].to_string()
+        } else {
+          ""
+        }
+    }
+  }
+}
+
+///|
+fn bb_trim(codes : Array[Int], start : Int, end : Int) -> (Int, Int) {
+  let mut left = start
+  let mut right = end
+  while left < right && bb_attr_gap(codes[left]) {
+    left = left + 1
+  }
+  while right > left && bb_attr_gap(codes[right - 1]) {
+    right = right - 1
+  }
+  (left, right)
+}
+
+///|
+fn bb_csv_rows(
+  codes : Array[Int],
+  start : Int,
+  end : Int,
+  divider : Int,
+) -> Array[Array[String]] {
+  let rows : Array[Array[String]] = []
+  let mut cursor = start
+  let mut stopped = false
+  while cursor < end && !stopped {
+    while cursor < end && bb_attr_gap(codes[cursor]) {
+      cursor = cursor + 1
+    }
+    if cursor >= end {
+      stopped = true
+    } else {
+      let cells : Array[String] = []
+      let mut divided = false
+      let mut row_end = false
+      while !row_end && !stopped {
+        let cell_at = cursor
+        while cursor < end &&
+              codes[cursor] != divider &&
+              !pdf_break(codes[cursor]) {
+          cursor = cursor + 1
+        }
+        let cell = css_span(codes, cell_at, cursor)
+        if cursor < end && codes[cursor] == divider {
+          cells.push(cell)
+          divided = true
+          cursor = cursor + 1
+        } else if divided {
+          cells.push(cell)
+          if cursor < end && pdf_break(codes[cursor]) {
+            cursor = match pdf_newline(codes, cursor) {
+              Some(next) => next
+              None => cursor + 1
+            }
+          }
+          rows.push(cells)
+          row_end = true
+        } else {
+          stopped = true
+          row_end = true
+        }
+      }
+    }
+  }
+  rows
+}
+
+///|
+fn bb_find(codes : Array[Int], at : Int, mark : String) -> Int? {
+  let mut cursor = at
+  let mut found : Int? = None
+  while found is None && cursor < codes.length() {
+    if css_starts(codes, cursor, mark) {
+      found = Some(cursor)
+    } else {
+      cursor = cursor + 1
+    }
+  }
+  found
 }
 
 ///|
