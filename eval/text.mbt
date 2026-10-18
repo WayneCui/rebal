@@ -17,6 +17,61 @@ fn encode_text(value : @value.Cell) -> @value.Cell raise EvalError {
 }
 
 ///|
+/// `to string!` joins a block without spaces. A binary is decoded from its BOM.
+/// Line endings stay as they are. `none` cannot be converted.
+fn to_string(value : @value.Cell) -> @value.Cell raise EvalError {
+  text_series(string_text(value))
+}
+
+///|
+fn string_text(value : @value.Cell) -> String raise EvalError {
+  match value {
+    @value.Cell::None => raise EvalError::Caused("bad-make-arg", "string!")
+    @value.Sym(_, lexeme) => lexeme.spelling()
+    @value.Seq(series, index) if series.datatype() == @value.Binary =>
+      string_utf8(value, bytes_from(series, index))
+    @value.Seq(series, index) if series.datatype() == @value.Block ||
+      series.datatype() == @value.Paren => string_joined(series, index, "")
+    @value.Seq(series, index) if series.datatype() == @value.Path ||
+      series.datatype() == @value.SetPath => string_joined(series, index, "/")
+    _ => @mold.form_text(value)
+  }
+}
+
+///|
+fn string_joined(
+  series : @value.Series,
+  index : Int,
+  sep : String,
+) -> String raise EvalError {
+  let buf = StringBuilder()
+  let mut cursor = if index < 0 { 0 } else { index }
+  let mut first = true
+  while cursor < series.length() {
+    if !first && sep != "" {
+      buf.write_string(sep)
+    }
+    first = false
+    match series.item(cursor) {
+      Some(item) => buf.write_string(string_text(item))
+      None => ()
+    }
+    cursor = cursor + 1
+  }
+  buf.to_string()
+}
+
+///|
+fn string_utf8(
+  value : @value.Cell,
+  bytes : Array[Int],
+) -> String raise EvalError {
+  decode_text(bytes) catch {
+    _ => raise EvalError::Caused("invalid-utf", @mold.mold_text(value))
+  }
+}
+
+///|
 /// `load/as 'text` is `decode 'text`. A BOM selects UTF-8, UTF-16, or UTF-32.
 /// Without one, the bytes are UTF-8. CR, LF, CRLF, and LFCR become one line feed.
 priv enum TextBom {
