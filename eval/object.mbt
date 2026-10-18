@@ -52,3 +52,36 @@ fn make_object(env : Env, spec : @value.Cell) -> @value.Cell raise EvalError {
     _ => raise EvalError::Cannot("make")
   }
 }
+
+///|
+/// Words of an object, in creation order. Map keys that are words become words.
+fn words_of(env : Env, value : @value.Cell) -> @value.Cell raise EvalError {
+  let block = @value.Series::block()
+  match value {
+    @value.Object(frame) =>
+      for index in 0..<frame.length() {
+        match frame.sym(index) {
+          Some(sym) =>
+            block.push_item(word_cell(env, env.symbols.canon(sym))) |> ignore
+          None => ()
+        }
+      }
+    @value.Map(map) =>
+      for index in 0..<map.length() {
+        match map.key(index) {
+          Some(key) => block.push_item(word_key(key)) |> ignore
+          None => ()
+        }
+      }
+    _ => raise EvalError::Caused("expect-arg", "words-of")
+  }
+  @value.Seq(block, 0)
+}
+
+///|
+fn word_key(key : @value.Cell) -> @value.Cell {
+  match key {
+    @value.Sym(_, lexeme) => @value.Sym(@value.Word, lexeme)
+    _ => key
+  }
+}

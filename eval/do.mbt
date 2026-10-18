@@ -807,6 +807,8 @@ fn apply(
     perform_release(args[0])
   } else if func.code() == native_encoding {
     perform_encoding(env, args[0])
+  } else if func.code() == native_words_of {
+    words_of(env, args[0])
   } else {
     raise EvalError::Cannot("function")
   }
