@@ -2,6 +2,11 @@
 package "rebal/num"
 
 // Values
+pub fn p256_base_mul(Array[Int]) -> (Array[Int], Array[Int])?
+
+pub fn p256_mul(Array[Int], Array[Int], Array[Int]) -> (Array[Int], Array[Int])?
+
+pub fn p256_on_curve(Array[Int], Array[Int]) -> Bool
 
 // Errors
 
