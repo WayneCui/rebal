@@ -191,6 +191,18 @@ test "a script header turns yes, no, and none into values" {
 }
 
 ///|
+test "save writes text for a .txt or .cgi file and a script otherwise" {
+  // mezz-save.reb. A text suffix encodes the value. /header still writes a script.
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "t: save %/tmp/rebal-suf.txt [1 2] c: save %/tmp/rebal-suf.cgi [%a %b] (reduce [t = %/tmp/rebal-suf.txt (load t) = \"1 2\" (load/as t none) = [1 2] (load save %/tmp/rebal-suf.bin [1 2]) = [1 2] (load c) = \"%a %b\" (load save %/tmp/rebal-suf.TXT [1 2]) = \"1 2\" (load save %/tmp/rebal-suf.txt \"hi\") = {\"hi\"} (load save %/tmp/rebal-suf.txt #{616263}) = \"abc\" (load save/compress %/tmp/rebal-suf.txt [print \"Hi\"] true) = {print \"Hi\"} (load save/length %/tmp/rebal-suf.txt [1 2]) = \"1 2\"]) = reduce [true true true true true true true true true true]",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "load/as text decodes bytes, and none or unbound loads code" {
   // sys-load.reb. text folds CR and LF. none ignores a codec suffix.
   @eval.write_file("/tmp/rebal-as.txt", "hello\r\n")
@@ -207,7 +219,7 @@ test "load/as text decodes bytes, and none or unbound loads code" {
 
 ///|
 test "load/as text reads UTF-16 and UTF-32 when a BOM is present" {
-  // s-unicode.c What_UTF. No BOM stays UTF-8. A broken surrogate is refused.
+  // s-unicode.c What_UTF. No BOM stays UTF-8. A broken unit is refused.
   let env = @eval.Env::new()
   assert_true(
     @eval.run(

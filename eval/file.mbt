@@ -81,6 +81,8 @@ fn perform_load(
     decode_ssh_key(env, text_series(read_file(loaded_path(source))))
   } else if ppk_file(source) {
     decode_ppk(env, text_series(read_file(loaded_path(source))), None)
+  } else if text_file(source) {
+    load_text(source)
   } else {
     match source {
       @value.Seq(series, index) if series.datatype() == @value.Binary =>
@@ -207,6 +209,12 @@ fn key_file(source : @value.Cell) -> Bool raise EvalError {
 }
 
 ///|
+/// %.txt and %.cgi are the text codec, as in base-defs.reb.
+fn text_file(source : @value.Cell) -> Bool raise EvalError {
+  suffix_is(source, ".txt") || suffix_is(source, ".cgi")
+}
+
+///|
 fn suffix_is(source : @value.Cell, suffix : String) -> Bool raise EvalError {
   match source {
     @value.Seq(series, _) if series.datatype() == @value.File =>
@@ -239,7 +247,12 @@ fn perform_save(
   match place {
     @value.Cell::None => bytes
     @value.Seq(series, index) if series.datatype() == @value.File => {
-      write_file(text_from(series, index), script)
+      let body = if text_file(place) && !named(env, active, "header") {
+        encoded_text(args[1])
+      } else {
+        script
+      }
+      write_file(text_from(series, index), body)
       place
     }
     @value.Seq(series, _) if series.datatype() == @value.Binary =>

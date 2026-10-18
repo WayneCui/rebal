@@ -194,6 +194,15 @@ fn fold_text(text : String) -> String {
 }
 
 ///|
+/// The string `encode 'text` would write. A block loses its outer brackets.
+fn encoded_text(value : @value.Cell) -> String raise EvalError {
+  match encode_text(value) {
+    @value.Seq(series, index) => text_from(series, index)
+    _ => raise EvalError::Cannot("save")
+  }
+}
+
+///|
 fn text_contents(molded : String) -> String {
   let mut count = 0
   for char in molded {
