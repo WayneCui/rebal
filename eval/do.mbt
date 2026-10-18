@@ -796,6 +796,8 @@ fn apply(
     perform_wildcard(env, args[0], args[1])
   } else if func.code() == native_release {
     perform_release(args[0])
+  } else if func.code() == native_encoding {
+    perform_encoding(env, args[0])
   } else {
     raise EvalError::Cannot("function")
   }
