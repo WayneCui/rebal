@@ -138,6 +138,12 @@ fn perform_decode(
     }
     return decode_ar(args[1])
   }
+  if kind == "srt" {
+    if binary {
+      raise EvalError::Cannot("decode")
+    }
+    return decode_srt(env, args[1])
+  }
   if kind == "csv" || kind == "tsv" {
     if binary {
       raise EvalError::Cannot("decode")

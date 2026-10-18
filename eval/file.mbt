@@ -128,6 +128,8 @@ fn perform_load(
         ','.to_int()
       },
     )
+  } else if srt_file(source) {
+    decode_srt(env, source)
   } else if gzip_file(source) {
     binary_cell(gzip_unpack(read_binary(loaded_path(source))))
   } else if tar_suffix(source) {
@@ -301,6 +303,12 @@ fn json_file(source : @value.Cell) -> Bool raise EvalError {
 
 ///|
 /// %.csv and %.tsv are delimited tables, as in codec-csv.reb.
+/// %.srt is a SubRip subtitle file, as in codec-srt.reb.
+fn srt_file(source : @value.Cell) -> Bool raise EvalError {
+  file_suffix(source) == ".srt"
+}
+
+///|
 fn csv_file(source : @value.Cell) -> Bool raise EvalError {
   let name = file_suffix(source)
   name == ".csv" || name == ".tsv"
@@ -477,6 +485,12 @@ fn perform_save(
         write_file(path, encoded_text(args[1]))
       } else if json_file(place) && !named(env, active, "header") {
         write_file(path, encoded_json(env, args[1]))
+      } else if srt_file(place) && !named(env, active, "header") {
+        match encode_srt(args[1]) {
+          @value.Seq(series, index) if series.datatype() == @value.String =>
+            write_file(path, text_from(series, index))
+          _ => raise EvalError::Cannot("save")
+        }
       } else if csv_file(place) && !named(env, active, "header") {
         let delimiter = if file_suffix(place) == ".tsv" {
           '\t'.to_int()

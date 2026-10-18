@@ -81,6 +81,12 @@ fn perform_encode(
     }
     let _ = form
     encode_text(args[1])
+  } else if kind == "srt" {
+    if uri || pass is Some(_) {
+      raise EvalError::Cannot("encode")
+    }
+    let _ = form
+    encode_srt(args[1])
   } else if kind == "csv" || kind == "tsv" {
     if uri || pass is Some(_) {
       raise EvalError::Cannot("encode")
