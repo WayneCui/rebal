@@ -9,6 +9,8 @@ fn perform_decode(
   let mut binary = false
   let mut uri = false
   let mut password : String? = None
+  let mut only = false
+  let mut only_value = @value.Cell::None
   let mut cursor = 2
   for sym in active {
     let name = env.symbols.canon(sym)
@@ -19,6 +21,10 @@ fn perform_decode(
     } else if name == "password" {
       password = Some(latin_text(payload_bytes(args[cursor], "decode")))
       cursor = cursor + 1
+    } else if name == "only" {
+      only = true
+      only_value = args[cursor]
+      cursor = cursor + 1
     } else {
       raise EvalError::Cannot("decode")
     }
@@ -28,6 +34,9 @@ fn perform_decode(
     _ => raise EvalError::Cannot("decode")
   }
   if has_password(password) && kind != "ppk" {
+    raise EvalError::Cannot("decode")
+  }
+  if only && kind != "tar" {
     raise EvalError::Cannot("decode")
   }
   if uri && kind != "quoted-printable" {
@@ -116,6 +125,12 @@ fn perform_decode(
       raise EvalError::Cannot("decode")
     }
     return decode_provision(env, args[1])
+  }
+  if kind == "tar" {
+    if binary {
+      raise EvalError::Cannot("decode")
+    }
+    return decode_tar(args[1], only, only_value)
   }
   if kind != "pkix" {
     raise EvalError::Cannot("access")

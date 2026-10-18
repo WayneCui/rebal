@@ -402,11 +402,14 @@ fn encode_extra(env : Env, active : Array[Int]) -> Int {
 
 ///|
 fn decode_extra(env : Env, active : Array[Int]) -> Int {
+  let mut extra = 0
   if named(env, active, "password") {
-    1
-  } else {
-    0
+    extra = extra + 1
   }
+  if named(env, active, "only") {
+    extra = extra + 1
+  }
+  extra
 }
 
 ///|
