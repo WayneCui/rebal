@@ -132,6 +132,12 @@ fn perform_decode(
     }
     return decode_tar(args[1], only, only_value)
   }
+  if kind == "bbcode" {
+    if binary {
+      raise EvalError::Cannot("decode")
+    }
+    return decode_bbcode(args[1])
+  }
   if kind == "css" {
     if binary {
       raise EvalError::Cannot("decode")

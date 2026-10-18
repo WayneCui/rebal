@@ -134,6 +134,8 @@ fn perform_load(
         ','.to_int()
       },
     )
+  } else if bbcode_file(source) {
+    decode_bbcode(binary_cell(read_binary(loaded_path(source))))
   } else if css_file(source) {
     decode_css(binary_cell(read_binary(loaded_path(source))))
   } else if srt_file(source) {
@@ -314,6 +316,11 @@ fn json_file(source : @value.Cell) -> Bool raise EvalError {
 ///|
 /// %.csv and %.tsv are delimited tables, as in codec-csv.reb.
 /// %.srt is a SubRip subtitle file, as in codec-srt.reb.
+fn bbcode_file(source : @value.Cell) -> Bool raise EvalError {
+  file_suffix(source) == ".bbcode"
+}
+
+///|
 fn css_file(source : @value.Cell) -> Bool raise EvalError {
   file_suffix(source) == ".css"
 }
@@ -536,6 +543,8 @@ fn perform_save(
         write_file(path, encoded_text(args[1]))
       } else if json_file(place) && !named(env, active, "header") {
         write_file(path, encoded_json(env, args[1]))
+      } else if bbcode_file(place) && !named(env, active, "header") {
+        raise EvalError::Caused("not-done", "bbcode")
       } else if css_file(place) && !named(env, active, "header") {
         match encode_css(args[1]) {
           @value.Seq(series, index) if series.datatype() == @value.String =>
