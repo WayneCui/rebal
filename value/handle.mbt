@@ -62,9 +62,84 @@ pub fn DhKey::same(self : DhKey, other : DhKey) -> Bool {
 }
 
 ///|
+
+///|
+/// RC4 stream state. Copies share it, so `rc4/stream` advances every alias.
+pub struct Rc4Key {
+  priv s : Array[Int]
+  priv ij : Array[Int]
+  priv closed : Array[Int]
+}
+
+///|
+pub fn Rc4Key::setup(key : Array[Int]) -> Rc4Key? {
+  if key.length() == 0 {
+    None
+  } else {
+    let s : Array[Int] = []
+    let mut i = 0
+    while i < 256 {
+      s.push(i)
+      i = i + 1
+    }
+    let mut j = 0
+    let mut k = 0
+    i = 0
+    while i < 256 {
+      let a = s[i]
+      j = (j + a + key[k]) & 0xFF
+      s[i] = s[j]
+      s[j] = a
+      k = k + 1
+      if k >= key.length() {
+        k = 0
+      }
+      i = i + 1
+    }
+    Some({ s, ij: [0, 0], closed: [0], })
+  }
+}
+
+///|
+/// XOR `data` with the next keystream bytes and advance the stream.
+pub fn Rc4Key::xor(self : Rc4Key, data : Array[Int]) -> Array[Int] {
+  let out : Array[Int] = []
+  let mut x = self.ij[0]
+  let mut y = self.ij[1]
+  for byte in data {
+    x = (x + 1) & 0xFF
+    let a = self.s[x]
+    y = (y + a) & 0xFF
+    let b = self.s[y]
+    self.s[x] = b
+    self.s[y] = a
+    out.push(byte ^ self.s[(a + b) & 0xFF])
+  }
+  self.ij[0] = x
+  self.ij[1] = y
+  out
+}
+
+///|
+pub fn Rc4Key::same(self : Rc4Key, other : Rc4Key) -> Bool {
+  same_bytes(self.s, other.s) && same_bytes(self.ij, other.ij)
+}
+
+///|
+pub fn Rc4Key::release(self : Rc4Key) -> Unit {
+  self.closed[0] = 1
+}
+
+///|
+pub fn Rc4Key::released(self : Rc4Key) -> Bool {
+  self.closed[0] != 0
+}
+
+///|
 pub(all) enum HandleValue {
   Rsa(RsaKey)
   Dhm(DhKey)
+  Rc4(Rc4Key)
 }
 
 ///|
@@ -72,6 +147,7 @@ pub fn HandleValue::same(self : HandleValue, other : HandleValue) -> Bool {
   match (self, other) {
     (Rsa(a), Rsa(b)) => a.same(b)
     (Dhm(a), Dhm(b)) => a.same(b)
+    (Rc4(a), Rc4(b)) => a.same(b)
     _ => false
   }
 }
@@ -81,6 +157,7 @@ pub fn HandleValue::kind(self : HandleValue) -> String {
   match self {
     Rsa(_) => "rsa"
     Dhm(_) => "dhm"
+    Rc4(_) => "rc4"
   }
 }
 
@@ -109,6 +186,7 @@ pub fn HandleValue::release(self : HandleValue) -> Unit {
   match self {
     Rsa(key) => key.release()
     Dhm(key) => key.release()
+    Rc4(key) => key.release()
   }
 }
 
@@ -117,6 +195,7 @@ pub fn HandleValue::released(self : HandleValue) -> Bool {
   match self {
     Rsa(key) => key.released()
     Dhm(key) => key.released()
+    Rc4(key) => key.released()
   }
 }
 
