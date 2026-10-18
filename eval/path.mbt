@@ -110,6 +110,7 @@ fn path_step(
     @value.Struct(fields) => struct_field_at(env, fields, selector)
     @value.Handle(handle) => handle_field(env, handle, selector)
     @value.Event(event) => event_field(env, event, selector)
+    @value.Utype(_) => raise EvalError::Caused("bad-path-type", "")
     @value.Map(map) =>
       match map.get(selector) {
         Some(found) => found

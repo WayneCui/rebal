@@ -721,6 +721,7 @@ pub fn Env::new() -> Env {
   install(env, "struct!", @value.Type(@value.Struct))
   install(env, "typeset!", @value.Type(@value.Typeset))
   install(env, "event!", @value.Type(@value.Event))
+  install(env, "utype!", @value.Type(@value.Utype))
   install_typesets(env)
   install(env, "module!", @value.Type(@value.Module))
   install(env, "error!", @value.Type(@value.Error))

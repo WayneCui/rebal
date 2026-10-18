@@ -57,6 +57,7 @@ pub(all) enum Cell {
   Image(Image)
   Struct(StructValue)
   Typeset(Typeset)
+  Utype(UtypeValue)
 }
 pub fn Cell::datatype(Self) -> Datatype
 pub fn Cell::equal(Self, Self) -> Bool
@@ -110,6 +111,7 @@ pub(all) enum Datatype {
   Image
   Struct
   Typeset
+  Utype
 } derive(Eq)
 pub fn Datatype::equal(Self, Self) -> Bool
 pub fn Datatype::not_equal(Self, Self) -> Bool
@@ -424,6 +426,11 @@ pub fn Typeset::empty(Self) -> Bool
 pub fn Typeset::make(Array[Datatype]) -> Self
 pub fn Typeset::ordered(Self) -> Array[Datatype]
 pub fn Typeset::same(Self, Self) -> Bool
+
+pub struct UtypeValue {
+  kept : Int
+}
+pub fn UtypeValue::new() -> Self
 
 pub struct Vector {
   kind : VectorKind

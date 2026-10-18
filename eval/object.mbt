@@ -24,6 +24,7 @@ fn make_value(
     @value.Type(@value.Typeset) => make_typeset(env, spec)
     @value.Type(@value.Event) => make_event(None, spec)
     @value.Event(event) => make_event(Some(event), spec)
+    @value.Type(@value.Utype) => make_utype(spec)
     _ => raise EvalError::Cannot("make")
   }
 }

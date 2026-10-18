@@ -200,6 +200,7 @@ fn install_typesets(env : Env) -> Unit {
     @value.Event,
     @value.Handle,
     @value.Struct,
+    @value.Utype,
   ])
 }
 
@@ -259,6 +260,7 @@ fn datatype_named(name : String) -> @value.Datatype? {
     "event!" => Some(@value.Event)
     "handle!" => Some(@value.Handle)
     "struct!" => Some(@value.Struct)
+    "utype!" => Some(@value.Utype)
     _ => None
   }
 }

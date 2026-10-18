@@ -44,6 +44,7 @@ pub(all) enum Datatype {
   Image
   Struct
   Typeset
+  Utype
 } derive(Eq)
 
 ///|

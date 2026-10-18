@@ -113,5 +113,6 @@ fn datatype_rank(datatype : Datatype) -> Int {
     Event => 42
     Handle => 43
     Struct => 44
+    Utype => 45
   }
 }

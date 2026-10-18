@@ -84,6 +84,12 @@ fn write_cell(
         buf.write_string(")")
       }
       @value.Event(event) => write_event(buf, event)
+      @value.Utype(_) =>
+        if molded {
+          buf.write_string("utype!")
+        } else {
+          buf.write_string("?utype!?")
+        }
       @value.Bitset(bits) => write_bitset(buf, bits)
       @value.Vector(vector) => write_vector(buf, vector, molded)
       @value.Image(image) => write_image(buf, image)
@@ -865,5 +871,6 @@ pub fn type_name(datatype : @value.Datatype) -> String {
     @value.Image => "image!"
     @value.Struct => "struct!"
     @value.Typeset => "typeset!"
+    @value.Utype => "utype!"
   }
 }

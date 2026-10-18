@@ -43,6 +43,7 @@ fn equal_at(left : Cell, right : Cell, depth : Int) -> Bool {
       (Image(a), Image(b)) => a.same(b)
       (Struct(a), Struct(b)) => a.same(b)
       (Typeset(a), Typeset(b)) => a.same(b)
+      (Utype(_), Utype(_)) => false
       _ => false
     }
   }
