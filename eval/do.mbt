@@ -266,6 +266,8 @@ fn call(
     func.arity() + encode_extra(env, active)
   } else if func.code() == native_save {
     func.arity() + save_extra(env, active)
+  } else if func.code() == native_load {
+    func.arity() + load_extra(env, active)
   } else if func.code() == native_rsa_init {
     func.arity() + rsa_init_extra(env, active)
   } else if func.code() == native_rsa {
@@ -369,7 +371,7 @@ fn call(
   } else if func.code() == native_save {
     (perform_save(env, args, active), cursor)
   } else if func.code() == native_load {
-    (perform_load(env, args[0], active), cursor)
+    (perform_load(env, args, active), cursor)
   } else if func.code() == native_mold {
     (perform_mold(env, args[0], active), cursor)
   } else if func.code() == 0 {
@@ -400,6 +402,15 @@ fn named(env : Env, active : Array[Int], spelling : String) -> Bool {
     }
   }
   found
+}
+
+///|
+fn load_extra(env : Env, active : Array[Int]) -> Int {
+  if named(env, active, "as") {
+    1
+  } else {
+    0
+  }
 }
 
 ///|
@@ -750,7 +761,7 @@ fn apply(
   } else if func.code() == native_parse {
     perform_parse(env, args[0], args[1])
   } else if func.code() == native_load {
-    perform_load(env, args[0], [])
+    perform_load(env, args, [])
   } else if func.code() == native_save {
     perform_save(env, args, [])
   } else if func.code() == native_module {

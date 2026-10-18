@@ -84,6 +84,18 @@ test "save/compress writes zlib, a header, or a base-64 script" {
 }
 
 ///|
+test "load/as markup splits tags from the text between them" {
+  // load-test.r3 "load/as markup". An unclosed tag drops the `<`.
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "(reduce [(load/as \"<a>b</c>\" 'markup) = [<a> \"b\" </c>] (load/as #{3C613E623C2F633E} 'markup) = [<a> \"b\" </c>] (load/as \"a<b\" 'markup) = [\"a\" \"b\"] (load/as \"<!--hi-->x\" 'markup) = [<!--hi--> \"x\"] (load/as \"1<2>3\" 'markup) = [\"1<2>3\"] (load/header/as \"<a>b</c>\" 'markup) = [<a> \"b\" </c>] (type? try [load/as \"1\" 'nope]) = error!]) = reduce [true true true true true true true]",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "load/all keeps a series position and does not read the header" {
   // load-test.r3 "Load/all". mold/all writes #(string! "123" 2).
   let env = @eval.Env::new()

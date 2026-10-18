@@ -42,10 +42,20 @@ fn do_text(env : Env, text : String) -> @value.Cell raise EvalError {
 ///|
 fn perform_load(
   env : Env,
-  source : @value.Cell,
+  args : Array[@value.Cell],
   active : Array[Int],
 ) -> @value.Cell raise EvalError {
-  let (header, all) = load_flags(env, active)
+  let (header, all, kind) = load_flags(env, args, active)
+  let source = args[0]
+  match kind {
+    Some(name) =>
+      if name == "markup" {
+        return decode_markup(source)
+      } else {
+        raise EvalError::Cannot("access")
+      }
+    None => ()
+  }
   if pkix_file(source) {
     match read_pem(read_file(loaded_path(source))) {
       Some(pem) => pem_block(env, pem)
@@ -66,23 +76,41 @@ fn perform_load(
 
 ///|
 /// `/header` wins over `/all`. `/all` returns every value and leaves a header unread.
-fn load_flags(env : Env, active : Array[Int]) -> (Bool, Bool) raise EvalError {
+/// `/as` names a codec. `markup` is handled here; any other name is refused.
+fn load_flags(
+  env : Env,
+  args : Array[@value.Cell],
+  active : Array[Int],
+) -> (Bool, Bool, String?) raise EvalError {
   let mut header = false
   let mut all = false
+  let mut kind : String? = None
+  let mut cursor = 1
   for sym in active {
     let name = env.symbols.canon(sym)
     if name == "header" {
       header = true
     } else if name == "all" {
       all = true
+    } else if name == "as" {
+      kind = Some(load_type(env, args[cursor]))
+      cursor = cursor + 1
     } else {
       raise EvalError::Cannot("load")
     }
   }
   if header {
-    (true, false)
+    (true, false, kind)
   } else {
-    (false, all)
+    (false, all, kind)
+  }
+}
+
+///|
+fn load_type(env : Env, cell : @value.Cell) -> String raise EvalError {
+  match cell {
+    @value.Sym(_, lexeme) => env.symbols.canon(lexeme.sym())
+    _ => raise EvalError::Cannot("load")
   }
 }
 
