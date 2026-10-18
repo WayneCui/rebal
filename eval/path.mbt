@@ -97,6 +97,15 @@ fn path_step(
     @value.Error(error) => error_field(env, error, selector)
     @value.Seq(series, index) => step_series(series, index, selector)
     @value.Pair(x, y) => pair_field(x, y, selector)
+    @value.Vector(vector) =>
+      match selector {
+        @value.Integer(index) =>
+          match vector.at(index.to_int()) {
+            Some(cell) => cell
+            None => @value.Cell::None
+          }
+        _ => raise EvalError::InvalidPath("vector")
+      }
     @value.Map(map) =>
       match map.get(selector) {
         Some(found) => found

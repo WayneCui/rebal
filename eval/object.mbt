@@ -18,6 +18,7 @@ fn make_value(
     @value.Type(@value.Date) => to_date(spec)
     @value.Type(@value.Bitset) => to_bitset(spec)
     @value.Type(@value.Map) => to_map(spec)
+    @value.Type(@value.Vector) => make_vector(spec)
     _ => raise EvalError::Cannot("make")
   }
 }

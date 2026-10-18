@@ -84,6 +84,7 @@ fn write_cell(
         buf.write_string(")")
       }
       @value.Bitset(bits) => write_bitset(buf, bits)
+      @value.Vector(vector) => write_vector(buf, vector, molded)
       @value.Map(map) => write_map(buf, map, molded, depth)
       @value.Error(error) => {
         buf.write_string("make error! [id: ")
@@ -622,6 +623,32 @@ fn write_map(
 }
 
 ///|
+fn write_vector(
+  buf : StringBuilder,
+  vector : @value.Vector,
+  molded : Bool,
+) -> Unit {
+  if molded {
+    buf.write_string("#(")
+    buf.write_string(vector.kind().label())
+    buf.write_string(" [")
+  }
+  let count = vector.length()
+  for index in 0..<count {
+    if index > 0 {
+      buf.write_char(' ')
+    }
+    match vector.at(index + 1) {
+      Some(cell) => write_cell(buf, cell, false, 0)
+      None => ()
+    }
+  }
+  if molded {
+    buf.write_string("])")
+  }
+}
+
+///|
 fn write_bitset(buf : StringBuilder, bits : @value.Bitset) -> Unit {
   buf.write_string("make bitset! #{")
   for index in 0..<32 {
@@ -672,5 +699,6 @@ pub fn type_name(datatype : @value.Datatype) -> String {
     @value.Closure => "closure!"
     @value.Port => "port!"
     @value.Handle => "handle!"
+    @value.Vector => "vector!"
   }
 }

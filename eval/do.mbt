@@ -591,7 +591,15 @@ fn apply(
   } else if func.code() == native_try {
     perform_try(env, args[0])
   } else if func.code() == native_equal {
-    @value.Logic(@action.equal(args[0], args[1]))
+    match (args[0], args[1]) {
+      (@value.Vector(left), @value.Vector(right)) =>
+        if left.mismatched(right) {
+          raise EvalError::Caused("not-same-type", "")
+        } else {
+          @value.Logic(left.same(right))
+        }
+      _ => @value.Logic(@action.equal(args[0], args[1]))
+    }
   } else if func.code() == native_not_equal {
     @value.Logic(!@action.equal(args[0], args[1]))
   } else if func.code() == native_lesser {

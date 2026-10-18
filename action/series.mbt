@@ -117,6 +117,15 @@ pub fn pick(
   index : @value.Cell,
 ) -> Result[@value.Cell, ActionError] {
   match series {
+    @value.Vector(vector) =>
+      match fit_int(index) {
+        Some(n) =>
+          match vector.at(n) {
+            Some(cell) => Ok(cell)
+            None => Ok(@value.None)
+          }
+        _ => Err(Cannot("pick"))
+      }
     @value.Pair(x, y) =>
       match fit_int(index) {
         Some(1) => Ok(@value.Integer(x))
@@ -145,6 +154,7 @@ pub fn pick(
 pub fn length(series : @value.Cell) -> Result[@value.Cell, ActionError] {
   match series {
     @value.Map(map) => Ok(@value.Integer(map.length().to_int64()))
+    @value.Vector(vector) => Ok(@value.Integer(vector.length().to_int64()))
     _ => length_series(series)
   }
 }
