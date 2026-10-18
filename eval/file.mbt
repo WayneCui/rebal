@@ -148,6 +148,8 @@ fn perform_load(
     zip_block(read_binary(loaded_path(source)))
   } else if der_suffix(source) {
     decode_der(env, binary_cell(read_binary(loaded_path(source))))
+  } else if ico_suffix(source) {
+    ico_loaded(read_binary(loaded_path(source)))
   } else if ar_suffix(source) {
     ar_loaded(read_binary(loaded_path(source)))
   } else if crt_suffix(source) {
@@ -365,6 +367,22 @@ fn safe_suffix(source : @value.Cell) -> Bool raise EvalError {
 }
 
 ///|
+fn ico_suffix(source : @value.Cell) -> Bool raise EvalError {
+  let suffix = file_suffix(source)
+  suffix == ".ico" || suffix == ".cur"
+}
+
+///|
+/// A directory that is not an icon makes `load` report that the codec
+/// produced nothing.
+fn ico_loaded(bytes : Array[Int]) -> @value.Cell raise EvalError {
+  match decode_ico(binary_cell(bytes)) {
+    @value.Cell::None => raise EvalError::Caused("no-codec", "ico")
+    found => found
+  }
+}
+
+///|
 fn ar_suffix(source : @value.Cell) -> Bool raise EvalError {
   match file_suffix(source) {
     ".ar" | ".a" | ".lib" | ".deb" => true
@@ -480,6 +498,9 @@ fn perform_save(
       }
       if der_suffix(place) && !named(env, active, "header") {
         raise EvalError::Caused("not-done", "der")
+      }
+      if ico_suffix(place) && !named(env, active, "header") {
+        raise EvalError::Caused("not-done", "ico")
       }
       if ar_suffix(place) && !named(env, active, "header") {
         raise EvalError::Caused("not-done", "ar")
