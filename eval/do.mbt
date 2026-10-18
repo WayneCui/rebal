@@ -231,7 +231,8 @@ fn call(
     func.code() != native_rc4 &&
     func.code() != native_dh &&
     func.code() != native_ecdh &&
-    func.code() != native_ecdsa {
+    func.code() != native_ecdsa &&
+    func.code() != native_encode {
     raise EvalError::Cannot("func")
   }
   let args : Array[@value.Cell] = []
@@ -356,6 +357,8 @@ fn call(
     (perform_ecdh(env, args, active), cursor)
   } else if func.code() == native_ecdsa {
     (perform_ecdsa(env, args, active), cursor)
+  } else if func.code() == native_encode {
+    (perform_encode(env, args, active), cursor)
   } else if func.code() == 0 {
     (call_user(env, func, args, active), cursor)
   } else {

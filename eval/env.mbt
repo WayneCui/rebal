@@ -494,6 +494,9 @@ let native_ecdh : Int = 162
 let native_ecdsa : Int = 163
 
 ///|
+let native_encode : Int = 164
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -528,6 +531,7 @@ pub fn Env::new() -> Env {
   define_native(env, "modify", 3, false, native_modify)
   define_native(env, "update", 1, false, native_update)
   define_native(env, "decode", 2, false, native_decode)
+  define_native(env, "encode", 2, false, native_encode)
   define_native(env, "rsa-init", 2, false, native_rsa_init)
   define_native(env, "rsa", 2, false, native_rsa)
   define_native(env, "release", 1, false, native_release)

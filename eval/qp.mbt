@@ -1,4 +1,87 @@
 ///|
+/// Quoted-printable, as in codec-quoted-printable.reb.
+/// Encode keeps every byte from 0 through 127 except `=`, then folds a line
+/// after 75 bytes. Decode drops a soft break before turning `=HH` back into a
+/// byte. `/uri` writes a space as `_` and reads `_` as a space.
+fn encode_quoted(
+  value : @value.Cell,
+  uri : Bool,
+) -> @value.Cell raise EvalError {
+  let bytes = match value {
+    @value.Seq(series, index) if @value.text_series(series.datatype()) =>
+      utf8_bytes(text_from(series, index))
+    @value.Seq(series, index) if series.datatype() == @value.Binary =>
+      bytes_from(series, index)
+    _ => raise EvalError::Cannot("encode")
+  }
+  let encoded = match
+    @series.enhex_with(binary_cell(bytes), uri, '='.to_int(), Some(qp_safe())) {
+    Some(@value.Seq(series, index)) => bytes_from(series, index)
+    _ => raise EvalError::Cannot("encode")
+  }
+  let wrapped = qp_wrap(encoded)
+  match value {
+    @value.Seq(series, _) if @value.text_series(series.datatype()) =>
+      typed_text(series.datatype(), qp_text(wrapped))
+    _ => binary_cell(wrapped)
+  }
+}
+
+///|
+fn perform_encode(
+  env : Env,
+  args : Array[@value.Cell],
+  active : Array[Int],
+) -> @value.Cell raise EvalError {
+  let mut uri = false
+  for sym in active {
+    let name = env.symbols.canon(sym)
+    if name == "uri" {
+      uri = true
+    } else {
+      raise EvalError::Cannot("encode")
+    }
+  }
+  let kind = match args[0] {
+    @value.Sym(_, lexeme) => env.symbols.canon(lexeme.sym())
+    _ => raise EvalError::Cannot("encode")
+  }
+  if kind != "quoted-printable" {
+    raise EvalError::Cannot("access")
+  }
+  encode_quoted(args[1], uri)
+}
+
+///|
+fn qp_safe() -> @value.Bitset {
+  let set = @value.Bitset::make()
+  set.fill(0, '='.to_int() - 1)
+  set.fill('='.to_int() + 1, 127)
+  set
+}
+
+///|
+fn qp_wrap(bytes : Array[Int]) -> Array[Int] {
+  let limit = 75
+  let out : Array[Int] = []
+  let mut cursor = 0
+  while cursor + limit < bytes.length() && bytes.length() - (cursor + limit) > 1 {
+    for offset in 0..<limit {
+      out.push(bytes[cursor + offset])
+    }
+    out.push('='.to_int())
+    out.push('\r'.to_int())
+    out.push('\n'.to_int())
+    cursor = cursor + limit
+  }
+  while cursor < bytes.length() {
+    out.push(bytes[cursor])
+    cursor = cursor + 1
+  }
+  out
+}
+
+///|
 /// Quoted-printable, as in codec-quoted-printable.reb. Soft breaks disappear
 /// before `=HH` is turned back into a byte. `/uri` reads `_` as a space.
 fn decode_quoted(
