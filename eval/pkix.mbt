@@ -138,6 +138,12 @@ fn perform_decode(
     }
     return decode_ar(args[1])
   }
+  if kind == "braille" {
+    if binary {
+      raise EvalError::Cannot("decode")
+    }
+    return decode_braille(args[1])
+  }
   if kind == "safe" {
     if binary {
       raise EvalError::Cannot("decode")

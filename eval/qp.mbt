@@ -81,6 +81,11 @@ fn perform_encode(
     }
     let _ = form
     encode_text(args[1])
+  } else if kind == "braille" {
+    if uri || form is Some(_) || pass is Some(_) {
+      raise EvalError::Cannot("encode")
+    }
+    encode_braille(args[1])
   } else if kind == "safe" {
     if uri || form is Some(_) {
       raise EvalError::Cannot("encode")
