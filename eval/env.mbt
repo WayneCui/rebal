@@ -503,6 +503,9 @@ let native_encoding : Int = 165
 let native_words_of : Int = 166
 
 ///|
+let native_mime_type : Int = 167
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -540,6 +543,7 @@ pub fn Env::new() -> Env {
   define_native(env, "encode", 2, false, native_encode)
   define_native(env, "encoding?", 1, false, native_encoding)
   define_native(env, "words-of", 1, false, native_words_of)
+  define_native(env, "mime-type?", 1, false, native_mime_type)
   define_native(env, "rsa-init", 2, false, native_rsa_init)
   define_native(env, "rsa", 2, false, native_rsa)
   define_native(env, "release", 1, false, native_release)

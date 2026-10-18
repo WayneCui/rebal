@@ -809,6 +809,8 @@ fn apply(
     perform_encoding(env, args[0])
   } else if func.code() == native_words_of {
     words_of(env, args[0])
+  } else if func.code() == native_mime_type {
+    mime_type(args[0])
   } else {
     raise EvalError::Cannot("function")
   }
