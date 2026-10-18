@@ -7,12 +7,15 @@ fn perform_decode(
   active : Array[Int],
 ) -> @value.Cell raise EvalError {
   let mut binary = false
+  let mut uri = false
   let mut password : String? = None
   let mut cursor = 2
   for sym in active {
     let name = env.symbols.canon(sym)
     if name == "binary" {
       binary = true
+    } else if name == "uri" {
+      uri = true
     } else if name == "password" {
       password = Some(latin_text(payload_bytes(args[cursor], "decode")))
       cursor = cursor + 1
@@ -25,6 +28,9 @@ fn perform_decode(
     _ => raise EvalError::Cannot("decode")
   }
   if has_password(password) && kind != "ppk" {
+    raise EvalError::Cannot("decode")
+  }
+  if uri && kind != "quoted-printable" {
     raise EvalError::Cannot("decode")
   }
   if kind == "utc-time" {
@@ -62,6 +68,12 @@ fn perform_decode(
       raise EvalError::Cannot("decode")
     }
     return decode_ppk(env, args[1], password)
+  }
+  if kind == "quoted-printable" {
+    if binary {
+      raise EvalError::Cannot("decode")
+    }
+    return decode_quoted(args[1], uri)
   }
   if kind != "pkix" {
     raise EvalError::Cannot("access")
