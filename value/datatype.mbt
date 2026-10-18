@@ -41,6 +41,7 @@ pub(all) enum Datatype {
   Handle
   Vector
   Image
+  Struct
 } derive(Eq)
 
 ///|

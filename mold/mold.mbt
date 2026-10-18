@@ -86,6 +86,7 @@ fn write_cell(
       @value.Bitset(bits) => write_bitset(buf, bits)
       @value.Vector(vector) => write_vector(buf, vector, molded)
       @value.Image(image) => write_image(buf, image)
+      @value.Struct(fields) => write_struct(buf, fields)
       @value.Map(map) => write_map(buf, map, molded, depth)
       @value.Error(error) => {
         buf.write_string("make error! [id: ")
@@ -692,6 +693,61 @@ fn write_image_bytes(
 }
 
 ///|
+/// Flat construction form. `none` inside a field is `_`.
+fn write_struct(buf : StringBuilder, fields : @value.StructValue) -> Unit {
+  buf.write_string("#(struct! [")
+  for index in 0..<fields.count() {
+    if index > 0 {
+      buf.write_char(' ')
+    }
+    let field = fields.field(index)
+    buf.write_string(field.name())
+    buf.write_string(" [")
+    buf.write_string(field.label())
+    match field.shown_dimension() {
+      Some(dimension) => {
+        buf.write_string(" [")
+        buf.write_string(dimension.to_string())
+        buf.write_string("]")
+      }
+      None => ()
+    }
+    buf.write_char(']')
+  }
+  buf.write_string("] [")
+  for index in 0..<fields.count() {
+    if index > 0 {
+      buf.write_char(' ')
+    }
+    let field = fields.field(index)
+    buf.write_string(field.name())
+    buf.write_string(": ")
+    let values = field.mold_values()
+    if field.wide() {
+      buf.write_char('[')
+      for slot in 0..<values.length() {
+        if slot > 0 {
+          buf.write_char(' ')
+        }
+        write_struct_value(buf, values[slot])
+      }
+      buf.write_char(']')
+    } else if values.length() > 0 {
+      write_struct_value(buf, values[0])
+    }
+  }
+  buf.write_string("])")
+}
+
+///|
+fn write_struct_value(buf : StringBuilder, cell : @value.Cell) -> Unit {
+  match cell {
+    @value.None => buf.write_char('_')
+    _ => write_cell(buf, cell, false, 0)
+  }
+}
+
+///|
 fn write_bitset(buf : StringBuilder, bits : @value.Bitset) -> Unit {
   buf.write_string("make bitset! #{")
   for index in 0..<32 {
@@ -744,5 +800,6 @@ pub fn type_name(datatype : @value.Datatype) -> String {
     @value.Handle => "handle!"
     @value.Vector => "vector!"
     @value.Image => "image!"
+    @value.Struct => "struct!"
   }
 }

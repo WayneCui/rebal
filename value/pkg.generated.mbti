@@ -54,6 +54,7 @@ pub(all) enum Cell {
   Handle(HandleValue)
   Vector(Vector)
   Image(Image)
+  Struct(StructValue)
 }
 pub fn Cell::datatype(Self) -> Datatype
 pub fn Cell::equal(Self, Self) -> Bool
@@ -104,6 +105,7 @@ pub(all) enum Datatype {
   Handle
   Vector
   Image
+  Struct
 } derive(Eq)
 pub fn Datatype::equal(Self, Self) -> Bool
 pub fn Datatype::not_equal(Self, Self) -> Bool
@@ -337,6 +339,51 @@ pub fn Series::set_item(Self, Int, Cell) -> Bool
 pub fn Series::set_path() -> Self
 pub fn Series::text() -> Self
 pub fn Series::text_of(Datatype) -> Self
+
+pub struct StructField {
+  name : String
+  kind : StructKind
+  dimension : Int
+  shown : Bool
+  ints : Array[Int64]
+  floats : Array[Double]
+}
+pub fn StructField::label(Self) -> String
+pub fn StructField::make(String, StructKind, Int, Bool) -> Self
+pub fn StructField::mold_values(Self) -> Array[Cell]
+pub fn StructField::name(Self) -> String
+pub fn StructField::shown_dimension(Self) -> Int?
+pub fn StructField::wide(Self) -> Bool
+
+pub(all) enum StructKind {
+  Int8
+  Int16
+  Int32
+  Int64
+  Uint8
+  Uint16
+  Uint32
+  Uint64
+  Float32
+  Float64
+  Word
+} derive(Eq)
+pub fn StructKind::bytes(Self) -> Int
+pub fn StructKind::equal(Self, Self) -> Bool
+pub fn StructKind::float(Self) -> Bool
+pub fn StructKind::label(Self) -> String
+pub fn StructKind::not_equal(Self, Self) -> Bool
+pub fn StructKind::vector_kind(Self) -> VectorKind
+
+pub struct StructValue {
+  fields : Array[StructField]
+}
+pub fn StructValue::count(Self) -> Int
+pub fn StructValue::field(Self, Int) -> StructField
+pub fn StructValue::get(Self, String) -> Cell?
+pub fn StructValue::length(Self) -> Int
+pub fn StructValue::make(Array[StructField]) -> Self
+pub fn StructValue::same(Self, Self) -> Bool
 
 pub struct Symbols {
   canon_to_id : Map[String, Int]

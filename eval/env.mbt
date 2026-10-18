@@ -718,6 +718,7 @@ pub fn Env::new() -> Env {
   install(env, "handle!", @value.Type(@value.Handle))
   install(env, "vector!", @value.Type(@value.Vector))
   install(env, "image!", @value.Type(@value.Image))
+  install(env, "struct!", @value.Type(@value.Struct))
   install(env, "module!", @value.Type(@value.Module))
   install(env, "error!", @value.Type(@value.Error))
   install(env, "sys", @value.Object(@value.Frame::new()))

@@ -25,6 +25,7 @@ pub(all) enum Cell {
   Handle(HandleValue)
   Vector(Vector)
   Image(Image)
+  Struct(StructValue)
 }
 
 ///|
@@ -62,6 +63,7 @@ pub fn Cell::datatype(self : Cell) -> Datatype {
     Handle(_) => Handle
     Vector(_) => Vector
     Image(_) => Image
+    Struct(_) => Struct
   }
 }
 

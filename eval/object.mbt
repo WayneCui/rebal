@@ -20,6 +20,7 @@ fn make_value(
     @value.Type(@value.Map) => to_map(spec)
     @value.Type(@value.Vector) => make_vector(spec)
     @value.Type(@value.Image) => make_image(spec)
+    @value.Type(@value.Struct) => make_struct(spec)
     _ => raise EvalError::Cannot("make")
   }
 }

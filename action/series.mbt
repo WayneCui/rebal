@@ -178,6 +178,7 @@ pub fn length(series : @value.Cell) -> Result[@value.Cell, ActionError] {
     @value.Map(map) => Ok(@value.Integer(map.length().to_int64()))
     @value.Vector(vector) => Ok(@value.Integer(vector.length().to_int64()))
     @value.Image(image) => Ok(@value.Integer(image.length().to_int64()))
+    @value.Struct(fields) => Ok(@value.Integer(fields.length().to_int64()))
     _ => length_series(series)
   }
 }

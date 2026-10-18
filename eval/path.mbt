@@ -107,6 +107,7 @@ fn path_step(
         _ => raise EvalError::InvalidPath("vector")
       }
     @value.Image(image) => image_field(env, image, selector)
+    @value.Struct(fields) => struct_field_at(env, fields, selector)
     @value.Map(map) =>
       match map.get(selector) {
         Some(found) => found

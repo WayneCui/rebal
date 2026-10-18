@@ -40,6 +40,7 @@ fn equal_at(left : Cell, right : Cell, depth : Int) -> Bool {
       (Handle(a), Handle(b)) => a.same(b)
       (Vector(a), Vector(b)) => a.same(b)
       (Image(a), Image(b)) => a.same(b)
+      (Struct(a), Struct(b)) => a.same(b)
       _ => false
     }
   }
