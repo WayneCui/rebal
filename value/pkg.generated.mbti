@@ -126,12 +126,15 @@ pub fn DateValue::zone(Self) -> Int?
 pub struct DhKey {
   p : Array[Int]
   g : Array[Int]
+  x : Array[Int]
+  gx : Array[Int]
   // private fields
 }
 pub fn DhKey::new(Array[Int], Array[Int]) -> Self?
 pub fn DhKey::release(Self) -> Unit
 pub fn DhKey::released(Self) -> Bool
 pub fn DhKey::same(Self, Self) -> Bool
+pub fn DhKey::with_pair(Array[Int], Array[Int], Array[Int], Array[Int]) -> Self?
 
 pub struct ErrorValue {
   id : String

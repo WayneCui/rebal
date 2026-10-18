@@ -44,21 +44,43 @@ pub fn RsaKey::from_private(
 pub struct DhKey {
   p : Array[Int]
   g : Array[Int]
+  x : Array[Int]
+  gx : Array[Int]
   priv closed : Array[Int]
 }
 
 ///|
 pub fn DhKey::new(p : Array[Int], g : Array[Int]) -> DhKey? {
   if magnitude_bits(p) >= 128 && magnitude_bits(g) >= 1 && less_magnitude(g, p) {
-    Some({ p, g, closed: [0], })
+    Some({ p, g, x: [], gx: [], closed: [0], })
   } else {
     None
   }
 }
 
 ///|
+pub fn DhKey::with_pair(
+  p : Array[Int],
+  g : Array[Int],
+  x : Array[Int],
+  gx : Array[Int],
+) -> DhKey? {
+  if x.length() == 0 || gx.length() == 0 {
+    None
+  } else {
+    match DhKey::new(p, g) {
+      None => None
+      Some(_) => Some({ p, g, x, gx, closed: [0], })
+    }
+  }
+}
+
+///|
 pub fn DhKey::same(self : DhKey, other : DhKey) -> Bool {
-  same_bytes(self.p, other.p) && same_bytes(self.g, other.g)
+  same_bytes(self.p, other.p) &&
+  same_bytes(self.g, other.g) &&
+  same_bytes(self.x, other.x) &&
+  same_bytes(self.gx, other.gx)
 }
 
 ///|
