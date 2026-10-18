@@ -470,6 +470,9 @@ let native_update : Int = 154
 let native_decode : Int = 155
 
 ///|
+let native_rsa_init : Int = 156
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -504,6 +507,7 @@ pub fn Env::new() -> Env {
   define_native(env, "modify", 3, false, native_modify)
   define_native(env, "update", 1, false, native_update)
   define_native(env, "decode", 2, false, native_decode)
+  define_native(env, "rsa-init", 2, false, native_rsa_init)
   define_native(env, "copy", 1, false, native_copy)
   define_native(env, "insert", 2, false, native_insert)
   define_native(env, "remove", 1, false, native_remove)
