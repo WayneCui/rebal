@@ -191,6 +191,19 @@ test "a script header turns yes, no, and none into values" {
 }
 
 ///|
+test "a .json suffix saves and loads JSON" {
+  // codec-json.reb. A word in a block is a string. none is null.
+  @eval.write_file("/tmp/rebal-bad.json", "{")
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "f: save %/tmp/rebal-j.json [1 \"a\" true] a: load f m: load save %/tmp/rebal-j.json make map! [a: 1] (reduce [f = %/tmp/rebal-j.json a = [1 \"a\" \"true\"] (load save %/tmp/rebal-j.json none) = none m/a = 1 (load save %/tmp/rebal-J.JSON [1]) = [1] (load save %/tmp/rebal-j.json \"hi\") = \"hi\" (load save %/tmp/rebal-j.json true) = true (type? try [load %/tmp/rebal-bad.json]) = error!]) = reduce [true true true true true true true true]",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "an html suffix loads as markup and cannot be saved as a script" {
   // base-defs.reb. Saving one of these suffixes without /header is invalid-arg.
   @eval.write_file("/tmp/rebal-m.html", "<a>b</c>")

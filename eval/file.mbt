@@ -85,6 +85,8 @@ fn perform_load(
     load_text(source)
   } else if markup_file(source) {
     decode_markup(source)
+  } else if json_file(source) {
+    decode_json(env, text_series(source_text(source)))
   } else {
     match source {
       @value.Seq(series, index) if series.datatype() == @value.Binary =>
@@ -219,6 +221,12 @@ fn text_file(source : @value.Cell) -> Bool raise EvalError {
 
 ///|
 /// Markup suffixes from base-defs.reb. The native codec cannot encode them.
+/// %.json is the JSON codec, as in codec-json.reb.
+fn json_file(source : @value.Cell) -> Bool raise EvalError {
+  file_suffix(source) == ".json"
+}
+
+///|
 fn markup_file(source : @value.Cell) -> Bool raise EvalError {
   match file_suffix(source) {
     ".html" | ".htm" | ".xsl" | ".wml" | ".sgml" | ".asp" | ".php" => true
@@ -276,6 +284,8 @@ fn perform_save(
       }
       let body = if text_file(place) && !named(env, active, "header") {
         encoded_text(args[1])
+      } else if json_file(place) && !named(env, active, "header") {
+        encoded_json(args[1])
       } else {
         script
       }

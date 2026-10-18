@@ -1,6 +1,15 @@
 ///|
 /// JSON text, as in `to-json` without indentation. A map becomes an object.
 /// A word inside an array is molded, then written as a string.
+/// The text `save` writes for a `.json` file.
+fn encoded_json(value : @value.Cell) -> String raise EvalError {
+  match encode_json(value) {
+    @value.Seq(series, index) => text_from(series, index)
+    _ => raise EvalError::Cannot("save")
+  }
+}
+
+///|
 fn encode_json(value : @value.Cell) -> @value.Cell raise EvalError {
   let buf = StringBuilder()
   json_emit(buf, value)
