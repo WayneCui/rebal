@@ -28,68 +28,131 @@ fn pdf_document(env : Env, bytes : Array[Int]) -> @value.Cell? raise EvalError {
       let objects = @value.MapValue::make()
       let refs = @value.Series::block()
       let mut trailer : @value.Cell = @value.Cell::None
-      let mut start : @value.Cell = @value.Cell::None
-      let mut failed = false
-      let mut reading = true
-      while reading && !failed {
-        at = pdf_gap(bytes, at)
-        match pdf_object(env, bytes, at, objects) {
-          Some(next) => at = next
-          None => reading = false
-        }
-      }
-      let mut xref = true
-      while xref && !failed {
-        at = pdf_gap(bytes, at)
-        if pdf_keyword(bytes, at, "xref") {
-          match pdf_xref(bytes, at, refs) {
-            Some(next) => at = next
-            None => {
-              failed = true
-              xref = false
+      let mut start_at : @value.Cell = @value.Cell::None
+      match pdf_body(env, bytes, at, objects, refs) {
+        None => None
+        Some((next, found_trailer, found_start)) => {
+          at = pdf_gap(bytes, next)
+          match found_trailer {
+            Some(cell) => trailer = cell
+            None => ()
+          }
+          match found_start {
+            Some(cell) => start_at = cell
+            None => ()
+          }
+          if !pdf_keyword(bytes, at, "%%EOF") {
+            None
+          } else {
+            at = pdf_gap(bytes, at + 5)
+            if at < bytes.length() {
+              match pdf_body(env, bytes, at, objects, refs) {
+                None => None
+                Some((again, again_trailer, again_start)) => {
+                  at = pdf_gap(bytes, again)
+                  match again_trailer {
+                    Some(cell) => trailer = cell
+                    None => ()
+                  }
+                  match again_start {
+                    Some(cell) => start_at = cell
+                    None => ()
+                  }
+                  if !pdf_keyword(bytes, at, "%%EOF") {
+                    None
+                  } else {
+                    pdf_finish(
+                      env,
+                      bytes,
+                      version,
+                      objects,
+                      refs,
+                      pdf_linearized(env, bytes, objects, trailer),
+                      start_at,
+                    )
+                  }
+                }
+              }
+            } else {
+              pdf_finish(
+                env,
+                bytes,
+                version,
+                objects,
+                refs,
+                pdf_linearized(env, bytes, objects, trailer),
+                start_at,
+              )
             }
           }
-        } else {
-          xref = false
         }
-      }
-      if !failed {
-        at = pdf_gap(bytes, at)
-        match pdf_tail(env, bytes, at, objects) {
-          Some((next, found_trailer, found_start)) => {
-            at = next
-            match found_trailer {
-              Some(cell) => trailer = cell
-              None => ()
-            }
-            match found_start {
-              Some(cell) => start = cell
-              None => ()
-            }
-          }
-          None => failed = true
-        }
-      }
-      at = pdf_gap(bytes, at)
-      if failed || !pdf_keyword(bytes, at, "%%EOF") {
-        None
-      } else {
-        let frame = @value.Frame::new()
-        put_field(env, frame, "version", text_series(version))
-        put_field(
-          env,
-          frame,
-          "file-size",
-          @value.Integer(bytes.length().to_int64()),
-        )
-        put_field(env, frame, "trailer", trailer)
-        put_field(env, frame, "objects", @value.Map(objects))
-        put_field(env, frame, "referencies", @value.Seq(refs, 0))
-        put_field(env, frame, "startxref", start)
-        Some(@value.Object(frame))
       }
     }
   }
+}
+
+///|
+fn pdf_body(
+  env : Env,
+  bytes : Array[Int],
+  at : Int,
+  objects : @value.MapValue,
+  refs : @value.Series,
+) -> (Int, @value.Cell?, @value.Cell?)? raise EvalError {
+  let mut cursor = at
+  let mut reading = true
+  while reading {
+    cursor = pdf_gap(bytes, cursor)
+    match pdf_object(env, bytes, cursor, objects) {
+      Some((next, _)) => cursor = next
+      None => reading = false
+    }
+  }
+  let mut xref = true
+  let mut failed = false
+  while xref && !failed {
+    cursor = pdf_gap(bytes, cursor)
+    if pdf_keyword(bytes, cursor, "xref") {
+      match pdf_xref(bytes, cursor, refs) {
+        Some(next) => cursor = next
+        None => {
+          failed = true
+          xref = false
+        }
+      }
+    } else {
+      xref = false
+    }
+  }
+  if failed {
+    None
+  } else {
+    cursor = pdf_gap(bytes, cursor)
+    match pdf_tail(env, bytes, cursor, objects) {
+      Some((next, trailer, start_at)) => Some((next, trailer, start_at))
+      None => None
+    }
+  }
+}
+
+///|
+fn pdf_finish(
+  env : Env,
+  bytes : Array[Int],
+  version : String,
+  objects : @value.MapValue,
+  refs : @value.Series,
+  trailer : @value.Cell,
+  start_at : @value.Cell,
+) -> @value.Cell? raise EvalError {
+  let frame = @value.Frame::new()
+  put_field(env, frame, "version", text_series(version))
+  put_field(env, frame, "file-size", @value.Integer(bytes.length().to_int64()))
+  put_field(env, frame, "trailer", trailer)
+  put_field(env, frame, "objects", @value.Map(objects))
+  put_field(env, frame, "referencies", @value.Seq(refs, 0))
+  put_field(env, frame, "startxref", start_at)
+  Some(@value.Object(frame))
 }
 
 ///|
@@ -147,7 +210,7 @@ fn pdf_object(
   bytes : Array[Int],
   at : Int,
   objects : @value.MapValue,
-) -> Int? raise EvalError {
+) -> (Int, @value.Cell)? raise EvalError {
   match pdf_ref_id(bytes, at) {
     None => None
     Some((key, after_id)) => {
@@ -162,13 +225,56 @@ fn pdf_object(
           cursor = pdf_gap(bytes, next)
           if pdf_keyword(bytes, cursor, "endobj") {
             objects.put(key, cell)
-            Some(cursor + 6)
+            Some((cursor + 6, cell))
           } else {
             None
           }
         }
       }
     }
+  }
+}
+
+///|
+/// A linearized file stores the real trailer at the byte offset `T` of the
+/// first object. The dictionary there replaces the trailer keyword.
+fn pdf_linearized(
+  env : Env,
+  bytes : Array[Int],
+  objects : @value.MapValue,
+  trailer : @value.Cell,
+) -> @value.Cell raise EvalError {
+  if objects.length() == 0 {
+    return trailer
+  }
+  match objects.value(0) {
+    Some(@value.Map(map)) =>
+      if pdf_truthy(pdf_map_field(map, "linearized")) {
+        match pdf_map_field(map, "t") {
+          Some(@value.Integer(offset)) =>
+            match
+              pdf_object(env, bytes, pdf_gap(bytes, offset.to_int()), objects) {
+              Some((_, cell)) => cell
+              None => trailer
+            }
+          _ => trailer
+        }
+      } else {
+        trailer
+      }
+    _ => trailer
+  }
+}
+
+///|
+fn pdf_truthy(cell : @value.Cell?) -> Bool {
+  match cell {
+    Some(@value.Cell::None)
+    | Some(@value.Logic(false))
+    | Some(@value.Integer(0L)) => false
+    Some(@value.Decimal(number)) => number != 0.0
+    Some(_) => true
+    None => false
   }
 }
 
