@@ -74,7 +74,7 @@ fn perform_encode(
     if uri || form is Some(_) {
       raise EvalError::Cannot("encode")
     }
-    encode_json(args[1])
+    encode_json(env, args[1])
   } else if kind == "text" {
     if uri {
       raise EvalError::Cannot("encode")

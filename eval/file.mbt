@@ -455,7 +455,7 @@ fn perform_save(
       let body = if text_file(place) && !named(env, active, "header") {
         encoded_text(args[1])
       } else if json_file(place) && !named(env, active, "header") {
-        encoded_json(args[1])
+        encoded_json(env, args[1])
       } else {
         script
       }

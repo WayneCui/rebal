@@ -1,13 +1,14 @@
 ///|
 pub struct Frame {
   slots : Array[Cell]
+  syms : Array[Int]
   sym_to_slot : Map[Int, Int]
   locked : Array[Bool]
 }
 
 ///|
 pub fn Frame::new() -> Frame {
-  { slots: [], sym_to_slot: Map([]), locked: [], }
+  { slots: [], syms: [], sym_to_slot: Map([]), locked: [], }
 }
 
 ///|
@@ -24,6 +25,7 @@ pub fn Frame::ensure(self : Frame, sym : Int) -> Int {
     None => {
       let index = self.slots.length()
       self.slots.push(Unset)
+      self.syms.push(sym)
       self.locked.push(false)
       self.sym_to_slot.set(sym, index)
       index
@@ -68,13 +70,24 @@ pub fn Frame::length(self : Frame) -> Int {
 }
 
 ///|
+/// The symbol added in this slot. Slots stay in the order words were created.
+pub fn Frame::sym(self : Frame, index : Int) -> Int? {
+  self.syms.get(index)
+}
+
+///|
 /// A new frame with the same words and empty slots. The original stays as it is.
 pub fn Frame::copy_shape(self : Frame) -> Frame {
   let slots : Array[Cell] = []
+  let syms : Array[Int] = []
   let locked : Array[Bool] = []
-  for _ in 0..<self.slots.length() {
+  for index in 0..<self.slots.length() {
     slots.push(Unset)
+    match self.syms.get(index) {
+      Some(sym) => syms.push(sym)
+      None => ()
+    }
     locked.push(false)
   }
-  { slots, sym_to_slot: self.sym_to_slot.copy(), locked, }
+  { slots, syms, sym_to_slot: self.sym_to_slot.copy(), locked, }
 }

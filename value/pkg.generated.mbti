@@ -158,6 +158,7 @@ pub fn ErrorValue::make(String, String, String) -> Self
 
 pub struct Frame {
   slots : Array[Cell]
+  syms : Array[Int]
   sym_to_slot : Map[Int, Int]
   locked : Array[Bool]
 }
@@ -170,6 +171,7 @@ pub fn Frame::length(Self) -> Int
 pub fn Frame::lock(Self, Int, Bool) -> Unit
 pub fn Frame::new() -> Self
 pub fn Frame::set(Self, Int, Cell) -> Bool
+pub fn Frame::sym(Self, Int) -> Int?
 
 pub struct Func {
   params : Array[Int]

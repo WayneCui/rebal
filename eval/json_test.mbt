@@ -21,3 +21,15 @@ test "json encode writes maps without spaces and round-trips" {
     is @value.Logic(true),
   )
 }
+
+///|
+test "json encode writes object fields in creation order" {
+  // codec-json.reb. object! uses the same object text as map!.
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "(reduce [(encode 'json make object! [b: 2 a: 1]) = {{\"b\":2,\"a\":1}} (encode 'json make object! [a: none b: true]) = {{\"a\":null,\"b\":true}} (encode 'json make object! [a: make object! [c: 3]]) = {{\"a\":{\"c\":3}}} (encode 'json make object! []) = {{}} (encode 'json make object! [a: 'hi]) = {{\"a\":\"hi\"}}]) = reduce [true true true true true]",
+    )
+    is @value.Logic(true),
+  )
+}

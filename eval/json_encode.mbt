@@ -2,22 +2,26 @@
 /// JSON text, as in `to-json` without indentation. A map becomes an object.
 /// A word inside an array is molded, then written as a string.
 /// The text `save` writes for a `.json` file.
-fn encoded_json(value : @value.Cell) -> String raise EvalError {
-  match encode_json(value) {
+fn encoded_json(env : Env, value : @value.Cell) -> String raise EvalError {
+  match encode_json(env, value) {
     @value.Seq(series, index) => text_from(series, index)
     _ => raise EvalError::Cannot("save")
   }
 }
 
 ///|
-fn encode_json(value : @value.Cell) -> @value.Cell raise EvalError {
+fn encode_json(env : Env, value : @value.Cell) -> @value.Cell raise EvalError {
   let buf = StringBuilder()
-  json_emit(buf, value)
+  json_emit(env, buf, value)
   text_series(buf.to_string())
 }
 
 ///|
-fn json_emit(buf : StringBuilder, value : @value.Cell) -> Unit raise EvalError {
+fn json_emit(
+  env : Env,
+  buf : StringBuilder,
+  value : @value.Cell,
+) -> Unit raise EvalError {
   match value {
     @value.None => buf.write_string("null")
     @value.Logic(true) => buf.write_string("true")
@@ -25,14 +29,16 @@ fn json_emit(buf : StringBuilder, value : @value.Cell) -> Unit raise EvalError {
     @value.Integer(n) => buf.write_string(n.to_string())
     @value.Decimal(_) => buf.write_string(@mold.mold_text(value))
     @value.Percent(n) => buf.write_string(@mold.mold_text(@value.Decimal(n)))
-    @value.Map(map) => json_write_object(buf, map)
-    @value.Seq(series, index) => json_series(buf, series, index)
+    @value.Map(map) => json_write_object(env, buf, map)
+    @value.Object(frame) => json_write_frame(env, buf, frame)
+    @value.Seq(series, index) => json_series(env, buf, series, index)
     _ => json_quote(buf, @mold.mold_text(value))
   }
 }
 
 ///|
 fn json_series(
+  env : Env,
   buf : StringBuilder,
   series : @value.Series,
   index : Int,
@@ -42,7 +48,7 @@ fn json_series(
     kind == @value.Paren ||
     kind == @value.Path ||
     kind == @value.SetPath {
-    json_list(buf, series, index)
+    json_list(env, buf, series, index)
   } else if @value.text_series(kind) || kind == @value.Binary {
     json_quote(buf, @mold.form_text(@value.Seq(series, index)))
   } else {
@@ -52,6 +58,7 @@ fn json_series(
 
 ///|
 fn json_list(
+  env : Env,
   buf : StringBuilder,
   series : @value.Series,
   index : Int,
@@ -66,7 +73,7 @@ fn json_list(
           buf.write_char(',')
         }
         first = false
-        json_emit(buf, item)
+        json_emit(env, buf, item)
       }
       None => ()
     }
@@ -76,7 +83,34 @@ fn json_list(
 }
 
 ///|
+/// Object fields are written in the order the words were created.
+fn json_write_frame(
+  env : Env,
+  buf : StringBuilder,
+  frame : @value.Frame,
+) -> Unit raise EvalError {
+  buf.write_char('{')
+  let mut first = true
+  for index in 0..<frame.length() {
+    match (frame.sym(index), frame.get(index)) {
+      (Some(sym), Some(value)) => {
+        if !first {
+          buf.write_char(',')
+        }
+        first = false
+        json_quote(buf, env.symbols.canon(sym))
+        buf.write_char(':')
+        json_emit(env, buf, value)
+      }
+      _ => ()
+    }
+  }
+  buf.write_char('}')
+}
+
+///|
 fn json_write_object(
+  env : Env,
   buf : StringBuilder,
   map : @value.MapValue,
 ) -> Unit raise EvalError {
@@ -91,7 +125,7 @@ fn json_write_object(
         first = false
         json_quote(buf, json_key_name(key))
         buf.write_char(':')
-        json_emit(buf, value)
+        json_emit(env, buf, value)
       }
       _ => ()
     }
