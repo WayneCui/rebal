@@ -132,6 +132,12 @@ fn perform_decode(
     }
     return decode_tar(args[1], only, only_value)
   }
+  if kind == "css" {
+    if binary {
+      raise EvalError::Cannot("decode")
+    }
+    return decode_css(args[1])
+  }
   if kind == "ico" {
     if binary {
       raise EvalError::Cannot("decode")

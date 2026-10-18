@@ -94,6 +94,12 @@ fn perform_encode(
     let _ = form
     let delimiter = if kind == "tsv" { '\t'.to_int() } else { ','.to_int() }
     encode_csv(args[1], delimiter)
+  } else if kind == "css" {
+    if uri || pass is Some(_) {
+      raise EvalError::Cannot("encode")
+    }
+    let _ = form
+    encode_css(args[1])
   } else if kind == "ico" {
     raise EvalError::Caused("not-done", "ico")
   } else if kind == "braille" {

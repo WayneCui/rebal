@@ -134,6 +134,8 @@ fn perform_load(
         ','.to_int()
       },
     )
+  } else if css_file(source) {
+    decode_css(binary_cell(read_binary(loaded_path(source))))
   } else if srt_file(source) {
     decode_srt(env, source)
   } else if gzip_file(source) {
@@ -312,6 +314,11 @@ fn json_file(source : @value.Cell) -> Bool raise EvalError {
 ///|
 /// %.csv and %.tsv are delimited tables, as in codec-csv.reb.
 /// %.srt is a SubRip subtitle file, as in codec-srt.reb.
+fn css_file(source : @value.Cell) -> Bool raise EvalError {
+  file_suffix(source) == ".css"
+}
+
+///|
 fn srt_file(source : @value.Cell) -> Bool raise EvalError {
   file_suffix(source) == ".srt"
 }
@@ -529,6 +536,12 @@ fn perform_save(
         write_file(path, encoded_text(args[1]))
       } else if json_file(place) && !named(env, active, "header") {
         write_file(path, encoded_json(env, args[1]))
+      } else if css_file(place) && !named(env, active, "header") {
+        match encode_css(args[1]) {
+          @value.Seq(series, index) if series.datatype() == @value.String =>
+            write_file(path, text_from(series, index))
+          _ => raise EvalError::Cannot("save")
+        }
       } else if srt_file(place) && !named(env, active, "header") {
         match encode_srt(args[1]) {
           @value.Seq(series, index) if series.datatype() == @value.String =>
