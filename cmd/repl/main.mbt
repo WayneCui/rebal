@@ -20,12 +20,19 @@ fn main {
 
 ///|
 fn once(source : String) -> Unit {
+  match once_reply(source) {
+    Some(text) => println(text)
+    None => ()
+  }
+}
+
+///|
+/// Text a one-shot script would print. `None` is `quit`: print nothing and exit.
+fn once_reply(source : String) -> String? {
   let env = @eval.Env::new()
-  try {
-    let cell = @eval.run(env, source)
-    println(@mold.mold_text(cell))
-  } catch {
-    error => println(@mold.mold_text(error.to_cell()))
+  Some(@mold.mold_text(@eval.run(env, source))) catch {
+    @eval.Quit => None
+    error => Some(@mold.mold_text(error.to_cell()))
   }
 }
 
@@ -38,20 +45,26 @@ fn session() -> Unit {
     write_text(prompt_text(pending))
     c_flush_stdout()
     match read_line() {
-      None => {
-        let text = finish(env, pending)
-        if text != "" {
-          println(text)
+      None =>
+        match finish_reply(env, pending) {
+          Keep(text, _) => {
+            if text != "" {
+              println(text)
+            }
+            reading = false
+          }
+          Halt => reading = false
         }
-        reading = false
-      }
-      Some(line) => {
-        let stepped = take_line(env, pending, line)
-        if stepped.0 != "" {
-          println(stepped.0)
+      Some(line) =>
+        match line_reply(env, pending, line) {
+          Keep(text, rest) => {
+            if text != "" {
+              println(text)
+            }
+            pending = rest
+          }
+          Halt => reading = false
         }
-        pending = stepped.1
-      }
     }
   }
 }

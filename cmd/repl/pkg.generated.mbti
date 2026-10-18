@@ -6,11 +6,11 @@ import {
 }
 
 // Values
-pub fn finish(@eval.Env, String) -> String
+pub fn finish(@eval.Env, String) -> String raise @eval.EvalError
 
 pub fn prompt_text(String) -> String
 
-pub fn take_line(@eval.Env, String, String) -> (String, String)
+pub fn take_line(@eval.Env, String, String) -> (String, String) raise @eval.EvalError
 
 // Errors
 
