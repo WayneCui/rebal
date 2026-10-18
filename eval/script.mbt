@@ -17,8 +17,11 @@ fn load_bytes(
       Some((source, rest)) => {
         let limited = script_limited(env, source, rest)
         let body = if script_compresses(env, source) {
-          load(env, script_text(script_inflate(limited)))
+          let raw = script_inflate(limited)
+          script_verify(env, source, raw)
+          load(env, script_text(raw))
         } else {
+          script_verify(env, source, limited)
           load(env, script_text(limited))
         }
         script_finish(env, body, Some(source), header)
@@ -165,7 +168,55 @@ fn script_limited(
       }
       script_slice(rest, cursor, end)
     }
-    None => rest
+    None => script_slice(rest, cursor, rest.length())
+  }
+}
+
+///|
+/// A binary `checksum:` must be the SHA1 of the body bytes. Anything else
+/// there, other than none, is rejected.
+fn script_verify(
+  env : Env,
+  source : String,
+  bytes : Array[Int],
+) -> Unit raise EvalError {
+  match script_checksum(env, source) {
+    None => ()
+    Some(expect) =>
+      if !same_bytes(expect, sha1(bytes)) {
+        raise EvalError::Caused("bad-checksum", "checksum")
+      }
+  }
+}
+
+///|
+fn script_checksum(env : Env, source : String) -> Array[Int]? raise EvalError {
+  match script_fields(env, source) {
+    Some(items) => {
+      let mut found : Array[Int]? = None
+      let mut seen = false
+      let mut index = 0
+      while !seen && index + 1 < items.length() {
+        match items[index] {
+          @value.Sym(@value.SetWord, lexeme) if env.symbols.canon(lexeme.sym()) ==
+            "checksum" => {
+            seen = true
+            let value = header_value(env, items[index + 1])
+            match value {
+              @value.Cell::None => ()
+              _ =>
+                match binary_of(value) {
+                  Some(digest) => found = Some(digest)
+                  None => raise EvalError::Caused("bad-checksum", "checksum")
+                }
+            }
+          }
+          _ => index = index + 1
+        }
+      }
+      found
+    }
+    None => None
   }
 }
 

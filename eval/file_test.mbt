@@ -84,6 +84,29 @@ test "save/compress writes zlib, a header, or a base-64 script" {
 }
 
 ///|
+test "save/header stores a SHA1 checksum and load checks it" {
+  // load-test.r3 "Script checksum verification".
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "s: save/header none [print \"Hello REBOL!\"] [checksum: true] (reduce [s = #{5245424F4C205B0A20202020636865636B73756D3A20237B344443384339454530343134303437303832464636304536413236413930384443373837334643447D0A5D0A7072696E74202248656C6C6F205245424F4C21220A} (load s) = [print \"Hello REBOL!\"] ((pick load/header s 1)/checksum) = #{4DC8C9EE0414047082FF60E6A26A908DC7873FCD} (save/header none 1 [title: \"t\" checksum: true]) = #{5245424F4C205B0A202020207469746C653A202274220A20202020636865636B73756D3A20237B453546413434463242333143314642353533423630323145373336304430374435443931464635457D0A5D0A310A} (save/header none 1 []) = #{5245424F4C205B5D0A310A}]) = reduce [true true true true true]",
+    )
+    is @value.Logic(true),
+  )
+  match
+    @eval.run(
+      env, "try [load #{5245424F4C205B0A20202020636865636B73756D3A20237B344443384339454530343134303437303832464636304536413236413930384443373837334643447D0A5D0A7072696E74202258656C6C6F205245424F4C21220A}]",
+    ) {
+    @value.Error(err) => assert_true(err.id == "bad-checksum")
+    _ => assert_true(false)
+  }
+  match @eval.run(env, "try [load {REBOL [checksum: true] 1}]") {
+    @value.Error(err) => assert_true(err.id == "bad-checksum")
+    _ => assert_true(false)
+  }
+}
+
+///|
 test "save/length records how many script bytes follow the header" {
   // load-test.r3 "Save/length". The body is `print "Hello REBOL!"` plus a newline.
   let env = @eval.Env::new()

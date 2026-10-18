@@ -231,13 +231,27 @@ fn save_bytes(
   active : Array[Int],
   args : Array[@value.Cell],
 ) -> Array[Int] raise EvalError {
-  let (mode, length) = save_mode(env, active, args)
-  match mode {
-    None => if length { save_with_length(script) } else { utf8_bytes(script) }
-    Some(chosen) =>
-      match chosen {
-        @value.Logic(false) if length => save_with_length(script)
-        _ => save_compressed(env, script, chosen)
+  let (mode, length, spec) = save_mode(env, active, args)
+  match spec {
+    Some(header) =>
+      if length || mode is Some(_) {
+        raise EvalError::Cannot("save")
+      } else {
+        save_with_header(env, script, header)
+      }
+    None =>
+      match mode {
+        None =>
+          if length {
+            save_with_length(script)
+          } else {
+            utf8_bytes(script)
+          }
+        Some(chosen) =>
+          match chosen {
+            @value.Logic(false) if length => save_with_length(script)
+            _ => save_compressed(env, script, chosen)
+          }
       }
   }
 }
@@ -254,9 +268,10 @@ fn save_mode(
   env : Env,
   active : Array[Int],
   args : Array[@value.Cell],
-) -> (@value.Cell?, Bool) raise EvalError {
+) -> (@value.Cell?, Bool, @value.Cell?) raise EvalError {
   let mut mode : @value.Cell? = None
   let mut length = false
+  let mut spec : @value.Cell? = None
   let mut cursor = 2
   for sym in active {
     let name = env.symbols.canon(sym)
@@ -265,11 +280,14 @@ fn save_mode(
       cursor = cursor + 1
     } else if name == "length" {
       length = true
+    } else if name == "header" {
+      spec = Some(args[cursor])
+      cursor = cursor + 1
     } else {
       raise EvalError::Cannot("save")
     }
   }
-  (mode, length)
+  (mode, length, spec)
 }
 
 ///|

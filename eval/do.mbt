@@ -415,11 +415,14 @@ fn load_extra(env : Env, active : Array[Int]) -> Int {
 
 ///|
 fn save_extra(env : Env, active : Array[Int]) -> Int {
-  if named(env, active, "compress") {
-    1
-  } else {
-    0
+  let mut extra = 0
+  if named(env, active, "header") {
+    extra = extra + 1
   }
+  if named(env, active, "compress") {
+    extra = extra + 1
+  }
+  extra
 }
 
 ///|
