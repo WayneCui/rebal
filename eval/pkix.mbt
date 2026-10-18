@@ -75,6 +75,12 @@ fn perform_decode(
     }
     return decode_quoted(args[1], uri)
   }
+  if kind == "mime-field" {
+    if binary {
+      raise EvalError::Cannot("decode")
+    }
+    return decode_mime_field(args[1])
+  }
   if kind != "pkix" {
     raise EvalError::Cannot("access")
   }
