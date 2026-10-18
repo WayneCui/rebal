@@ -119,6 +119,15 @@ fn perform_load(
     decode_markup(source)
   } else if json_file(source) {
     decode_json(env, text_series(source_text(source)))
+  } else if csv_file(source) {
+    decode_csv(
+      source,
+      if file_suffix(source) == ".tsv" {
+        '\t'.to_int()
+      } else {
+        ','.to_int()
+      },
+    )
   } else if gzip_file(source) {
     binary_cell(gzip_unpack(read_binary(loaded_path(source))))
   } else if tar_suffix(source) {
@@ -288,6 +297,13 @@ fn text_file(source : @value.Cell) -> Bool raise EvalError {
 /// %.json is the JSON codec, as in codec-json.reb.
 fn json_file(source : @value.Cell) -> Bool raise EvalError {
   file_suffix(source) == ".json"
+}
+
+///|
+/// %.csv and %.tsv are delimited tables, as in codec-csv.reb.
+fn csv_file(source : @value.Cell) -> Bool raise EvalError {
+  let name = file_suffix(source)
+  name == ".csv" || name == ".tsv"
 }
 
 ///|
@@ -461,6 +477,13 @@ fn perform_save(
         write_file(path, encoded_text(args[1]))
       } else if json_file(place) && !named(env, active, "header") {
         write_file(path, encoded_json(env, args[1]))
+      } else if csv_file(place) && !named(env, active, "header") {
+        let delimiter = if file_suffix(place) == ".tsv" {
+          '\t'.to_int()
+        } else {
+          ','.to_int()
+        }
+        write_file(path, csv_encode(args[1], delimiter))
       } else {
         write_binary(path, payload)
       }

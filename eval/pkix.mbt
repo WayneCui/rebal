@@ -138,6 +138,13 @@ fn perform_decode(
     }
     return decode_ar(args[1])
   }
+  if kind == "csv" || kind == "tsv" {
+    if binary {
+      raise EvalError::Cannot("decode")
+    }
+    let delimiter = if kind == "tsv" { '\t'.to_int() } else { ','.to_int() }
+    return decode_csv(args[1], delimiter)
+  }
   if kind == "braille" {
     if binary {
       raise EvalError::Cannot("decode")

@@ -81,6 +81,13 @@ fn perform_encode(
     }
     let _ = form
     encode_text(args[1])
+  } else if kind == "csv" || kind == "tsv" {
+    if uri || pass is Some(_) {
+      raise EvalError::Cannot("encode")
+    }
+    let _ = form
+    let delimiter = if kind == "tsv" { '\t'.to_int() } else { ','.to_int() }
+    encode_csv(args[1], delimiter)
   } else if kind == "braille" {
     if uri || form is Some(_) || pass is Some(_) {
       raise EvalError::Cannot("encode")
