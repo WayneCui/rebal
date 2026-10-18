@@ -40,7 +40,12 @@ fn do_text(env : Env, text : String) -> @value.Cell raise EvalError {
 }
 
 ///|
-fn perform_load(env : Env, source : @value.Cell) -> @value.Cell raise EvalError {
+fn perform_load(
+  env : Env,
+  source : @value.Cell,
+  active : Array[Int],
+) -> @value.Cell raise EvalError {
+  let header = load_wants_header(env, active)
   if pkix_file(source) {
     match read_pem(read_file(loaded_path(source))) {
       Some(pem) => pem_block(env, pem)
@@ -51,8 +56,25 @@ fn perform_load(env : Env, source : @value.Cell) -> @value.Cell raise EvalError 
   } else if ppk_file(source) {
     decode_ppk(env, text_series(read_file(loaded_path(source))), None)
   } else {
-    singular(drop_header(load(env, source_text(source))))
+    match source {
+      @value.Seq(series, index) if series.datatype() == @value.Binary =>
+        load_bytes(env, bytes_from(series, index), header)
+      _ => load_bytes(env, utf8_bytes(source_text(source)), header)
+    }
   }
+}
+
+///|
+fn load_wants_header(env : Env, active : Array[Int]) -> Bool raise EvalError {
+  let mut header = false
+  for sym in active {
+    if env.symbols.canon(sym) == "header" {
+      header = true
+    } else {
+      raise EvalError::Cannot("load")
+    }
+  }
+  header
 }
 
 ///|

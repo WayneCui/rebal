@@ -82,3 +82,15 @@ test "save/compress writes zlib, a header, or a base-64 script" {
     is @value.Logic(true),
   )
 }
+
+///|
+test "load reads a compressed script and can keep its header" {
+  // codecs-test.r3 "SAVE/compress". /header puts the object first.
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "b: save/compress none [print \"Hello World!\"] true s: save/compress none [print \"Hello World!\"] 'script (reduce [(load b) = [print \"Hello World!\"] (load s) = [print \"Hello World!\"] (length? load/header b) = 3 (type? pick load/header b 1) = object! ((pick load/header b 1)/options) = [compress] ((pick load/header b 1)/title) = \"Untitled\" ((pick load/header b 1)/version) = 0.0.0 ((pick load/header s 1)/options) = [compress] (load/header {1}) = reduce [none 1] ((pick load/header {Rebol [title: \"t\"] 2} 1)/title) = \"t\" (pick load/header {Rebol [title: \"t\"] 2} 2) = 2]) = reduce [true true true true true true true true true true true]",
+    )
+    is @value.Logic(true),
+  )
+}
