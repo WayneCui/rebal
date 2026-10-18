@@ -86,7 +86,7 @@ fn perform_encode(
       raise EvalError::Cannot("encode")
     }
     match pass {
-      Some(secret) => encode_safe(env, args[1], safe_secret(secret))
+      Some(secret) => encode_safe(env, args[1], safe_secret(secret, "encode"))
       None => raise EvalError::Cannot("encode")
     }
   } else {

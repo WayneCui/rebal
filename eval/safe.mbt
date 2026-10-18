@@ -151,11 +151,11 @@ fn safe_iv(bytes : Array[Int]) -> Array[Int] {
 }
 
 ///|
-fn safe_secret(cell : @value.Cell) -> String raise EvalError {
+fn safe_secret(cell : @value.Cell, action : String) -> String raise EvalError {
   match cell {
     @value.Seq(series, index) if @value.text_series(series.datatype()) =>
       text_from(series, index)
-    _ => raise EvalError::Cannot("encode")
+    _ => raise EvalError::Cannot(action)
   }
 }
 

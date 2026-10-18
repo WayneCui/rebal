@@ -406,11 +406,14 @@ fn named(env : Env, active : Array[Int], spelling : String) -> Bool {
 
 ///|
 fn load_extra(env : Env, active : Array[Int]) -> Int {
+  let mut extra = 0
   if named(env, active, "as") {
-    1
-  } else {
-    0
+    extra = extra + 1
   }
+  if named(env, active, "password") {
+    extra = extra + 1
+  }
+  extra
 }
 
 ///|
@@ -420,6 +423,9 @@ fn save_extra(env : Env, active : Array[Int]) -> Int {
     extra = extra + 1
   }
   if named(env, active, "compress") {
+    extra = extra + 1
+  }
+  if named(env, active, "key") {
     extra = extra + 1
   }
   extra

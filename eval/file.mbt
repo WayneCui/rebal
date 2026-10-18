@@ -85,7 +85,7 @@ fn perform_load(
   args : Array[@value.Cell],
   active : Array[Int],
 ) -> @value.Cell raise EvalError {
-  let (header, all, mode) = load_flags(env, args, active)
+  let (header, all, mode, password) = load_flags(env, args, active)
   let source = args[0]
   match source {
     @value.Seq(series, index) if series.datatype() == @value.Block =>
@@ -135,6 +135,14 @@ fn perform_load(
     ar_loaded(read_binary(loaded_path(source)))
   } else if crt_suffix(source) {
     decode_crt(env, binary_cell(read_binary(loaded_path(source))))
+  } else if safe_suffix(source) {
+    match password {
+      Some(secret) =>
+        decode_safe(env, binary_cell(read_binary(loaded_path(source))), secret)
+      None => @value.Cell::None
+    }
+  } else if password is Some(_) {
+    raise EvalError::Cannot("load")
   } else {
     match source {
       @value.Seq(series, index) if series.datatype() == @value.Binary =>
@@ -176,10 +184,11 @@ fn load_flags(
   env : Env,
   args : Array[@value.Cell],
   active : Array[Int],
-) -> (Bool, Bool, LoadAs) raise EvalError {
+) -> (Bool, Bool, LoadAs, String?) raise EvalError {
   let mut header = false
   let mut all = false
   let mut mode = Plain
+  let mut password : String? = None
   let mut cursor = 1
   for sym in active {
     let name = env.symbols.canon(sym)
@@ -190,14 +199,17 @@ fn load_flags(
     } else if name == "as" {
       mode = load_type(env, args[cursor])
       cursor = cursor + 1
+    } else if name == "password" {
+      password = Some(safe_secret(args[cursor], "load"))
+      cursor = cursor + 1
     } else {
       raise EvalError::Cannot("load")
     }
   }
   if header {
-    (true, false, mode)
+    (true, false, mode, password)
   } else {
-    (false, all, mode)
+    (false, all, mode, password)
   }
 }
 
@@ -296,6 +308,12 @@ fn crt_suffix(source : @value.Cell) -> Bool raise EvalError {
 }
 
 ///|
+/// %.safe is an encrypted file. The password arrives as `/password` or `/key`.
+fn safe_suffix(source : @value.Cell) -> Bool raise EvalError {
+  file_suffix(source) == ".safe"
+}
+
+///|
 fn ar_suffix(source : @value.Cell) -> Bool raise EvalError {
   match file_suffix(source) {
     ".ar" | ".a" | ".lib" | ".deb" => true
@@ -387,8 +405,14 @@ fn perform_save(
   let place = args[0]
   let script = save_script(args[1])
   let bytes = binary_cell(save_bytes(env, script, active, args))
+  let secret = keyed_password(env, active, args)
   match place {
-    @value.Cell::None => bytes
+    @value.Cell::None =>
+      if secret is Some(_) {
+        raise EvalError::Cannot("save")
+      } else {
+        bytes
+      }
     @value.Seq(series, index) if series.datatype() == @value.File => {
       let path = text_from(series, index)
       if gzip_file(place) && !named(env, active, "header") {
@@ -410,6 +434,20 @@ fn perform_save(
       }
       if crt_suffix(place) && !named(env, active, "header") {
         raise EvalError::Caused("not-done", "crt")
+      }
+      if safe_suffix(place) && !named(env, active, "header") {
+        match secret {
+          Some(pass) =>
+            write_binary(
+              path,
+              payload_bytes(encode_safe(env, args[1], pass), "save"),
+            )
+          None => raise EvalError::Cannot("save")
+        }
+        return place
+      }
+      if secret is Some(_) {
+        raise EvalError::Cannot("save")
       }
       if markup_file(place) && !named(env, active, "header") {
         raise EvalError::Caused("invalid-arg", @mold.mold_text(args[1]))
@@ -482,11 +520,34 @@ fn save_mode(
     } else if name == "header" {
       spec = Some(args[cursor])
       cursor = cursor + 1
+    } else if name == "key" {
+      cursor = cursor + 1
     } else {
       raise EvalError::Cannot("save")
     }
   }
   (mode, length, spec)
+}
+
+///|
+/// `/key` is the SAFE password. Other save targets do not accept it.
+fn keyed_password(
+  env : Env,
+  active : Array[Int],
+  args : Array[@value.Cell],
+) -> String? raise EvalError {
+  let mut found : String? = None
+  let mut cursor = 2
+  for sym in active {
+    let name = env.symbols.canon(sym)
+    if name == "key" {
+      found = Some(safe_secret(args[cursor], "save"))
+      cursor = cursor + 1
+    } else if name == "compress" || name == "header" {
+      cursor = cursor + 1
+    }
+  }
+  found
 }
 
 ///|
