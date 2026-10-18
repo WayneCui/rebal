@@ -83,6 +83,7 @@ fn words_of(env : Env, value : @value.Cell) -> @value.Cell raise EvalError {
         let kind = func.spec_kinds()[index]
         block.push_item(func_spec_word(env, sym, kind)) |> ignore
       }
+    @value.Handle(_) => block.push_item(word_cell(env, "type")) |> ignore
     _ => raise EvalError::Caused("expect-arg", "words-of")
   }
   @value.Seq(block, 0)

@@ -56,7 +56,10 @@ pub fn greater_or_equal(
 ///|
 /// Same datatype and same payload. Numbers do not coerce. Text keeps its case.
 pub fn strict_equal(left : @value.Cell, right : @value.Cell) -> Bool {
-  left.equal(right)
+  match (left, right) {
+    (@value.Handle(a), @value.Handle(b)) => a.same(b)
+    _ => left.equal(right)
+  }
 }
 
 ///|
@@ -132,6 +135,7 @@ fn order_rest(
     (@value.Char(a), @value.Integer(b)) => Ok(cmp_int64(a.to_int64(), b))
     (@value.Integer(a), @value.Char(b)) => Ok(cmp_int64(a, b.to_int64()))
     (@value.Seq(a, ai), @value.Seq(b, bi)) => series_order(a, ai, b, bi, depth)
+    (@value.Handle(a), @value.Handle(b)) => Ok(kind_order(a.kind(), b.kind()))
     _ => Err(Cannot("compare"))
   }
 }
@@ -155,6 +159,20 @@ fn series_order(
   } else {
     Err(Cannot("compare"))
   }
+}
+
+///|
+fn kind_order(left : String, right : String) -> Int {
+  text_cmp(kind_text(left), 0, kind_text(right), 0, false)
+}
+
+///|
+fn kind_text(value : String) -> @value.Series {
+  let series = @value.Series::text()
+  for char in value {
+    series.push_code(char.to_int()) |> ignore
+  }
+  series
 }
 
 ///|

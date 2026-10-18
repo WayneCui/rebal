@@ -90,16 +90,67 @@ fn query_handle(
   match field {
     Some(cell) =>
       if word_is(env, cell, "type") {
-        let spelling = handle.kind()
-        @value.Sym(
-          @value.Word,
-          @value.Lexeme::make(env.symbols.intern(spelling), spelling),
-        )
+        handle_type_word(env, handle)
+      } else if word_is(env, cell, "words") {
+        handle_words(env)
       } else {
-        raise EvalError::Cannot("query")
+        match cell {
+          @value.Type(@value.Object) => handle_info(env, handle)
+          _ => raise EvalError::Cannot("query")
+        }
       }
-    None => raise EvalError::Cannot("query")
+    None => handle_words(env)
   }
+}
+
+///|
+fn handle_field(
+  env : Env,
+  handle : @value.HandleValue,
+  selector : @value.Cell,
+) -> @value.Cell raise EvalError {
+  match selector {
+    @value.Sym(_, lexeme) =>
+      if env.symbols.canon(lexeme.sym()) == "type" {
+        handle_type_word(env, handle)
+      } else {
+        raise EvalError::InvalidPath(lexeme.spelling())
+      }
+    _ => raise EvalError::InvalidPath("handle")
+  }
+}
+
+///|
+fn handle_type_word(
+  env : Env,
+  handle : @value.HandleValue,
+) -> @value.Cell raise EvalError {
+  if handle.released() {
+    raise EvalError::Cannot("query")
+  }
+  let spelling = handle.kind()
+  @value.Sym(
+    @value.Word,
+    @value.Lexeme::make(env.symbols.intern(spelling), spelling),
+  )
+}
+
+///|
+fn handle_words(env : Env) -> @value.Cell {
+  let block = @value.Series::block()
+  block.push_item(word_cell(env, "type")) |> ignore
+  @value.Seq(block, 0)
+}
+
+///|
+fn handle_info(
+  env : Env,
+  handle : @value.HandleValue,
+) -> @value.Cell raise EvalError {
+  let frame = @value.Frame::new()
+  let slot = frame.ensure(env.symbols.intern("type"))
+  frame.set(slot, handle_type_word(env, handle)) |> ignore
+  @value.Object(frame)
 }
 
 ///|
