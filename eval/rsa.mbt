@@ -37,7 +37,8 @@ fn rsa_init_extra(env : Env, active : Array[Int]) -> Int {
 extern "C" fn c_random_byte() -> Int = "rebal_random_byte"
 
 ///|
-/// `rsa/sign` and `rsa/verify` use PKCS#1 v1.5 and SHA-256.
+/// `rsa/sign` and `rsa/verify` use PKCS#1 v1.5. The digest defaults to SHA-256.
+/// `/hash` selects md5, sha1, sha256, sha384, or sha512.
 /// `rsa/encrypt` and `rsa/decrypt` use PKCS#1 v1.5 type 2 padding.
 /// Signing or decrypting without a private exponent returns `none`.
 fn perform_rsa(
@@ -45,60 +46,120 @@ fn perform_rsa(
   args : Array[@value.Cell],
   active : Array[Int],
 ) -> @value.Cell raise EvalError {
-  let key = rsa_key(args[0])
-  let data = payload_bytes(args[1], "rsa")
-  let action = rsa_action(env, active)
-  if action == "sign" {
-    match rsa_sign_sha256(key, data) {
-      Some(bytes) => binary_cell(bytes)
-      None => @value.None
-    }
-  } else if action == "verify" {
-    let signature = payload_bytes(args[2], "rsa")
-    @value.Logic(rsa_verify_sha256(key, data, signature))
-  } else if action == "encrypt" {
-    match rsa_encrypt(key, data) {
-      Some(bytes) => binary_cell(bytes)
-      None => @value.None
-    }
-  } else {
-    match rsa_decrypt(key, data) {
-      Some(bytes) => binary_cell(bytes)
-      None => @value.None
+  match rsa_call(env, args, active) {
+    None => @value.None
+    Some(call) => {
+      let key = rsa_key(args[0])
+      let data = payload_bytes(args[1], "rsa")
+      if call.action == "sign" {
+        match rsa_sign(key, data, call.digest) {
+          Some(bytes) => binary_cell(bytes)
+          None => @value.None
+        }
+      } else if call.action == "verify" {
+        match call.signature {
+          None => raise EvalError::Cannot("rsa")
+          Some(signature) =>
+            match rsa_verify(key, data, signature, call.digest) {
+              None => @value.None
+              Some(flag) => @value.Logic(flag)
+            }
+        }
+      } else if call.action == "encrypt" {
+        match rsa_encrypt(key, data) {
+          Some(bytes) => binary_cell(bytes)
+          None => @value.None
+        }
+      } else {
+        match rsa_decrypt(key, data) {
+          Some(bytes) => binary_cell(bytes)
+          None => @value.None
+        }
+      }
     }
   }
+}
+
+///|
+priv struct RsaCall {
+  action : String
+  digest : String
+  signature : Array[Int]?
 }
 
 ///|
 fn rsa_extra(env : Env, active : Array[Int]) -> Int {
+  let mut extra = 0
   if named(env, active, "verify") {
-    1
-  } else {
-    0
+    extra = extra + 1
   }
+  if named(env, active, "hash") {
+    extra = extra + 1
+  }
+  extra
 }
 
 ///|
-fn rsa_action(env : Env, active : Array[Int]) -> String raise EvalError {
+fn rsa_call(
+  env : Env,
+  args : Array[@value.Cell],
+  active : Array[Int],
+) -> RsaCall? raise EvalError {
   let mut action = ""
+  let mut digest = "sha256"
+  let mut signature : Array[Int]? = None
+  let mut known = true
+  let mut cursor = 2
   for sym in active {
     let name = env.symbols.canon(sym)
     if name == "sign" ||
-      name == "verify" ||
       name == "encrypt" ||
-      name == "decrypt" {
+      name == "decrypt" ||
+      name == "verify" {
       if action != "" {
         raise EvalError::Cannot("rsa")
       }
       action = name
+      if name == "verify" {
+        signature = Some(payload_bytes(args[cursor], "rsa"))
+        cursor = cursor + 1
+      }
+    } else if name == "hash" {
+      match hash_name(env, args[cursor]) {
+        Some(word) => digest = word
+        None => known = false
+      }
+      cursor = cursor + 1
     } else {
       raise EvalError::Cannot("rsa")
     }
   }
   if action == "" {
     raise EvalError::Cannot("rsa")
+  } else if known {
+    Some({ action, digest, signature, })
+  } else {
+    None
   }
-  action
+}
+
+///|
+fn hash_name(env : Env, value : @value.Cell) -> String? {
+  match value {
+    @value.Sym(_, lexeme) => {
+      let name = env.symbols.canon(lexeme.sym())
+      if name == "md5" ||
+        name == "sha1" ||
+        name == "sha256" ||
+        name == "sha384" ||
+        name == "sha512" {
+        Some(name)
+      } else {
+        None
+      }
+    }
+    _ => None
+  }
 }
 
 ///|
@@ -110,12 +171,16 @@ fn rsa_key(value : @value.Cell) -> @value.RsaKey raise EvalError {
 }
 
 ///|
-fn rsa_sign_sha256(key : @value.RsaKey, data : Array[Int]) -> Array[Int]? {
+fn rsa_sign(
+  key : @value.RsaKey,
+  data : Array[Int],
+  digest : String,
+) -> Array[Int]? {
   if key.d.length() == 0 {
     None
   } else {
     let width = unsigned_width(key.n)
-    match emsa_pkcs1(sha256_info(sha256(data)), width) {
+    match emsa_pkcs1(digest_info(digest, data), width) {
       None => None
       Some(encoded) =>
         Some(
@@ -130,37 +195,66 @@ fn rsa_sign_sha256(key : @value.RsaKey, data : Array[Int]) -> Array[Int]? {
 }
 
 ///|
-fn rsa_verify_sha256(
+fn rsa_verify(
   key : @value.RsaKey,
   data : Array[Int],
   signature : Array[Int],
-) -> Bool {
+  digest : String,
+) -> Bool? {
   let width = unsigned_width(key.n)
-  if signature.length() != width {
-    false
-  } else {
-    match emsa_pkcs1(sha256_info(sha256(data)), width) {
-      None => false
-      Some(encoded) =>
-        same_bytes(
-          @num.Nat::mod_exp(
-            @num.Nat::from_bytes(signature),
-            @num.Nat::from_bytes(key.e),
-            @num.Nat::from_bytes(key.n),
-          ).be_bytes(width),
-          encoded,
+  match emsa_pkcs1(digest_info(digest, data), width) {
+    None => None
+    Some(encoded) =>
+      if signature.length() != width {
+        Some(false)
+      } else {
+        Some(
+          same_bytes(
+            @num.Nat::mod_exp(
+              @num.Nat::from_bytes(signature),
+              @num.Nat::from_bytes(key.e),
+              @num.Nat::from_bytes(key.n),
+            ).be_bytes(width),
+            encoded,
+          ),
         )
-    }
+      }
   }
 }
 
 ///|
-fn sha256_info(hash : Array[Int]) -> Array[Int] {
-  [
-    0x30, 0x31, 0x30, 0x0D, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04,
-    0x02, 0x01, 0x05, 0x00, 0x04, 0x20,
-  ] +
-  hash
+fn digest_info(digest : String, data : Array[Int]) -> Array[Int] {
+  if digest == "md5" {
+    [
+      0x30, 0x20, 0x30, 0x0C, 0x06, 0x08, 0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x02,
+      0x05, 0x05, 0x00, 0x04, 0x10,
+    ] +
+    md5(data)
+  } else if digest == "sha1" {
+    [
+      0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2B, 0x0E, 0x03, 0x02, 0x1A, 0x05, 0x00,
+      0x04, 0x14,
+    ] +
+    sha1(data)
+  } else if digest == "sha384" {
+    [
+      0x30, 0x41, 0x30, 0x0D, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04,
+      0x02, 0x02, 0x05, 0x00, 0x04, 0x30,
+    ] +
+    sha384(data)
+  } else if digest == "sha512" {
+    [
+      0x30, 0x51, 0x30, 0x0D, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04,
+      0x02, 0x03, 0x05, 0x00, 0x04, 0x40,
+    ] +
+    sha512(data)
+  } else {
+    [
+      0x30, 0x31, 0x30, 0x0D, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04,
+      0x02, 0x01, 0x05, 0x00, 0x04, 0x20,
+    ] +
+    sha256(data)
+  }
 }
 
 ///|

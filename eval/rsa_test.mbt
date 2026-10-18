@@ -33,3 +33,15 @@ test "rsa encrypt and decrypt round trip with pkcs1 padding" {
     is @value.Logic(true),
   )
 }
+
+///|
+test "rsa hash refinement selects the digest inside the signature" {
+  // rsa/sign/hash defaults aside, SHA-1 matches OpenSSL and SHA-512 does not fit this key.
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "n: #{EB8A8654FAE3935DBC163A6C9F37839E799B66FB86B920C7E3CB2CEE80446BE60772924403C2F3640A2228F3FF4448F52569611A2655479AEE25F3F493FC6D8F} e: #{010001} d: #{B4E6B9713F17D630E1AA38C90027C4E0CC093CB8E5A9FDB14814DDB777B015252720006E7305669204B62B4172522524B55248F736094297479C114DE52BEBE1} p: #{FDDE07331BB719B8F9EABE6AB8EB8A53B432F3A080CA61D2D343F00E4AA71759} q: #{ED85157EC471E3601421BAC1462A674C9ADF4D74C4E68E03B3B8A40F05E9F727} pri: rsa-init/private n e d p q pub: rsa-init n e sig: rsa/sign/hash pri #{41686F6A21} 'sha1 (reduce [sig rsa/verify/hash pub #{41686F6A21} sig 'sha1 rsa/verify/hash pri #{41686F6A21} sig 'sha256 none? rsa/sign/hash pri #{41686F6A21} 'sha512 none? rsa/verify/hash pub #{41686F6A21} sig 'crc32]) = reduce [#{3C25A2791E92DFF113F38173D89325BF86294897AC1F6570E281C414EB9C876B7ED315863292FEAECE6F5952FD527BFE7819B155DDF378531ACBBFED76E781E8} true false true true]",
+    )
+    is @value.Logic(true),
+  )
+}
