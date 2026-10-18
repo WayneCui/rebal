@@ -84,6 +84,18 @@ test "save/compress writes zlib, a header, or a base-64 script" {
 }
 
 ///|
+test "load skips a UTF-8 BOM on a binary" {
+  // load-test.r3 "load UTF8 string from binary with BOM".
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "(reduce [(load #{223322}) = \"3\" (load #{EFBBBF223322}) = \"3\" (load #{EFBBBF5265626F6C205B7469746C653A207B743D7D5D20310A}) = 1]) = reduce [true true true]",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "a script header turns yes, no, and none into values" {
   // load-test.r3 issue-655. construct, not evaluation.
   let env = @eval.Env::new()

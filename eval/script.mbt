@@ -321,6 +321,20 @@ fn script_plain(bytes : Array[Int], from : Int, until : Int) -> String {
 }
 
 ///|
+/// A binary script may start with the UTF-8 BOM. A string does not: that
+/// character is source text.
+fn drop_bom(bytes : Array[Int]) -> Array[Int] {
+  if bytes.length() >= 3 &&
+    bytes[0] == 0xEF &&
+    bytes[1] == 0xBB &&
+    bytes[2] == 0xBF {
+    script_slice(bytes, 3, bytes.length())
+  } else {
+    bytes
+  }
+}
+
+///|
 fn script_slice(bytes : Array[Int], from : Int, until : Int) -> Array[Int] {
   let out : Array[Int] = []
   for index in from..<until {

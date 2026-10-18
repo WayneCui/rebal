@@ -68,7 +68,7 @@ fn perform_load(
   } else {
     match source {
       @value.Seq(series, index) if series.datatype() == @value.Binary =>
-        load_bytes(env, bytes_from(series, index), header, all)
+        load_bytes(env, drop_bom(bytes_from(series, index)), header, all)
       _ => load_bytes(env, utf8_bytes(source_text(source)), header, all)
     }
   }
