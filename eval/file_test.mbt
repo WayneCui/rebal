@@ -84,6 +84,18 @@ test "save/compress writes zlib, a header, or a base-64 script" {
 }
 
 ///|
+test "load/all keeps a series position and does not read the header" {
+  // load-test.r3 "Load/all". mold/all writes #(string! "123" 2).
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "v: mold/all next \"123\" b: load/all v (reduce [v = {#(string! \"123\" 2)} (type? b) = block! (pick b 1) = \"23\" (head pick b 1) = \"123\" (mold/all next #{010203}) = {#(binary! #{010203} 2)} (pick load/all mold/all next #{010203} 1) = #{0203} (mold/all next [a b c]) = {#(block! [a b c] 2)} (pick load/all mold/all next [a b c] 1) = [b c] (load/all \"1\") = [1] (load/all {Rebol [title: \"t\"] 1}) = [Rebol [title: \"t\"] 1] (load/header/all {1}) = reduce [none 1]]) = reduce [true true true true true true true true true true true]",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "load reads a compressed script and can keep its header" {
   // codecs-test.r3 "SAVE/compress". /header puts the object first.
   let env = @eval.Env::new()

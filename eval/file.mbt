@@ -45,7 +45,7 @@ fn perform_load(
   source : @value.Cell,
   active : Array[Int],
 ) -> @value.Cell raise EvalError {
-  let header = load_wants_header(env, active)
+  let (header, all) = load_flags(env, active)
   if pkix_file(source) {
     match read_pem(read_file(loaded_path(source))) {
       Some(pem) => pem_block(env, pem)
@@ -58,23 +58,32 @@ fn perform_load(
   } else {
     match source {
       @value.Seq(series, index) if series.datatype() == @value.Binary =>
-        load_bytes(env, bytes_from(series, index), header)
-      _ => load_bytes(env, utf8_bytes(source_text(source)), header)
+        load_bytes(env, bytes_from(series, index), header, all)
+      _ => load_bytes(env, utf8_bytes(source_text(source)), header, all)
     }
   }
 }
 
 ///|
-fn load_wants_header(env : Env, active : Array[Int]) -> Bool raise EvalError {
+/// `/header` wins over `/all`. `/all` returns every value and leaves a header unread.
+fn load_flags(env : Env, active : Array[Int]) -> (Bool, Bool) raise EvalError {
   let mut header = false
+  let mut all = false
   for sym in active {
-    if env.symbols.canon(sym) == "header" {
+    let name = env.symbols.canon(sym)
+    if name == "header" {
       header = true
+    } else if name == "all" {
+      all = true
     } else {
       raise EvalError::Cannot("load")
     }
   }
-  header
+  if header {
+    (true, false)
+  } else {
+    (false, all)
+  }
 }
 
 ///|

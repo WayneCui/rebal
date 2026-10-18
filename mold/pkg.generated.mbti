@@ -10,6 +10,8 @@ pub fn cell(String) -> @value.Cell
 
 pub fn form_text(@value.Cell) -> String
 
+pub fn mold_all_text(@value.Cell) -> String
+
 pub fn mold_text(@value.Cell) -> String
 
 pub fn type_name(@value.Datatype) -> String

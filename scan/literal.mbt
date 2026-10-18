@@ -499,6 +499,7 @@ fn Lexer::braced(self : Lexer) -> Result[@value.Cell, ScanError] {
 fn Lexer::hash(self : Lexer) -> Result[@value.Cell, ScanError] {
   self.bump() |> ignore
   match self.peek() {
+    Some('(') => self.construct()
     Some('"') => self.char_literal()
     Some('{') => self.binary(16)
     Some(char) if is_digit(char) => self.based_binary()

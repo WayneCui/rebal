@@ -234,7 +234,8 @@ fn call(
     func.code() != native_ecdsa &&
     func.code() != native_encode &&
     func.code() != native_save &&
-    func.code() != native_load {
+    func.code() != native_load &&
+    func.code() != native_mold {
     raise EvalError::Cannot("func")
   }
   let args : Array[@value.Cell] = []
@@ -369,6 +370,8 @@ fn call(
     (perform_save(env, args, active), cursor)
   } else if func.code() == native_load {
     (perform_load(env, args[0], active), cursor)
+  } else if func.code() == native_mold {
+    (perform_mold(env, args[0], active), cursor)
   } else if func.code() == 0 {
     (call_user(env, func, args, active), cursor)
   } else {

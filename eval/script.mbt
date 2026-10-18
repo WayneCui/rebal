@@ -2,21 +2,28 @@
 /// A script may start with `Rebol [header]`. `options: [compress]` means the
 /// rest is either raw zlib or a `64#{...}` binary. `/header` keeps the header
 /// object in front of the values; without one, that place is none.
+/// `/all` returns the source as scanned, header included, and does not collapse
+/// a single value.
 fn load_bytes(
   env : Env,
   bytes : Array[Int],
   header : Bool,
+  all : Bool,
 ) -> @value.Cell raise EvalError {
-  match script_split(bytes) {
-    Some((source, rest)) => {
-      let body = if script_compresses(env, source) {
-        load(env, script_text(script_inflate(rest)))
-      } else {
-        load(env, script_text(rest))
+  if all {
+    load(env, script_text(bytes))
+  } else {
+    match script_split(bytes) {
+      Some((source, rest)) => {
+        let body = if script_compresses(env, source) {
+          load(env, script_text(script_inflate(rest)))
+        } else {
+          load(env, script_text(rest))
+        }
+        script_finish(env, body, Some(source), header)
       }
-      script_finish(env, body, Some(source), header)
+      None => script_finish(env, load(env, script_text(bytes)), None, header)
     }
-    None => script_finish(env, load(env, script_text(bytes)), None, header)
   }
 }
 
