@@ -206,6 +206,18 @@ test "load/as text decodes bytes, and none or unbound loads code" {
 }
 
 ///|
+test "load/as text reads UTF-16 and UTF-32 when a BOM is present" {
+  // s-unicode.c What_UTF. No BOM stays UTF-8. A broken surrogate is refused.
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "(reduce [(load/as #{FFFE61006200} 'text) = \"ab\" (load/as #{FEFF00610062} 'text) = \"ab\" (load/as #{FFFE000061000000} 'text) = \"a\" (load/as #{0000FEFF00000061} 'text) = \"a\" (load/as #{FFFE} 'text) = \"\" (load/as #{FFFE61000D000A006200} 'text) = \"a^/b\" (load/as #{FFFE61000D006200} 'text) = \"a^/b\" (load/as #{FFFE3DD802DC} 'text) = \"🐂\" (load/as #{61006200} 'text) = \"a^@b^@\" (type? try [load/as #{FFFE00D8} 'text]) = error! (type? try [load/as #{FFFE000000001100} 'text]) = error!]) = reduce [true true true true true true true true true true true]",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "load/as markup splits tags from the text between them" {
   // load-test.r3 "load/as markup". An unclosed tag drops the `<`.
   let env = @eval.Env::new()
