@@ -34,6 +34,14 @@ pub fn write_file(path : String, text : String) -> Unit raise EvalError {
 }
 
 ///|
+/// `/as` selects a codec, or asks for the source to be loaded as code.
+priv enum LoadAs {
+  Plain
+  Script
+  Codec(String)
+}
+
+///|
 /// Reads a script, drops a leading `Rebol [header]` pair, and evaluates the rest.
 fn do_text(env : Env, text : String) -> @value.Cell raise EvalError {
   eval(env, drop_header(load(env, text)))
@@ -45,21 +53,24 @@ fn perform_load(
   args : Array[@value.Cell],
   active : Array[Int],
 ) -> @value.Cell raise EvalError {
-  let (header, all, kind) = load_flags(env, args, active)
+  let (header, all, mode) = load_flags(env, args, active)
   let source = args[0]
   match source {
     @value.Seq(series, index) if series.datatype() == @value.Block =>
       return load_each(env, series, index, args, active)
     _ => ()
   }
-  match kind {
-    Some(name) =>
+  match mode {
+    Codec(name) =>
       if name == "markup" {
         return decode_markup(source)
+      } else if name == "text" {
+        return load_text(source)
       } else {
         raise EvalError::Cannot("access")
       }
-    None => ()
+    Script => return load_script(env, source, header, all)
+    Plain => ()
   }
   if pkix_file(source) {
     match read_pem(read_file(loaded_path(source))) {
@@ -106,15 +117,15 @@ fn load_each(
 
 ///|
 /// `/header` wins over `/all`. `/all` returns every value and leaves a header unread.
-/// `/as` names a codec. `markup` is handled here; any other name is refused.
+/// `/as text` decodes UTF-8. `/as none` and `/as unbound` load code and ignore a file suffix.
 fn load_flags(
   env : Env,
   args : Array[@value.Cell],
   active : Array[Int],
-) -> (Bool, Bool, String?) raise EvalError {
+) -> (Bool, Bool, LoadAs) raise EvalError {
   let mut header = false
   let mut all = false
-  let mut kind : String? = None
+  let mut mode = Plain
   let mut cursor = 1
   for sym in active {
     let name = env.symbols.canon(sym)
@@ -123,24 +134,47 @@ fn load_flags(
     } else if name == "all" {
       all = true
     } else if name == "as" {
-      kind = Some(load_type(env, args[cursor]))
+      mode = load_type(env, args[cursor])
       cursor = cursor + 1
     } else {
       raise EvalError::Cannot("load")
     }
   }
   if header {
-    (true, false, kind)
+    (true, false, mode)
   } else {
-    (false, all, kind)
+    (false, all, mode)
   }
 }
 
 ///|
-fn load_type(env : Env, cell : @value.Cell) -> String raise EvalError {
+fn load_type(env : Env, cell : @value.Cell) -> LoadAs raise EvalError {
   match cell {
-    @value.Sym(_, lexeme) => env.symbols.canon(lexeme.sym())
-    _ => raise EvalError::Cannot("load")
+    @value.Cell::None => Script
+    @value.Sym(_, lexeme) => {
+      let name = env.symbols.canon(lexeme.sym())
+      if name == "unbound" {
+        Script
+      } else {
+        Codec(name)
+      }
+    }
+    _ => raise EvalError::Caused("expect-arg", "load")
+  }
+}
+
+///|
+/// `/as none` loads the bytes as a script, even when the suffix names a codec.
+fn load_script(
+  env : Env,
+  source : @value.Cell,
+  header : Bool,
+  all : Bool,
+) -> @value.Cell raise EvalError {
+  match source {
+    @value.Seq(series, index) if series.datatype() == @value.Binary =>
+      load_bytes(env, drop_bom(bytes_from(series, index)), header, all)
+    _ => load_bytes(env, utf8_bytes(source_text(source)), header, all)
   }
 }
 

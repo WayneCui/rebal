@@ -191,6 +191,21 @@ test "a script header turns yes, no, and none into values" {
 }
 
 ///|
+test "load/as text decodes bytes, and none or unbound loads code" {
+  // sys-load.reb. text folds CR and LF. none ignores a codec suffix.
+  @eval.write_file("/tmp/rebal-as.txt", "hello\r\n")
+  @eval.write_file("/tmp/rebal-as.r3", "1\n")
+  @eval.write_file("/tmp/rebal-as.pem", "1\n")
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "(reduce [(load/as \"1 2\" 'text) = \"1 2\" (load/as #{312032} 'text) = \"1 2\" (load/as #{} 'text) = \"\" (load/as #{C3A9} 'text) = \"é\" (load/as #{EFBBBF610D0A62} 'text) = \"a^/b\" (load/as #{610D62} 'text) = \"a^/b\" (load/as #{610A0D62} 'text) = \"a^/b\" (load/header/as \"1\" 'text) = \"1\" (load/all/as \"1 2\" 'text) = \"1 2\" (load/as [\"31\" #{32}] 'text) = [\"31\" \"2\"] (load/as %/tmp/rebal-as.txt 'text) = \"hello^/\" (load %/tmp/rebal-as.r3) = 1 (load/as %/tmp/rebal-as.r3 'text) = \"1^/\" (load/as %/tmp/rebal-as.r3 none) = 1 (load %/tmp/rebal-as.pem) = none (load/as %/tmp/rebal-as.pem none) = 1 (load/as \"1 2\" 'unbound) = [1 2] (load/as \"1\" none) = 1 ((pick load/header/as {rebol [title: \"t\"] 1} none 1)/title) = \"t\" (pick load/header/as {rebol [title: \"t\"] 1} none 2) = 1 ((try [load/as \"1\" 1])/id) = 'expect-arg (type? try [load/as \"1\" 'nope]) = error!]) = reduce [true true true true true true true true true true true true true true true true true true true true true true]",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "load/as markup splits tags from the text between them" {
   // load-test.r3 "load/as markup". An unclosed tag drops the `<`.
   let env = @eval.Env::new()

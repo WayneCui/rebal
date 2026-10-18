@@ -17,6 +17,63 @@ fn encode_text(value : @value.Cell) -> @value.Cell raise EvalError {
 }
 
 ///|
+/// `load/as 'text` is `decode 'text`. A UTF-8 BOM is dropped. CR, LF, CRLF,
+/// and LFCR all become a single line feed. Invalid UTF-8 is refused.
+fn load_text(source : @value.Cell) -> @value.Cell raise EvalError {
+  let bytes = match source {
+    @value.Seq(series, index) if series.datatype() == @value.Binary =>
+      bytes_from(series, index)
+    _ => utf8_bytes(source_text(source))
+  }
+  let text = qp_text(fold_newlines(drop_text_bom(bytes))) catch {
+    _ => raise EvalError::Cannot("load")
+  }
+  text_series(text)
+}
+
+///|
+fn drop_text_bom(bytes : Array[Int]) -> Array[Int] {
+  if bytes.length() >= 3 &&
+    bytes[0] == 0xEF &&
+    bytes[1] == 0xBB &&
+    bytes[2] == 0xBF {
+    let rest : Array[Int] = []
+    for index in 3..<bytes.length() {
+      rest.push(bytes[index])
+    }
+    rest
+  } else {
+    bytes
+  }
+}
+
+///|
+fn fold_newlines(bytes : Array[Int]) -> Array[Int] {
+  let out : Array[Int] = []
+  let mut index = 0
+  while index < bytes.length() {
+    let byte = bytes[index]
+    if byte == 13 {
+      out.push(10)
+      index = index + 1
+      if index < bytes.length() && bytes[index] == 10 {
+        index = index + 1
+      }
+    } else if byte == 10 {
+      out.push(10)
+      index = index + 1
+      if index < bytes.length() && bytes[index] == 13 {
+        index = index + 1
+      }
+    } else {
+      out.push(byte)
+      index = index + 1
+    }
+  }
+  out
+}
+
+///|
 fn text_contents(molded : String) -> String {
   let mut count = 0
   for char in molded {
