@@ -99,6 +99,12 @@ fn perform_decode(
     }
     return decode_json(env, args[1])
   }
+  if kind == "xml" {
+    if binary {
+      raise EvalError::Cannot("decode")
+    }
+    return decode_xml(env, args[1])
+  }
   if kind != "pkix" {
     raise EvalError::Cannot("access")
   }
