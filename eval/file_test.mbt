@@ -84,6 +84,18 @@ test "save/compress writes zlib, a header, or a base-64 script" {
 }
 
 ///|
+test "a header length keeps only that many body bytes" {
+  // load-test.r3 "Length-specified script embedding".
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "(reduce [(load {rebol [length: 14] print \"hello\" other stuff}) = [print \"hello\"] (load {rebol [length: 2] 1 2}) = 1 (load {rebol [length: 0] print \"hello\"}) = [] (load {rebol [length: 100] 1 2}) = [1 2]]) = reduce [true true true true]",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "load maps over a block of sources" {
   // load-test.r3 "Load of a block!".
   let env = @eval.Env::new()

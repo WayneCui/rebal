@@ -15,10 +15,11 @@ fn load_bytes(
   } else {
     match script_split(bytes) {
       Some((source, rest)) => {
+        let limited = script_limited(env, source, rest)
         let body = if script_compresses(env, source) {
-          load(env, script_text(script_inflate(rest)))
+          load(env, script_text(script_inflate(limited)))
         } else {
-          load(env, script_text(rest))
+          load(env, script_text(limited))
         }
         script_finish(env, body, Some(source), header)
       }
@@ -136,6 +137,62 @@ fn script_fields(
       } else {
         None
       }
+    None => None
+  }
+}
+
+///|
+/// `length:` counts bytes after one CR and one LF. Anything past that is
+/// left unread. A length that is not an integer does not cut the body.
+fn script_limited(
+  env : Env,
+  source : String,
+  rest : Array[Int],
+) -> Array[Int] raise EvalError {
+  let mut cursor = 0
+  if cursor < rest.length() && rest[cursor] == 13 {
+    cursor = cursor + 1
+  }
+  if cursor < rest.length() && rest[cursor] == 10 {
+    cursor = cursor + 1
+  }
+  match script_length(env, source) {
+    Some(n) => {
+      let end = if cursor + n > rest.length() {
+        rest.length()
+      } else {
+        cursor + n
+      }
+      script_slice(rest, cursor, end)
+    }
+    None => rest
+  }
+}
+
+///|
+fn script_length(env : Env, source : String) -> Int? raise EvalError {
+  match script_fields(env, source) {
+    Some(items) => {
+      let mut found : Int? = None
+      let mut seen = false
+      let mut index = 0
+      while !seen && index + 1 < items.length() {
+        match items[index] {
+          @value.Sym(@value.SetWord, lexeme) if env.symbols.canon(lexeme.sym()) ==
+            "length" => {
+            seen = true
+            match items[index + 1] {
+              @value.Integer(n) if n >= 0L && n <= 2147483647L =>
+                found = Some(n.to_int())
+              @value.Integer(_) => raise EvalError::Cannot("load")
+              _ => ()
+            }
+          }
+          _ => index = index + 1
+        }
+      }
+      found
+    }
     None => None
   }
 }
