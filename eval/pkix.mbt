@@ -87,6 +87,12 @@ fn perform_decode(
     }
     return decode_html(args[1])
   }
+  if kind == "unixtime" {
+    if binary {
+      raise EvalError::Cannot("decode")
+    }
+    return decode_unix(args[1])
+  }
   if kind != "pkix" {
     raise EvalError::Cannot("access")
   }

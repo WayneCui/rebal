@@ -259,6 +259,8 @@ fn call(
     func.arity() + call_extra(env, active)
   } else if func.code() == native_decode {
     func.arity() + decode_extra(env, active)
+  } else if func.code() == native_encode {
+    func.arity() + encode_extra(env, active)
   } else if func.code() == native_rsa_init {
     func.arity() + rsa_init_extra(env, active)
   } else if func.code() == native_rsa {
@@ -387,6 +389,15 @@ fn named(env : Env, active : Array[Int], spelling : String) -> Bool {
     }
   }
   found
+}
+
+///|
+fn encode_extra(env : Env, active : Array[Int]) -> Int {
+  if named(env, active, "as") {
+    1
+  } else {
+    0
+  }
 }
 
 ///|

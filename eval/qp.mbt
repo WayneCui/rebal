@@ -34,10 +34,15 @@ fn perform_encode(
   active : Array[Int],
 ) -> @value.Cell raise EvalError {
   let mut uri = false
+  let mut form : @value.Cell? = None
+  let mut cursor = 2
   for sym in active {
     let name = env.symbols.canon(sym)
     if name == "uri" {
       uri = true
+    } else if name == "as" {
+      form = Some(args[cursor])
+      cursor = cursor + 1
     } else {
       raise EvalError::Cannot("encode")
     }
@@ -47,12 +52,20 @@ fn perform_encode(
     _ => raise EvalError::Cannot("encode")
   }
   if kind == "quoted-printable" {
+    if form is Some(_) {
+      raise EvalError::Cannot("encode")
+    }
     encode_quoted(args[1], uri)
   } else if kind == "mime-field" {
-    if uri {
+    if uri || form is Some(_) {
       raise EvalError::Cannot("encode")
     }
     encode_mime_field(args[1])
+  } else if kind == "unixtime" {
+    if uri {
+      raise EvalError::Cannot("encode")
+    }
+    encode_unix(args[1], form)
   } else {
     raise EvalError::Cannot("access")
   }
