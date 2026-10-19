@@ -102,6 +102,19 @@ pub fn select(
         Some(found) => Ok(found)
         None => Ok(@value.None)
       }
+    @value.Object(frame) =>
+      match value {
+        @value.Sym(_, lexeme) =>
+          match frame.find(lexeme.sym()) {
+            Some(slot) =>
+              match frame.get(slot) {
+                Some(cell) => Ok(cell)
+                None => Ok(@value.None)
+              }
+            None => Ok(@value.None)
+          }
+        _ => Ok(@value.None)
+      }
     _ =>
       if is_series(series) {
         Ok(@series.select(series, value))

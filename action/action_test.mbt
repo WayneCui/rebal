@@ -35,7 +35,7 @@ test "arithmetic promotes integers and decimals" {
     Err(_) => fail("subtract")
   }
   match @action.add(@value.Integer(1L), @value.None) {
-    Err(error) => assert_eq(error.id(), "cannot")
+    Err(error) => assert_eq(error.id(), "add")
     Ok(_) => fail("type")
   }
 }
@@ -90,7 +90,7 @@ test "series actions follow the series package" {
     Err(_) => fail("remove")
   }
   match @action.length(@value.Integer(1L)) {
-    Err(error) => assert_eq(error.id(), "cannot")
+    Err(error) => assert_eq(error.id(), "length?")
     Ok(_) => fail("length type")
   }
 }

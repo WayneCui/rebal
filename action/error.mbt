@@ -6,6 +6,6 @@ pub enum ActionError {
 ///|
 pub fn ActionError::id(self : ActionError) -> String {
   match self {
-    Cannot(_) => "cannot"
+    Cannot(name) => name
   }
 }

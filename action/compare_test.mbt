@@ -39,7 +39,7 @@ test "numbers chars and strings compare with coercion" {
     Err(_) => fail("string order")
   }
   match @action.lesser(@value.Integer(1L), text_cell("a")) {
-    Err(error) => assert_eq(error.id(), "cannot")
+    Err(error) => assert_eq(error.id(), "compare")
     Ok(_) => fail("mismatch")
   }
   match @action.greater(@value.Integer(2L), @value.Integer(1L)) {

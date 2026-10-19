@@ -20,4 +20,10 @@ test "make copies an object and keeps a new block to itself" {
     error => error.id() == "cannot"
   }
   assert_true(bad)
+  assert_true(
+    @eval.run(
+      env, "o: make object! [a: 1 b: none] (reduce [(select o 'a) = 1 none? select o 'b none? select o 'z none? select o 1]) = reduce [true true true true]",
+    )
+    is @value.Logic(true),
+  )
 }

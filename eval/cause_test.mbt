@@ -10,6 +10,18 @@ test "a path reads an error id and its first argument" {
 }
 
 ///|
+test "an action failure names the operation" {
+  let env = @eval.Env::new()
+  match @eval.run(env, "try [append 1 2]") {
+    @value.Error(error) => {
+      assert_true(error.id == "cannot")
+      assert_true(error.arg1 == "append")
+    }
+    _ => fail("append")
+  }
+}
+
+///|
 test "cause-error raises an error try can catch" {
   let env = @eval.Env::new()
   match @eval.run(env, "try [cause-error 'script 'too-small 3]") {
