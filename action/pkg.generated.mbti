@@ -122,6 +122,8 @@ pub fn reverse(@value.Cell) -> Result[@value.Cell, ActionError]
 
 pub fn round(@value.Cell) -> Result[@value.Cell, ActionError]
 
+pub fn same(@value.Cell, @value.Cell) -> Bool
+
 pub fn seek(@value.Cell, @value.Cell, Bool, Bool, Bool, Bool, Bool, Int?) -> Result[@value.Cell, ActionError]
 
 pub fn select(@value.Cell, @value.Cell) -> Result[@value.Cell, ActionError]

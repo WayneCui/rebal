@@ -653,6 +653,8 @@ fn apply(
     logic_order(@action.greater_or_equal(args[0], args[1]))
   } else if func.code() == native_strict_equal {
     @value.Logic(@action.strict_equal(args[0], args[1]))
+  } else if func.code() == native_same_q {
+    @value.Logic(@action.same(args[0], args[1]))
   } else if func.code() == native_next {
     from_action(@action.next(args[0]))
   } else if func.code() == native_back {

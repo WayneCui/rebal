@@ -54,6 +54,9 @@ fn make_object(
         Some(base) => clone_object(base)
         None => @value.Frame::new()
       }
+      let self_slot = frame.ensure(env.symbols.intern("self"))
+      frame.set(self_slot, @value.Object(frame)) |> ignore
+      frame.hide(self_slot, true)
       let mut cursor = index
       while cursor < series.length() {
         match series.item(cursor) {
@@ -82,10 +85,13 @@ fn clone_object(base : @value.Frame) -> @value.Frame {
       Some(sym) => {
         let slot = frame.ensure(sym)
         let value = match base.get(index) {
-          Some(cell) => clone_field(cell)
+          Some(cell) => clone_field(cell, base, frame)
           None => @value.None
         }
         frame.set(slot, value) |> ignore
+        if base.is_hidden(index) {
+          frame.hide(slot, true)
+        }
       }
       None => ()
     }
@@ -94,9 +100,39 @@ fn clone_object(base : @value.Frame) -> @value.Frame {
 }
 
 ///|
-fn clone_field(cell : @value.Cell) -> @value.Cell {
+/// Blocks and strings are copied. A function's body is copied and rebinds
+/// only the words that pointed at the prototype, so methods see the clone.
+fn clone_field(
+  cell : @value.Cell,
+  from : @value.Frame,
+  to : @value.Frame,
+) -> @value.Cell {
   match cell {
-    @value.Seq(series, index) => @value.Seq(series.copy_deep(index), 0)
+    @value.Seq(series, index) => {
+      let copied = @value.Seq(series.copy_deep(index), 0)
+      @bind.rebind(copied, from, to) |> ignore
+      copied
+    }
+    @value.Function(func) => {
+      let body = func.body().copy_deep(0)
+      @bind.rebind(@value.Seq(body, 0), from, to) |> ignore
+      @value.Function(
+        @value.Func::make(
+          func.params(),
+          func.types(),
+          func.lits(),
+          func.refines(),
+          func.refine_args(),
+          func.refine_types(),
+          func.spec_words(),
+          func.spec_kinds(),
+          body,
+          func.is_infix(),
+          func.frame(),
+          func.is_closure(),
+        ),
+      )
+    }
     _ => cell
   }
 }
@@ -110,7 +146,9 @@ fn words_of(env : Env, value : @value.Cell) -> @value.Cell raise EvalError {
       for index in 0..<frame.length() {
         match frame.sym(index) {
           Some(sym) =>
-            block.push_item(word_cell(env, env.symbols.canon(sym))) |> ignore
+            if !frame.is_hidden(index) {
+              block.push_item(word_cell(env, env.symbols.canon(sym))) |> ignore
+            }
           None => ()
         }
       }

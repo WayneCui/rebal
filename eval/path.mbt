@@ -174,7 +174,12 @@ fn object_field(
   lexeme : @value.Lexeme,
 ) -> @value.Cell raise EvalError {
   match frame.find(lexeme.sym()) {
-    Some(slot) => defined(frame, slot, lexeme.spelling())
+    Some(slot) =>
+      if frame.is_hidden(slot) {
+        raise EvalError::InvalidPath(lexeme.spelling())
+      } else {
+        defined(frame, slot, lexeme.spelling())
+      }
     None => raise EvalError::InvalidPath(lexeme.spelling())
   }
 }
@@ -231,7 +236,12 @@ fn write_selector(
       match selector {
         @value.Sym(_, lexeme) =>
           match frame.find(lexeme.sym()) {
-            Some(slot) => store(frame, slot, value)
+            Some(slot) =>
+              if frame.is_hidden(slot) {
+                raise EvalError::InvalidPath(lexeme.spelling())
+              } else {
+                store(frame, slot, value)
+              }
             None => raise EvalError::InvalidPath(lexeme.spelling())
           }
         _ => raise EvalError::InvalidPath("object")

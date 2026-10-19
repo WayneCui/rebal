@@ -192,11 +192,14 @@ pub struct Frame {
   syms : Array[Int]
   sym_to_slot : Map[Int, Int]
   locked : Array[Bool]
+  hidden : Array[Bool]
 }
 pub fn Frame::copy_shape(Self) -> Self
 pub fn Frame::ensure(Self, Int) -> Int
 pub fn Frame::find(Self, Int) -> Int?
 pub fn Frame::get(Self, Int) -> Cell?
+pub fn Frame::hide(Self, Int, Bool) -> Unit
+pub fn Frame::is_hidden(Self, Int) -> Bool
 pub fn Frame::is_locked(Self, Int) -> Bool
 pub fn Frame::length(Self) -> Int
 pub fn Frame::lock(Self, Int, Bool) -> Unit

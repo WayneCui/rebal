@@ -63,6 +63,21 @@ pub fn strict_equal(left : @value.Cell, right : @value.Cell) -> Bool {
 }
 
 ///|
+/// Identity for reference types, value equality for everything else.
+/// The position inside a series does not matter.
+pub fn same(left : @value.Cell, right : @value.Cell) -> Bool {
+  match (left, right) {
+    (@value.Seq(a, _), @value.Seq(b, _)) => physical_equal(a, b)
+    (@value.Object(a), @value.Object(b)) => physical_equal(a, b)
+    (@value.Function(a), @value.Function(b)) => physical_equal(a, b)
+    (@value.Module(a), @value.Module(b)) => physical_equal(a, b)
+    (@value.Port(a), @value.Port(b)) => physical_equal(a, b)
+    (@value.Map(a), @value.Map(b)) => physical_equal(a, b)
+    _ => left.equal(right)
+  }
+}
+
+///|
 fn equal_at(left : @value.Cell, right : @value.Cell, depth : Int) -> Bool {
   if depth > max_compare_depth {
     false

@@ -26,4 +26,30 @@ test "make copies an object and keeps a new block to itself" {
     )
     is @value.Logic(true),
   )
+  assert_true(
+    @eval.run(
+      env, "o: make object! [a: 1 me: does [self]] (reduce [same? o o/me (words-of o) = [a me] none? select o 'self]) = reduce [true true true]",
+    )
+    is @value.Logic(true),
+  )
+  let path_self = try {
+    @eval.run(env, "o/self") |> ignore
+    false
+  } catch {
+    error => error.id() == "invalid-path"
+  }
+  assert_true(path_self)
+  let set_self = try {
+    @eval.run(env, "o/self: 1") |> ignore
+    false
+  } catch {
+    error => error.id() == "invalid-path"
+  }
+  assert_true(set_self)
+  assert_true(
+    @eval.run(
+      env, "c: make o [] (reduce [same? c c/me not same? c o (words-of c) = [a me]]) = reduce [true true true]",
+    )
+    is @value.Logic(true),
+  )
 }

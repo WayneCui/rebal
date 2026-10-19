@@ -4,11 +4,12 @@ pub struct Frame {
   syms : Array[Int]
   sym_to_slot : Map[Int, Int]
   locked : Array[Bool]
+  hidden : Array[Bool]
 }
 
 ///|
 pub fn Frame::new() -> Frame {
-  { slots: [], syms: [], sym_to_slot: Map([]), locked: [], }
+  { slots: [], syms: [], sym_to_slot: Map([]), locked: [], hidden: [], }
 }
 
 ///|
@@ -27,6 +28,7 @@ pub fn Frame::ensure(self : Frame, sym : Int) -> Int {
       self.slots.push(Unset)
       self.syms.push(sym)
       self.locked.push(false)
+      self.hidden.push(false)
       self.sym_to_slot.set(sym, index)
       index
     }
@@ -65,6 +67,22 @@ pub fn Frame::is_locked(self : Frame, index : Int) -> Bool {
 }
 
 ///|
+/// A hidden slot still binds words, but words-of and paths skip it.
+pub fn Frame::hide(self : Frame, index : Int, flag : Bool) -> Unit {
+  if index >= 0 && index < self.hidden.length() {
+    self.hidden[index] = flag
+  }
+}
+
+///|
+pub fn Frame::is_hidden(self : Frame, index : Int) -> Bool {
+  match self.hidden.get(index) {
+    Some(flag) => flag
+    None => false
+  }
+}
+
+///|
 pub fn Frame::length(self : Frame) -> Int {
   self.slots.length()
 }
@@ -81,6 +99,7 @@ pub fn Frame::copy_shape(self : Frame) -> Frame {
   let slots : Array[Cell] = []
   let syms : Array[Int] = []
   let locked : Array[Bool] = []
+  let hidden : Array[Bool] = []
   for index in 0..<self.slots.length() {
     slots.push(Unset)
     match self.syms.get(index) {
@@ -88,6 +107,7 @@ pub fn Frame::copy_shape(self : Frame) -> Frame {
       None => ()
     }
     locked.push(false)
+    hidden.push(false)
   }
-  { slots, syms, sym_to_slot: self.sym_to_slot.copy(), locked, }
+  { slots, syms, sym_to_slot: self.sym_to_slot.copy(), locked, hidden, }
 }

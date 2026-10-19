@@ -107,9 +107,13 @@ pub fn select(
         @value.Sym(_, lexeme) =>
           match frame.find(lexeme.sym()) {
             Some(slot) =>
-              match frame.get(slot) {
-                Some(cell) => Ok(cell)
-                None => Ok(@value.None)
+              if frame.is_hidden(slot) {
+                Ok(@value.None)
+              } else {
+                match frame.get(slot) {
+                  Some(cell) => Ok(cell)
+                  None => Ok(@value.None)
+                }
               }
             None => Ok(@value.None)
           }
