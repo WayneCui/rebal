@@ -250,6 +250,42 @@ pub fn Series::push_byte(self : Series, byte : Byte) -> Bool {
 }
 
 ///|
+/// Shallow copy of at most `count` values from `index`. Zero copies nothing.
+pub fn Series::copy_span(self : Series, index : Int, count : Int) -> Series {
+  let start = if index < 0 { 0 } else { index }
+  let mut end = start
+  if count > 0 {
+    end = start + count
+    if end > self.length() {
+      end = self.length()
+    }
+  }
+  match self.payload {
+    Items(xs) => {
+      let out = Series::make(self.datatype, Items([]))
+      for i in start..<end {
+        out.push_item(xs[i].snapshot()) |> ignore
+      }
+      out
+    }
+    Text(xs) => {
+      let out = Series::text_of(self.datatype)
+      for i in start..<end {
+        out.push_code(xs[i]) |> ignore
+      }
+      out
+    }
+    Bytes(xs) => {
+      let out = Series::binary()
+      for i in start..<end {
+        out.push_byte(xs[i]) |> ignore
+      }
+      out
+    }
+  }
+}
+
+///|
 /// Shallow copy of the tail starting at `index`. Word cells are snapshotted so
 /// a later rebind of the source does not change the copy. Nested series stay shared.
 pub fn Series::copy_from(self : Series, index : Int) -> Series {

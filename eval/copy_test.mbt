@@ -19,11 +19,17 @@ test "copy and copy/deep clone series and maps" {
     )
     is @value.Logic(true),
   )
+  assert_true(
+    @eval.run(
+      env, "name: \"s1.events.reb\" (reduce [(copy/part name (length? name) - length? \".events.reb\") = \"s1\" (copy/part \"abcd\" 2) = \"ab\" (copy/part \"abcd\" 0) = \"\" (copy/part [1 2 3] 2) = [1 2] (copy/part/deep [1 [2]] 1) = [1]]) = reduce [true true true true true]",
+    )
+    is @value.Logic(true),
+  )
   let bad = try {
     @eval.run(env, "copy/part [1 2]") |> ignore
     false
   } catch {
-    error => error.id() == "cannot"
+    error => error.id() == "missing-arg"
   }
   assert_true(bad)
 }

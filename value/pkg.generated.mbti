@@ -350,6 +350,7 @@ pub fn Series::byte_at(Self, Int) -> Byte?
 pub fn Series::code(Self, Int) -> Int?
 pub fn Series::copy_deep(Self, Int) -> Self
 pub fn Series::copy_from(Self, Int) -> Self
+pub fn Series::copy_span(Self, Int, Int) -> Self
 pub fn Series::datatype(Self) -> Datatype
 pub fn Series::insert_byte(Self, Int, Byte) -> Bool
 pub fn Series::insert_code(Self, Int, Int) -> Bool

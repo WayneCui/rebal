@@ -256,7 +256,9 @@ fn call(
   }
   let args : Array[@value.Cell] = []
   let mut cursor = index
-  let count = if func.code() == native_find && named(env, active, "part") {
+  let count = if func.code() == native_copy && named(env, active, "part") {
+    func.arity() + 1
+  } else if func.code() == native_find && named(env, active, "part") {
     func.arity() + 1
   } else if func.code() == native_confirm && named(env, active, "with") {
     func.arity() + 1
@@ -395,7 +397,7 @@ fn call(
   } else if func.code() == native_keep {
     (perform_keep(env, args[0], active), cursor)
   } else if func.code() == native_copy {
-    (perform_copy(env, args[0], active), cursor)
+    (perform_copy(env, args, active), cursor)
   } else if func.code() == native_compose {
     (perform_compose(env, args[0], active), cursor)
   } else if func.code() == native_mold {
