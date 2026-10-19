@@ -250,6 +250,7 @@ fn to_tuple(spec : @value.Cell) -> @value.Cell raise EvalError {
 
 ///|
 fn perform_to(
+  env : Env,
   datatype : @value.Cell,
   spec : @value.Cell,
 ) -> @value.Cell raise EvalError {
@@ -265,6 +266,53 @@ fn perform_to(
     @value.Type(@value.Bitset) => to_bitset(spec)
     @value.Type(@value.Map) => to_map(spec)
     @value.Type(@value.String) => to_string(spec)
+    @value.Type(@value.Word) => to_word(env, spec)
+    @value.Type(@value.File) => to_file(spec)
+    @value.Type(@value.Logic) => to_logic(spec)
+    _ => raise EvalError::Cannot("to")
+  }
+}
+
+///|
+/// A string or word becomes a plain word with that spelling.
+fn to_word(env : Env, spec : @value.Cell) -> @value.Cell raise EvalError {
+  match spec {
+    @value.Sym(_, lexeme) => {
+      let spelling = lexeme.spelling()
+      @value.Sym(
+        @value.Word,
+        @value.Lexeme::make(env.symbols.intern(spelling), spelling),
+      )
+    }
+    @value.Seq(series, index) if @value.text_series(series.datatype()) => {
+      let spelling = text_from(series, index)
+      @value.Sym(
+        @value.Word,
+        @value.Lexeme::make(env.symbols.intern(spelling), spelling),
+      )
+    }
+    _ => raise EvalError::Cannot("to")
+  }
+}
+
+///|
+/// Only `none` and `false` are false. Every other value is true.
+fn to_logic(spec : @value.Cell) -> @value.Cell {
+  match spec {
+    @value.None => @value.Logic(false)
+    @value.Logic(flag) => @value.Logic(flag)
+    _ => @value.Logic(true)
+  }
+}
+
+///|
+/// A string becomes a file with the same characters.
+fn to_file(spec : @value.Cell) -> @value.Cell raise EvalError {
+  match spec {
+    @value.Seq(series, index) if series.datatype() == @value.File =>
+      @value.Seq(series, index)
+    @value.Seq(series, index) if series.datatype() == @value.String =>
+      series_text(@value.File, text_from(series, index))
     _ => raise EvalError::Cannot("to")
   }
 }

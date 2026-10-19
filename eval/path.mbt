@@ -13,15 +13,6 @@ fn is_set_path(series : @value.Series) -> Bool {
 }
 
 ///|
-fn path_get(
-  env : Env,
-  series : @value.Series,
-  index : Int,
-) -> @value.Cell raise EvalError {
-  walk_path(env, series, index, series.length())
-}
-
-///|
 fn path_set(
   env : Env,
   series : @value.Series,
@@ -35,7 +26,11 @@ fn path_set(
   let container = walk_path(env, series, index, last)
   match series.item(last) {
     Some(selector) => {
-      write_selector(container, selector, value)
+      write_selector(
+        container,
+        eval_selector(env, series, last, selector),
+        value,
+      )
       value
     }
     None => raise EvalError::InvalidPath("path")
@@ -56,12 +51,32 @@ fn walk_path(
   let mut cursor = index + 1
   while cursor < until {
     match series.item(cursor) {
-      Some(selector) => current = path_step(env, current, selector)
+      Some(selector) =>
+        current = path_step(
+          env,
+          current,
+          eval_selector(env, series, cursor, selector),
+        )
       None => raise EvalError::InvalidPath("path")
     }
     cursor = cursor + 1
   }
   current
+}
+
+///|
+/// A get-word in a path evaluates to the key it names, the way `m/:key` does.
+fn eval_selector(
+  env : Env,
+  series : @value.Series,
+  index : Int,
+  selector : @value.Cell,
+) -> @value.Cell raise EvalError {
+  match selector {
+    @value.Sym(@value.GetWord, lexeme) =>
+      fetch(env, series, index, @value.GetWord, lexeme)
+    _ => selector
+  }
 }
 
 ///|
@@ -223,6 +238,56 @@ fn select_word(series : @value.Series, index : Int, sym : Int) -> @value.Cell {
     cursor = cursor + 1
   }
   result
+}
+
+///|
+/// `put` writes by key and returns the value, on a map, object, or block.
+/// A missing object field or block key is added; a map always takes the key.
+fn perform_put(
+  target : @value.Cell,
+  key : @value.Cell,
+  value : @value.Cell,
+) -> @value.Cell raise EvalError {
+  match target {
+    @value.Object(frame) =>
+      match key {
+        @value.Sym(_, lexeme) =>
+          match frame.find(lexeme.sym()) {
+            Some(slot) =>
+              if frame.is_hidden(slot) {
+                raise EvalError::InvalidPath(lexeme.spelling())
+              } else {
+                store(frame, slot, value)
+              }
+            None => {
+              let slot = frame.ensure(lexeme.sym())
+              store(frame, slot, value)
+            }
+          }
+        _ => raise EvalError::InvalidPath("object")
+      }
+    @value.Map(map) => map.put(key, value)
+    @value.Seq(series, index) if series.datatype() == @value.Block ||
+      series.datatype() == @value.Paren =>
+      match key {
+        @value.Sym(_, lexeme) =>
+          match word_slot(series, index, lexeme.sym()) {
+            Some(at) =>
+              if series.set_item(at, value) {
+                ()
+              } else {
+                raise EvalError::InvalidPath(lexeme.spelling())
+              }
+            None => {
+              series.push_item(key) |> ignore
+              series.push_item(value) |> ignore
+            }
+          }
+        _ => write_series(series, index, key, value)
+      }
+    _ => raise EvalError::InvalidPath("path")
+  }
+  value
 }
 
 ///|

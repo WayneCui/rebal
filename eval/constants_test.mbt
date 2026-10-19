@@ -33,6 +33,22 @@ test "boot installs the base constants and their aliases" {
   assert_true(@eval.run(env, "(abs -3) = 3") is @value.Logic(true))
   assert_true(@eval.run(env, "(empty? \"\") = true") is @value.Logic(true))
   assert_true(@eval.run(env, "(! false) = true") is @value.Logic(true))
+  assert_true(
+    @eval.run(
+      env, "(reduce [(keys-of make map! [a: 1 \"b\" 2]) = [a \"b\"] (keys-of make object! [a: 1]) = [a]]) = reduce [true true]",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "(reduce [equal? 1 1 not equal? 1 2 not-equal? 1 2 strict-equal? 1 1 lesser? 1 2 greater? 2 1 lesser-or-equal? 1 1 greater-or-equal? 2 2]) = reduce [true true true true true true true true]",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "n: 0 forever [n: n + 1 if n = 3 [break]] n = 3")
+    is @value.Logic(true),
+  )
   let stopped = try {
     @eval.run(env, "q") |> ignore
     false

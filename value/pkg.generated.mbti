@@ -287,6 +287,7 @@ pub struct MapValue {
   keys : Array[Cell]
   values : Array[Cell]
 }
+pub fn MapValue::copy(Self) -> Self
 pub fn MapValue::get(Self, Cell) -> Cell?
 pub fn MapValue::key(Self, Int) -> Cell?
 pub fn MapValue::length(Self) -> Int

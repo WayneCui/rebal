@@ -515,6 +515,15 @@ let native_prin : Int = 169
 let native_same_q : Int = 170
 
 ///|
+let native_put : Int = 171
+
+///|
+let native_collect : Int = 172
+
+///|
+let native_keep : Int = 173
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -574,6 +583,9 @@ pub fn Env::new() -> Env {
   define_native(env, "print", 1, false, native_print)
   define_native(env, "prin", 1, false, native_prin)
   define_native(env, "same?", 2, false, native_same_q)
+  define_native(env, "put", 3, false, native_put)
+  define_native(env, "collect", 1, false, native_collect)
+  define_native(env, "keep", 1, false, native_keep)
   define_native(env, "type?", 1, false, native_type)
   define_native(env, "try", 1, false, native_try)
   define_native(env, "=", 2, true, native_equal)

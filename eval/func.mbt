@@ -238,7 +238,7 @@ fn named_type(
 fn copied_block(cell : @value.Cell) -> @value.Series? {
   match cell {
     @value.Seq(series, index) if series.datatype() == @value.Block =>
-      Some(series.copy_from(index))
+      Some(series.copy_deep(index))
     _ => None
   }
 }
@@ -274,7 +274,7 @@ fn call_user(
   while which < refines.length() {
     write_slot(frame, refines[which], @value.Logic(false))
     for sym in groups[which] {
-      write_slot(frame, sym, @value.Unset)
+      write_slot(frame, sym, @value.None)
     }
     which = which + 1
   }

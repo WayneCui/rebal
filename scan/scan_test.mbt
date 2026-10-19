@@ -118,6 +118,39 @@ test "blocks, parens, paths, and binary" {
 }
 
 ///|
+test "a get-word in a path evaluates as the key" {
+  match load("m/:k").series().unwrap().item(0).unwrap() {
+    @value.Seq(path, _) => {
+      assert_true(path.datatype() == @value.Path)
+      assert_true(spell(path.item(1).unwrap()) is Some(("k", @value.GetWord)))
+    }
+    _ => fail("path")
+  }
+  match load("m/:k:").series().unwrap().item(0).unwrap() {
+    @value.Seq(path, _) => {
+      assert_true(path.datatype() == @value.SetPath)
+      assert_true(spell(path.item(0).unwrap()) is Some(("m", @value.Word)))
+      assert_true(spell(path.item(1).unwrap()) is Some(("k", @value.GetWord)))
+    }
+    _ => fail("set-path")
+  }
+  match load("m/:k:/b").series().unwrap().item(0).unwrap() {
+    @value.Seq(path, _) => {
+      assert_true(path.datatype() == @value.Path)
+      assert_eq(path.length(), 3)
+      assert_true(spell(path.item(1).unwrap()) is Some(("k", @value.GetWord)))
+      assert_true(spell(path.item(2).unwrap()) is Some(("b", @value.Word)))
+    }
+    _ => fail("continued")
+  }
+  match load("m/:a:b").series().unwrap().item(0).unwrap() {
+    @value.Seq(path, _) =>
+      assert_true(spell(path.item(1).unwrap()) is Some(("a:b", @value.GetWord)))
+    _ => fail("colon-name")
+  }
+}
+
+///|
 test "unclosed block is missing" {
   match @scan.transcode("[1", @value.Symbols::new()) {
     Err(error) => assert_eq(error.id(), "missing")

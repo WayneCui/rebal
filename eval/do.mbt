@@ -157,25 +157,36 @@ fn eval_atom(
       (value, next)
     }
     Some(@value.Seq(nested, nested_index)) if nested.datatype() == @value.Path => {
-      let head = path_head(env, nested, nested_index)
-      match head {
-        @value.Function(func) if !func.is_infix() =>
-          call(
-            env,
-            series,
-            index + 1,
-            func,
-            path_refines(nested, nested_index + 1),
-          )
-        _ => {
-          let value = path_get(env, nested, nested_index)
-          match value {
-            @value.Function(func) if !func.is_infix() =>
-              call(env, series, index + 1, func, [])
-            _ => (value, index + 1)
-          }
+      // Walk until a function shows up. The words after it are refinements.
+      // A path that ends on a function calls it with the following expressions.
+      let mut current = path_head(env, nested, nested_index)
+      let mut cursor = nested_index + 1
+      let mut stepped : (@value.Cell, Int)? = None
+      while stepped is None {
+        match current {
+          @value.Function(func) if !func.is_infix() =>
+            stepped = Some(
+              call(env, series, index + 1, func, path_refines(nested, cursor)),
+            )
+          _ =>
+            if cursor >= nested.length() {
+              stepped = Some((current, index + 1))
+            } else {
+              match nested.item(cursor) {
+                Some(selector) => {
+                  current = path_step(
+                    env,
+                    current,
+                    eval_selector(env, nested, cursor, selector),
+                  )
+                  cursor = cursor + 1
+                }
+                None => raise EvalError::InvalidPath("path")
+              }
+            }
         }
       }
+      stepped.unwrap()
     }
     Some(@value.Sym(@value.Word, lexeme)) => {
       let value = fetch(env, series, index, @value.Word, lexeme)
@@ -235,6 +246,10 @@ fn call(
     func.code() != native_encode &&
     func.code() != native_save &&
     func.code() != native_load &&
+    func.code() != native_compose &&
+    func.code() != native_copy &&
+    func.code() != native_collect &&
+    func.code() != native_keep &&
     func.code() != native_mold {
     raise EvalError::Cannot("func")
   }
@@ -372,6 +387,14 @@ fn call(
     (perform_save(env, args, active), cursor)
   } else if func.code() == native_load {
     (perform_load(env, args, active), cursor)
+  } else if func.code() == native_collect {
+    (perform_collect(env, args[0], active), cursor)
+  } else if func.code() == native_keep {
+    (perform_keep(env, args[0], active), cursor)
+  } else if func.code() == native_copy {
+    (perform_copy(env, args[0], active), cursor)
+  } else if func.code() == native_compose {
+    (perform_compose(env, args[0], active), cursor)
   } else if func.code() == native_mold {
     (perform_mold(env, args[0], active), cursor)
   } else if func.code() == 0 {
@@ -557,8 +580,6 @@ fn apply(
     perform_what_dir()
   } else if func.code() == native_change_dir {
     perform_change_dir(args[0])
-  } else if func.code() == native_copy {
-    from_action(@action.copy(args[0]))
   } else if func.code() == native_insert {
     from_action(@action.insert(args[0], args[1]))
   } else if func.code() == native_remove {
@@ -655,6 +676,8 @@ fn apply(
     @value.Logic(@action.strict_equal(args[0], args[1]))
   } else if func.code() == native_same_q {
     @value.Logic(@action.same(args[0], args[1]))
+  } else if func.code() == native_put {
+    perform_put(args[0], args[1], args[2])
   } else if func.code() == native_next {
     from_action(@action.next(args[0]))
   } else if func.code() == native_back {
@@ -712,10 +735,8 @@ fn apply(
     perform_catch(env, args[0], args[1])
   } else if func.code() == native_throw {
     perform_throw(args[0], args[1])
-  } else if func.code() == native_compose {
-    perform_compose(env, args[0])
   } else if func.code() == native_to {
-    perform_to(args[0], args[1])
+    perform_to(env, args[0], args[1])
   } else if func.code() == native_divide {
     from_action(@action.divide(args[0], args[1]))
   } else if func.code() == native_remainder {

@@ -189,6 +189,18 @@ fn Lexer::maybe_path(
       }
       if path.length() == 1 {
         Ok(cell)
+      } else if self.trailing_set_colon() {
+        self.bump() |> ignore
+        let set_path = @value.Series::set_path()
+        let mut index = 0
+        while index < path.length() {
+          match path.item(index) {
+            Some(item) => set_path.push_item(item) |> ignore
+            None => ()
+          }
+          index = index + 1
+        }
+        Ok(@value.Seq(set_path, 0))
       } else {
         Ok(@value.Seq(path, 0))
       }
@@ -209,11 +221,62 @@ fn Lexer::glued_slash(self : Lexer) -> Bool {
 }
 
 ///|
+/// A colon after the last element, with nothing but a delimiter after it,
+/// turns the path into a set-path. `m/:k:` is that case. A colon followed
+/// by `/` stays inside the path and is not this marker.
+fn Lexer::trailing_set_colon(self : Lexer) -> Bool {
+  if self.peek() is Some(':') {
+    match self.chars.get(self.pos + 1) {
+      None => true
+      Some(char) => is_space(char) || char == ']' || char == ')'
+    }
+  } else {
+    false
+  }
+}
+
+///|
 fn Lexer::path_element(self : Lexer) -> Result[@value.Cell, ScanError] {
   match self.peek() {
     Some(char) if is_digit(char) => self.number()
+    Some(':') => self.path_get_word()
     Some(_) => self.plain_word(@value.Word)
     None => Err(Invalid("path"))
+  }
+}
+
+///|
+/// `:field` inside a path is a get-word. A colon in the name stays when a
+/// word character follows (`:a:b`). A colon before `/` is dropped
+/// (`:k:/b` is the same path as `:k/b`). A colon at the end is left for
+/// `trailing_set_colon`.
+fn Lexer::path_get_word(self : Lexer) -> Result[@value.Cell, ScanError] {
+  self.bump() |> ignore
+  let start = self.pos
+  let mut reading = true
+  while reading {
+    match self.peek() {
+      Some(':') =>
+        match self.chars.get(self.pos + 1) {
+          Some('/') => reading = false
+          Some(char) if is_space(char) || char == ']' || char == ')' =>
+            reading = false
+          None => reading = false
+          _ => self.bump() |> ignore
+        }
+      Some(char) if is_word_char(char) => self.bump() |> ignore
+      _ => reading = false
+    }
+  }
+  let spelling = chars_text(self.chars, start, self.pos)
+  if self.peek() is Some(':') && self.chars.get(self.pos + 1) is Some('/') {
+    self.bump() |> ignore
+  }
+  if spelling == "" {
+    Err(Invalid("get-word"))
+  } else {
+    let sym = self.symbols.intern(spelling)
+    Ok(@value.Sym(@value.GetWord, @value.Lexeme::make(sym, spelling)))
   }
 }
 

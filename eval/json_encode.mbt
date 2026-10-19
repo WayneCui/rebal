@@ -93,15 +93,16 @@ fn json_write_frame(
   let mut first = true
   for index in 0..<frame.length() {
     match (frame.sym(index), frame.get(index)) {
-      (Some(sym), Some(value)) => {
-        if !first {
-          buf.write_char(',')
+      (Some(sym), Some(value)) =>
+        if !frame.is_hidden(index) {
+          if !first {
+            buf.write_char(',')
+          }
+          first = false
+          json_quote(buf, env.symbols.canon(sym))
+          buf.write_char(':')
+          json_emit(env, buf, value)
         }
-        first = false
-        json_quote(buf, env.symbols.canon(sym))
-        buf.write_char(':')
-        json_emit(env, buf, value)
-      }
       _ => ()
     }
   }

@@ -16,6 +16,12 @@ pub fn MapValue::length(self : MapValue) -> Int {
 }
 
 ///|
+/// A new map with the same entries. The values themselves stay shared.
+pub fn MapValue::copy(self : MapValue) -> MapValue {
+  { keys: self.keys.copy(), values: self.values.copy(), }
+}
+
+///|
 pub fn MapValue::key(self : MapValue, index : Int) -> Cell? {
   self.keys.get(index)
 }

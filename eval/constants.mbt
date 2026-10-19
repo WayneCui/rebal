@@ -49,9 +49,18 @@ fn constants_script() -> String {
   "whitespace: make bitset! [#\" \" #\"^-\" #\"^/\" #\"^M\"]\n" +
   "q: :quit\n" +
   "!: :not\n" +
+  "equal?: func [value1 value2] [value1 = value2]\n" +
+  "not-equal?: func [value1 value2] [value1 <> value2]\n" +
+  "strict-equal?: func [value1 value2] [value1 == value2]\n" +
+  "lesser?: func [value1 value2] [value1 < value2]\n" +
+  "greater?: func [value1 value2] [value1 > value2]\n" +
+  "lesser-or-equal?: func [value1 value2] [value1 <= value2]\n" +
+  "greater-or-equal?: func [value1 value2] [value1 >= value2]\n" +
   "min: :minimum\n" +
   "max: :maximum\n" +
   "abs: :absolute\n" +
   "empty?: :tail?\n" +
-  "---: :comment\n"
+  "keys-of: :words-of\n" +
+  "---: :comment\n" +
+  "forever: func [body [block!]] [while [true] body]\n"
 }

@@ -111,6 +111,12 @@ test "local words stay inside the function" {
     )
     is @value.Logic(true),
   )
+  assert_true(
+    @eval.run(
+      env, "f: func [a /b c [string!]] [reduce [b :c]] (reduce [(f 1) = reduce [false none] (f/b 1 \"x\") = reduce [true \"x\"]]) = reduce [true true]",
+    )
+    is @value.Logic(true),
+  )
   let bad = try {
     @eval.run(env, "f/b 1 2") |> ignore
     false

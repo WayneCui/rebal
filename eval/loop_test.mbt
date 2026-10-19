@@ -36,6 +36,44 @@ test "foreach binds one word and continue skips one step" {
 }
 
 ///|
+test "foreach walks groups, map keys, and map pairs" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "x: copy [] foreach [a b] [1 2 3 4] [append x a append x b] x = [1 2 3 4]",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "x: copy [] foreach [a b] [1 2 3] [append x b] x = reduce [2 none]",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "x: copy [] foreach k make map! [a: 1 b: 2] [append x k] x = [a b]",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "x: copy [] foreach [k v] make map! [a: 1 b: 2] [append x k append x v] x = [a 1 b 2]",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "x: 0 foreach [k v] make map! [a: 1 b: 2] [if k = 'a [continue] x: x + v] x = 2",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "foreach [k v] make map! [a: 1] [break]") is @value.None,
+  )
+}
+
+///|
 test "break leaves the innermost loop and return leaves the function" {
   let env = @eval.Env::new()
   assert_true(

@@ -21,7 +21,10 @@ pub fn remove(series : @value.Cell) -> Result[@value.Cell, ActionError] {
 
 ///|
 pub fn copy(series : @value.Cell) -> Result[@value.Cell, ActionError] {
-  changed(series, "copy", fn(cell) { @series.copy(cell) })
+  match series {
+    @value.Map(map) => Ok(@value.Map(map.copy()))
+    _ => changed(series, "copy", fn(cell) { @series.copy(cell) })
+  }
 }
 
 ///|

@@ -131,18 +131,41 @@ fn perform_foreach(
   data : @value.Cell,
   body : @value.Cell,
 ) -> @value.Cell raise EvalError {
+  let syms = foreach_words(word)
+  let frame = @value.Frame::new()
+  let slots : Array[Int] = []
+  for sym in syms {
+    slots.push(frame.ensure(sym))
+  }
+  let bound = match copied_block(body) {
+    Some(series) => {
+      @bind.bind(@value.Seq(series, 0), frame) |> ignore
+      @value.Seq(series, 0)
+    }
+    None => raise EvalError::Cannot("foreach")
+  }
+  walk_foreach(env, frame, slots, data, bound)
+}
+
+///|
+/// A single word, or a block of words for grouped or keyed passes.
+fn foreach_words(word : @value.Cell) -> Array[Int] raise EvalError {
   match word {
-    @value.Sym(_, lexeme) => {
-      let frame = @value.Frame::new()
-      let slot = frame.ensure(lexeme.sym())
-      let bound = match copied_block(body) {
-        Some(series) => {
-          @bind.bind(@value.Seq(series, 0), frame) |> ignore
-          @value.Seq(series, 0)
+    @value.Sym(_, lexeme) => [lexeme.sym()]
+    @value.Seq(series, index) if series.datatype() == @value.Block => {
+      let syms : Array[Int] = []
+      let mut cursor = if index < 0 { 0 } else { index }
+      while cursor < series.length() {
+        match series.item(cursor) {
+          Some(@value.Sym(_, lexeme)) => syms.push(lexeme.sym())
+          _ => raise EvalError::Cannot("foreach")
         }
-        None => raise EvalError::Cannot("foreach")
+        cursor = cursor + 1
       }
-      walk_foreach(env, frame, slot, data, bound)
+      if syms.length() == 0 {
+        raise EvalError::Cannot("foreach")
+      }
+      syms
     }
     _ => raise EvalError::Cannot("foreach")
   }
@@ -152,48 +175,97 @@ fn perform_foreach(
 fn walk_foreach(
   env : Env,
   frame : @value.Frame,
-  slot : Int,
+  slots : Array[Int],
   data : @value.Cell,
   body : @value.Cell,
 ) -> @value.Cell raise EvalError {
   match data {
     @value.Seq(series, index) if series.datatype() == @value.Block =>
-      foreach_items(env, frame, slot, series, index, body)
-    @value.Seq(series, index) if series.datatype() == @value.String =>
-      foreach_chars(env, frame, slot, series, index, body)
+      foreach_groups(env, frame, slots, series, index, body)
+    @value.Seq(series, index) if series.datatype() == @value.String &&
+      slots.length() == 1 =>
+      foreach_chars(env, frame, slots[0], series, index, body)
+    @value.Map(map) => foreach_entries(env, frame, slots, map, body)
     _ => raise EvalError::Cannot("foreach")
   }
 }
 
 ///|
-fn foreach_items(
+/// Each pass takes one item per word. A short tail leaves the rest `none`.
+fn foreach_groups(
   env : Env,
   frame : @value.Frame,
-  slot : Int,
+  slots : Array[Int],
   series : @value.Series,
   index : Int,
   body : @value.Cell,
 ) -> @value.Cell raise EvalError {
+  let width = slots.length()
   let mut cursor = if index < 0 { 0 } else { index }
   let mut kept = @value.Cell::None
   let mut running = true
   while running && cursor < series.length() {
-    match series.item(cursor) {
-      Some(item) => {
-        store(frame, slot, item.snapshot())
-        match eval_body(env, body, "foreach") {
-          Stop => {
-            kept = @value.Cell::None
-            running = false
-          }
-          Skip => cursor = cursor + 1
-          Done(value) => {
-            kept = value
-            cursor = cursor + 1
-          }
-        }
+    for nth in 0..<width {
+      let value = match series.item(cursor + nth) {
+        Some(item) => item.snapshot()
+        None => @value.None
       }
-      None => running = false
+      store(frame, slots[nth], value)
+    }
+    match eval_body(env, body, "foreach") {
+      Stop => {
+        kept = @value.Cell::None
+        running = false
+      }
+      Skip => cursor = cursor + width
+      Done(value) => {
+        kept = value
+        cursor = cursor + width
+      }
+    }
+  }
+  kept
+}
+
+///|
+/// A map walks its entries. One word is the key; two are key and value.
+fn foreach_entries(
+  env : Env,
+  frame : @value.Frame,
+  slots : Array[Int],
+  map : @value.MapValue,
+  body : @value.Cell,
+) -> @value.Cell raise EvalError {
+  let mut kept = @value.Cell::None
+  let mut running = true
+  let mut at = 0
+  while running && at < map.length() {
+    for nth in 0..<slots.length() {
+      let value = if nth == 0 {
+        match map.key(at) {
+          Some(key) => key
+          None => @value.None
+        }
+      } else if nth == 1 {
+        match map.value(at) {
+          Some(found) => found
+          None => @value.None
+        }
+      } else {
+        @value.None
+      }
+      store(frame, slots[nth], value)
+    }
+    match eval_body(env, body, "foreach") {
+      Stop => {
+        kept = @value.Cell::None
+        running = false
+      }
+      Skip => at = at + 1
+      Done(value) => {
+        kept = value
+        at = at + 1
+      }
     }
   }
   kept

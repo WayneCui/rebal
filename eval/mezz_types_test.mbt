@@ -20,6 +20,35 @@ test "to-integer and the other to-* words call to" {
 }
 
 ///|
+test "to-word and to-file convert strings and words" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "(reduce [(to word! \"abc\") = 'abc (to-word \"x-y\") = 'x-y (to word! 'a) = 'a (type? to word! \"q\") = word! (to file! \"a/b\") = %a/b (type? to-file \"q\") = file! (to file! %a) = %a]) = reduce [true true true true true true true]",
+    )
+    is @value.Logic(true),
+  )
+  let bad = try {
+    @eval.run(env, "to word! 1") |> ignore
+    false
+  } catch {
+    error => error.id() == "cannot"
+  }
+  assert_true(bad)
+}
+
+///|
+test "to-logic keeps only none and false false" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "(reduce [(to logic! 0) = true (to logic! \"\") = true (to logic! none) = false (to logic! false) = false (to-logic 1) = true]) = reduce [true true true true true]",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "type predicates match the datatype words" {
   let env = @eval.Env::new()
   assert_true(
