@@ -6,7 +6,7 @@ pub fn mold_all_text(cell : @value.Cell) -> String {
     @value.Seq(series, index) if index > 0 && mold_positioned(series.datatype()) =>
       mold_position(series, index)
     @value.Utype(_) => "#(utype!)"
-    _ => mold_text(cell)
+    _ => mold_construction(cell)
   }
 }
 

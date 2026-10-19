@@ -10,6 +10,24 @@ pub fn mold_text(cell : @value.Cell) -> String {
 }
 
 ///|
+/// `mold/all` sets the first slot so a map is written as `#(map! [key: value])`.
+let map_construction : Array[Bool] = [false]
+
+///|
+/// Like `mold`, but a map is `#(map! [key: value])` so `load` rebuilds it.
+pub fn mold_construction(cell : @value.Cell) -> String {
+  map_construction[0] = true
+  let text = mold_text(cell)
+  map_construction[0] = false
+  text
+}
+
+///|
+fn constructing_map() -> Bool {
+  map_construction[0]
+}
+
+///|
 /// Display text. Strings and characters are written without their literal marks.
 pub fn form_text(cell : @value.Cell) -> String {
   let buf = StringBuilder()
@@ -615,21 +633,45 @@ fn write_map(
   molded : Bool,
   depth : Int,
 ) -> Unit {
-  buf.write_string("make map! [")
+  if constructing_map() {
+    buf.write_string("#(map! [")
+  } else {
+    buf.write_string("make map! [")
+  }
   for index in 0..<map.length() {
     if index > 0 {
       buf.write_char(' ')
     }
     match (map.key(index), map.value(index)) {
       (Some(key), Some(value)) => {
-        write_cell(buf, key, molded, depth + 1)
+        if constructing_map() {
+          write_map_key(buf, key, depth + 1)
+        } else {
+          write_cell(buf, key, molded, depth + 1)
+        }
         buf.write_char(' ')
         write_cell(buf, value, molded, depth + 1)
       }
       _ => ()
     }
   }
-  buf.write_char(']')
+  if constructing_map() {
+    buf.write_string("])")
+  } else {
+    buf.write_char(']')
+  }
+}
+
+///|
+/// A word key is a set-word, so `load` can tell it from the value.
+fn write_map_key(buf : StringBuilder, key : @value.Cell, depth : Int) -> Unit {
+  match key {
+    @value.Sym(_, lexeme) => {
+      buf.write_string(lexeme.spelling())
+      buf.write_char(':')
+    }
+    _ => write_cell(buf, key, true, depth)
+  }
 }
 
 ///|

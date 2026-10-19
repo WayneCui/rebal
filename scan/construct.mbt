@@ -7,6 +7,9 @@ fn Lexer::construct(self : Lexer) -> Result[@value.Cell, ScanError] {
     Ok(@value.Sym(@value.Word, lexeme)) => self.symbols.canon(lexeme.sym())
     _ => return Err(Invalid("construct"))
   }
+  if kind == "map!" {
+    return self.construct_map()
+  }
   let value = match self.value() {
     Ok(cell) => cell
     Err(_) => return Err(Invalid("construct"))
@@ -24,6 +27,55 @@ fn Lexer::construct(self : Lexer) -> Result[@value.Cell, ScanError] {
   self.skip_space()
   match self.bump() {
     Some(')') => placed
+    _ => Err(Invalid("construct"))
+  }
+}
+
+///|
+
+///|
+/// `#(map! [a: 1 "b" 2])` rebuilds a map. A set-word is a word key.
+fn Lexer::construct_map(self : Lexer) -> Result[@value.Cell, ScanError] {
+  let value = match self.value() {
+    Ok(cell) => cell
+    Err(_) => return Err(Invalid("construct"))
+  }
+  self.skip_space()
+  match self.bump() {
+    Some(')') => map_from_block(value)
+    _ => Err(Invalid("construct"))
+  }
+}
+
+///|
+fn map_from_block(value : @value.Cell) -> Result[@value.Cell, ScanError] {
+  match value {
+    @value.Seq(series, index) if series.datatype() == @value.Block => {
+      let map = @value.MapValue::make()
+      let mut cursor = if index < 0 { 0 } else { index }
+      while cursor < series.length() {
+        match series.item(cursor) {
+          None => return Err(Invalid("construct"))
+          Some(key) => {
+            let stored = match key {
+              @value.Sym(@value.SetWord, lexeme) =>
+                @value.Sym(
+                  @value.Word,
+                  @value.Lexeme::make(lexeme.sym(), lexeme.spelling()),
+                )
+              other => other
+            }
+            cursor = cursor + 1
+            match series.item(cursor) {
+              Some(item) => map.put(stored, item)
+              None => return Err(Invalid("construct"))
+            }
+            cursor = cursor + 1
+          }
+        }
+      }
+      Ok(@value.Map(map))
+    }
     _ => Err(Invalid("construct"))
   }
 }

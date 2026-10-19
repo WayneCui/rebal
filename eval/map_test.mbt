@@ -33,3 +33,14 @@ test "make a map, select a key, and set it through a path" {
   }
   assert_true(odd)
 }
+
+///|
+test "mold/all of a map loads back as the same map" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "inner: make map! [text: \"ok\"] m: make map! reduce ['type 'user-message 'payload inner 'index 0] back: load mold/all m (reduce [(mold/all m) = {#(map! [type: user-message payload: #(map! [text: \"ok\"]) index: 0])} (select back 'type) = 'user-message (select select back 'payload 'text) = \"ok\" (select back 'index) = 0]) = reduce [true true true true]",
+    )
+    is @value.Logic(true),
+  )
+}
