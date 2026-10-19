@@ -130,4 +130,17 @@ test "local words stay inside the function" {
     )
     is @value.Logic(true),
   )
+  assert_true(
+    @eval.run(
+      env, "f: func [n [number!] /max-width mw [number!]] [either max-width [mw] [n]] (reduce [(f 1) = 1 (f 1.5) = 1.5 (f/max-width 1 2.0) = 2.0]) = reduce [true true true]",
+    )
+    is @value.Logic(true),
+  )
+  let not_number = try {
+    @eval.run(env, "f \"x\"") |> ignore
+    false
+  } catch {
+    error => error.id() == "cannot"
+  }
+  assert_true(not_number)
 }

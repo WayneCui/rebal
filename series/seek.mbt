@@ -22,7 +22,7 @@ pub fn find_with(
       match locate(series, index, end, value, last, reverse, match_only, only) {
         Some(found) =>
           if tail {
-            @value.Seq(series, found + span_of(value, only))
+            @value.Seq(series, found + span_of(series, value, only))
           } else {
             @value.Seq(series, found)
           }
@@ -37,7 +37,7 @@ pub fn find_with(
 pub fn select(cell : @value.Cell, value : @value.Cell) -> @value.Cell {
   match find_with(cell, value, false, false, false, false, false, None) {
     @value.Seq(series, found) => {
-      let next = found + span_of(value, false)
+      let next = found + span_of(series, value, false)
       match series.datatype() {
         @value.String =>
           match series.code(next) {
@@ -66,7 +66,7 @@ fn locate(
   match_only : Bool,
   only : Bool,
 ) -> Int? {
-  let len = span_of(value, only)
+  let len = span_of(series, value, only)
   if len <= 0 {
     None
   } else if match_only {
@@ -103,17 +103,24 @@ fn locate(
 }
 
 ///|
-fn span_of(value : @value.Cell, only : Bool) -> Int {
+/// How many positions a match covers. In a block a string is one value, so
+/// its character length must not shrink the search window. Character length
+/// only applies when the haystack itself is text.
+fn span_of(series : @value.Series, value : @value.Cell, only : Bool) -> Int {
   if only {
     1
+  } else if is_items(series) {
+    match value {
+      @value.Seq(source, source_index) if is_items(source) =>
+        source.length() - source_index
+      _ => 1
+    }
   } else {
     match value {
-      @value.Seq(source, source_index) =>
-        if is_items(source) || source.datatype() == @value.String {
-          source.length() - source_index
-        } else {
-          1
-        }
+      @value.Seq(source, source_index) if source.datatype() == @value.String =>
+        source.length() - source_index
+      @value.Seq(source, source_index) if is_items(source) =>
+        source.length() - source_index
       _ => 1
     }
   }

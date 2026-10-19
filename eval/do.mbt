@@ -230,6 +230,7 @@ fn call(
     func.code() != native_sort &&
     func.code() != native_call &&
     func.code() != native_now &&
+    func.code() != native_switch &&
     func.code() != native_append &&
     func.code() != native_clean_path &&
     func.code() != native_make_dir &&
@@ -258,7 +259,8 @@ fn call(
     func.code() != native_copy &&
     func.code() != native_collect &&
     func.code() != native_keep &&
-    func.code() != native_mold {
+    func.code() != native_mold &&
+    func.code() != native_quit {
     raise EvalError::Cannot("func")
   }
   let args : Array[@value.Cell] = []
@@ -267,12 +269,18 @@ fn call(
     func.arity() + 1
   } else if func.code() == native_find && named(env, active, "part") {
     func.arity() + 1
+  } else if func.code() == native_sort && named(env, active, "skip") {
+    func.arity() + 1
+  } else if func.code() == native_quit && named(env, active, "return") {
+    func.arity() + 1
   } else if func.code() == native_confirm && named(env, active, "with") {
     func.arity() + 1
   } else if func.code() == native_compress {
     func.arity() + compress_extra(env, active)
   } else if func.code() == native_append {
     func.arity() + append_extra(env, active)
+  } else if func.code() == native_switch && named(env, active, "default") {
+    func.arity() + 1
   } else if func.code() == native_decompress {
     func.arity() + decompress_extra(env, active)
   } else if func.code() == native_dehex && named(env, active, "escape") {
@@ -318,7 +326,9 @@ fn call(
     if cursor >= series.length() {
       raise EvalError::MissingArg("argument")
     } else if (func.code() == 0 && nth < quoted.length() && quoted[nth]) ||
-      (func.code() == native_foreach && nth == 0) {
+      (func.code() == native_foreach && nth == 0) ||
+      (func.code() == native_map_each && nth == 0) ||
+      (func.code() == native_repeat && nth == 0) {
       match series.item(cursor) {
         Some(cell) => {
           args.push(cell)
@@ -337,7 +347,15 @@ fn call(
     args.push(arg)
     cursor = next
   }
-  if func.code() == native_find {
+  if func.code() == native_quit {
+    for sym in active {
+      match env.symbols.canon(sym) {
+        "return" | "now" => ()
+        _ => raise EvalError::Cannot("quit")
+      }
+    }
+    raise EvalError::Quit
+  } else if func.code() == native_find {
     (perform_find(env, args, active), cursor)
   } else if func.code() == native_sort {
     (perform_sort(env, args, active), cursor)
@@ -409,6 +427,8 @@ fn call(
     (perform_copy(env, args, active), cursor)
   } else if func.code() == native_append && active.length() > 0 {
     (perform_append(env, args, active), cursor)
+  } else if func.code() == native_switch {
+    (perform_switch(env, args, active), cursor)
   } else if func.code() == native_compose {
     (perform_compose(env, args[0], active), cursor)
   } else if func.code() == native_mold {
@@ -688,6 +708,10 @@ fn apply(
     raise EvalError::Quit
   } else if func.code() == native_foreach {
     perform_foreach(env, args[0], args[1], args[2])
+  } else if func.code() == native_map_each {
+    perform_map_each(env, args[0], args[1], args[2])
+  } else if func.code() == native_repeat {
+    perform_repeat(env, args[0], args[1], args[2])
   } else if func.code() == native_continue {
     raise EvalError::Continued
   } else if func.code() == native_not {
@@ -702,8 +726,6 @@ fn apply(
     perform_all(env, args[0])
   } else if func.code() == native_case {
     perform_case(env, args[0])
-  } else if func.code() == native_switch {
-    perform_switch(env, args[0], args[1])
   } else if func.code() == native_lesser_or_equal {
     logic_order(@action.lesser_or_equal(args[0], args[1]))
   } else if func.code() == native_greater_or_equal {
@@ -783,6 +805,8 @@ fn apply(
     from_action(@action.negate(args[0]))
   } else if func.code() == native_absolute {
     from_action(@action.absolute(args[0]))
+  } else if func.code() == native_square_root {
+    perform_square_root(args[0])
   } else if func.code() == native_odd {
     from_action(@action.odd_q(args[0]))
   } else if func.code() == native_even {
@@ -884,6 +908,8 @@ fn apply(
     perform_encoding(env, args[0])
   } else if func.code() == native_words_of {
     words_of(env, args[0])
+  } else if func.code() == native_values_of {
+    values_of(env, args[0])
   } else if func.code() == native_mime_type {
     mime_type(args[0])
   } else {

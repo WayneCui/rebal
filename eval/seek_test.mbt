@@ -13,6 +13,15 @@ test "select the value after a match, and find with refinements" {
   assert_true(
     @eval.run(env, "(mold find [1 2 3] [2 3]) = {[2 3]}") is @value.Logic(true),
   )
+  // A string is one block item; character length must not shrink the window.
+  assert_true(
+    @eval.run(env, "(find [\"测试\" \"节点\"] \"测试\") = [\"测试\" \"节点\"]")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(find [\"ab\" \"cd\"] \"ab\") = [\"ab\" \"cd\"]")
+    is @value.Logic(true),
+  )
   assert_true(
     @eval.run(env, "(mold find/only [1 [2 3]] [2 3]) = {[[2 3]]}")
     is @value.Logic(true),

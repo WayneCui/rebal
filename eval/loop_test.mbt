@@ -11,6 +11,11 @@ test "while until and loop repeat until they stop" {
   )
   assert_true(@eval.run(env, "loop 0 [1]") is @value.None)
   assert_true(@eval.run(env, "n: 0 loop 3 [n: n + 1] n") is @value.Integer(3L))
+  assert_true(@eval.run(env, "repeat i 0 [1]") is @value.None)
+  assert_true(
+    @eval.run(env, "n: 0 repeat i 3 [n: n + i] n") is @value.Integer(6L),
+  )
+  assert_true(@eval.run(env, "repeat i 3 [i]") is @value.Integer(3L))
 }
 
 ///|
@@ -70,6 +75,14 @@ test "foreach walks groups, map keys, and map pairs" {
   )
   assert_true(
     @eval.run(env, "foreach [k v] make map! [a: 1] [break]") is @value.None,
+  )
+  assert_true(
+    @eval.run(env, "(map-each x [1 2 3] [x * 2]) = [2 4 6]")
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(map-each [a b] [1 2 3 4] [a + b]) = [3 7]")
+    is @value.Logic(true),
   )
 }
 

@@ -208,7 +208,9 @@ fn arg_types(
       while at < block.length() {
         match block.item(at) {
           Some(@value.Sym(@value.Word, lexeme)) =>
-            types.push(named_type(env, lexeme))
+            for datatype in named_types(env, lexeme) {
+              types.push(datatype)
+            }
           _ => raise EvalError::Cannot("func")
         }
         at = at + 1
@@ -220,14 +222,18 @@ fn arg_types(
 }
 
 ///|
-fn named_type(
+///|
+/// Resolves one type name. A typeset expands to every datatype it holds,
+/// so `number!` accepts an integer or a decimal the way Oldes does.
+fn named_types(
   env : Env,
   lexeme : @value.Lexeme,
-) -> @value.Datatype raise EvalError {
+) -> Array[@value.Datatype] raise EvalError {
   match env.user.find(lexeme.sym()) {
     Some(slot) =>
       match env.user.get(slot) {
-        Some(@value.Type(datatype)) => datatype
+        Some(@value.Type(datatype)) => [datatype]
+        Some(@value.Typeset(set)) => set.ordered()
         _ => raise EvalError::Cannot("func")
       }
     None => raise EvalError::Cannot("func")

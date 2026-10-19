@@ -1,4 +1,15 @@
 ///|
+test "values-of lists object and map values in key order" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "(reduce [(values-of make object! [b: 2 a: 1]) = [2 1] (values-of make map! [b: 2 a: 1]) = [2 1] (values-of make map! []) = []]) = reduce [true true true]",
+    )
+    is @value.Logic(true),
+  )
+}
+
+///|
 test "words-of lists object fields and map keys in order" {
   // c-frame.c Make_Object_Block and t-map.c Map_To_Block.
   let env = @eval.Env::new()

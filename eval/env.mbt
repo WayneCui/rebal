@@ -539,6 +539,18 @@ let native_true_q : Int = 177
 let native_false_q : Int = 178
 
 ///|
+let native_values_of : Int = 179
+
+///|
+let native_square_root : Int = 180
+
+///|
+let native_map_each : Int = 181
+
+///|
+let native_repeat : Int = 182
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -582,6 +594,7 @@ pub fn Env::new() -> Env {
   define_native(env, "encode", 2, false, native_encode)
   define_native(env, "encoding?", 1, false, native_encoding)
   define_native(env, "words-of", 1, false, native_words_of)
+  define_native(env, "values-of", 1, false, native_values_of)
   define_native(env, "mime-type?", 1, false, native_mime_type)
   define_native(env, "rsa-init", 2, false, native_rsa_init)
   define_native(env, "rsa", 2, false, native_rsa)
@@ -621,6 +634,8 @@ pub fn Env::new() -> Env {
   define_native(env, "loop", 2, false, native_loop)
   define_native(env, "break", 0, false, native_break)
   define_native(env, "foreach", 3, false, native_foreach)
+  define_native(env, "map-each", 3, false, native_map_each)
+  define_native(env, "repeat", 3, false, native_repeat)
   define_native(env, "continue", 0, false, native_continue)
   define_native(env, "not", 1, false, native_not)
   define_native(env, "and", 2, true, native_and)
@@ -665,6 +680,7 @@ pub fn Env::new() -> Env {
   define_native(env, "**", 2, true, native_power)
   define_native(env, "negate", 1, false, native_negate)
   define_native(env, "absolute", 1, false, native_absolute)
+  define_native(env, "square-root", 1, false, native_square_root)
   define_native(env, "odd?", 1, false, native_odd)
   define_native(env, "even?", 1, false, native_even)
   define_native(env, "negative?", 1, false, native_negative)

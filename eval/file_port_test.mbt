@@ -12,6 +12,12 @@ test "file ports read, write, and query text" {
   )
   assert_true(
     @eval.run(
+      env, "(reduce [(read/binary %/tmp/rebal-file-port.txt) = #{6162} (to-string read/binary %/tmp/rebal-file-port.txt) = {ab}]) = reduce [true true]",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
       env, "write %/tmp/rebal-file-port.txt {cd} (read %/tmp/rebal-file-port.txt) = {cd}",
     )
     is @value.Logic(true),

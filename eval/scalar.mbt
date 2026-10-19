@@ -28,6 +28,7 @@ fn integer_from(spec : @value.Cell) -> @value.Cell raise EvalError {
     @value.Integer(n) => @value.Integer(n)
     @value.Decimal(n) => @value.Integer(n.to_int64())
     @value.Time(n) => @value.Integer(n.to_int64())
+    @value.Char(code) => @value.Integer(code.to_int64())
     _ => raise EvalError::Cannot("make")
   }
 }

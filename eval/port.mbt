@@ -47,21 +47,28 @@ fn perform_close(env : Env, spec : @value.Cell) -> @value.Cell raise EvalError {
 }
 
 ///|
-/// `/string` asks for text. A file read is already text, so the refinement
-/// only rejects a name this port does not understand.
+/// `/string` asks for text. `/binary` asks for the raw bytes. On a file
+/// port the plain read is already text; `/binary` returns a binary series.
 fn perform_read(
   env : Env,
   spec : @value.Cell,
   active : Array[Int],
 ) -> @value.Cell raise EvalError {
+  let mut binary = false
   for sym in active {
     let name = env.symbols.canon(sym)
-    if name != "string" {
+    if name == "binary" {
+      binary = true
+    } else if name != "string" {
       raise EvalError::Cannot("read")
     }
   }
   let port = ready_port(env, spec, "read")
-  dispatch_port(env, "read", port, None)
+  if binary {
+    dispatch_port(env, "read", port, Some(codec_word(env, "binary")))
+  } else {
+    dispatch_port(env, "read", port, None)
+  }
 }
 
 ///|
@@ -278,7 +285,12 @@ fn file_actor(
       }
       port
     }
-    "read" => read_text_port(env, port)
+    "read" =>
+      match extra {
+        Some(@value.Sym(_, lexeme)) if lexeme.spelling() == "binary" =>
+          read_binary_port(env, port)
+        _ => read_text_port(env, port)
+      }
     "write" =>
       match extra {
         Some(value) => write_text_port(env, port, value)
@@ -292,6 +304,19 @@ fn file_actor(
 ///|
 fn read_text_port(env : Env, port : @value.Cell) -> @value.Cell raise EvalError {
   text_series(read_file(port_path(env, port)))
+}
+
+///|
+fn read_binary_port(
+  env : Env,
+  port : @value.Cell,
+) -> @value.Cell raise EvalError {
+  let bytes = read_binary(port_path(env, port))
+  let series = @value.Series::binary()
+  for code in bytes {
+    series.push_byte((code % 256).to_byte()) |> ignore
+  }
+  @value.Seq(series, 0)
 }
 
 ///|

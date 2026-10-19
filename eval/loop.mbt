@@ -124,6 +124,63 @@ fn loop_count(cell : @value.Cell) -> Int64 raise EvalError {
 }
 
 ///|
+/// Sets `word` to 1..n (or to each series value) and evaluates the body.
+/// A non-positive count or `none` yields `none`.
+fn perform_repeat(
+  env : Env,
+  word : @value.Cell,
+  value : @value.Cell,
+  body : @value.Cell,
+) -> @value.Cell raise EvalError {
+  let sym = match word {
+    @value.Sym(_, lexeme) => lexeme.sym()
+    _ => raise EvalError::Cannot("repeat")
+  }
+  let frame = @value.Frame::new()
+  let slot = frame.ensure(sym)
+  let bound = match copied_block(body) {
+    Some(series) => {
+      @bind.bind(@value.Seq(series, 0), frame) |> ignore
+      @value.Seq(series, 0)
+    }
+    None => raise EvalError::Cannot("repeat")
+  }
+  match value {
+    @value.None => @value.None
+    @value.Integer(_) | @value.Decimal(_) => {
+      let limit = loop_count(value)
+      if limit <= 0L {
+        @value.None
+      } else {
+        let mut n = 1L
+        let mut kept = @value.Cell::None
+        let mut running = true
+        while running && n <= limit {
+          store(frame, slot, @value.Integer(n))
+          match eval_body(env, bound, "repeat") {
+            Stop => {
+              kept = @value.Cell::None
+              running = false
+            }
+            Skip => n = n + 1L
+            Done(result) => {
+              kept = result
+              n = n + 1L
+            }
+          }
+        }
+        kept
+      }
+    }
+    @value.Seq(series, index) if series.datatype() == @value.Block =>
+      foreach_groups(env, frame, [slot], series, index, bound)
+    @value.Seq(series, index) if series.datatype() == @value.String =>
+      foreach_chars(env, frame, slot, series, index, bound)
+    _ => raise EvalError::Cannot("repeat")
+  }
+}
+
+///|
 /// Sets one word to each value of a block or string, then evaluates the body.
 fn perform_foreach(
   env : Env,
@@ -145,6 +202,56 @@ fn perform_foreach(
     None => raise EvalError::Cannot("foreach")
   }
   walk_foreach(env, frame, slots, data, bound)
+}
+
+///|
+/// Like `foreach`, but keeps every body result in a new block.
+fn perform_map_each(
+  env : Env,
+  word : @value.Cell,
+  data : @value.Cell,
+  body : @value.Cell,
+) -> @value.Cell raise EvalError {
+  let syms = foreach_words(word)
+  let frame = @value.Frame::new()
+  let slots : Array[Int] = []
+  for sym in syms {
+    slots.push(frame.ensure(sym))
+  }
+  let bound = match copied_block(body) {
+    Some(series) => {
+      @bind.bind(@value.Seq(series, 0), frame) |> ignore
+      @value.Seq(series, 0)
+    }
+    None => raise EvalError::Cannot("map-each")
+  }
+  match data {
+    @value.Seq(series, index) if series.datatype() == @value.Block => {
+      let out = @value.Series::block()
+      let width = slots.length()
+      let mut cursor = if index < 0 { 0 } else { index }
+      let mut running = true
+      while running && cursor < series.length() {
+        for nth in 0..<width {
+          let value = match series.item(cursor + nth) {
+            Some(item) => item.snapshot()
+            None => @value.None
+          }
+          store(frame, slots[nth], value)
+        }
+        match eval_body(env, bound, "map-each") {
+          Stop => running = false
+          Skip => cursor = cursor + width
+          Done(value) => {
+            out.push_item(value) |> ignore
+            cursor = cursor + width
+          }
+        }
+      }
+      @value.Seq(out, 0)
+    }
+    _ => raise EvalError::Cannot("map-each")
+  }
 }
 
 ///|

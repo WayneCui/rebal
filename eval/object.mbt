@@ -138,6 +138,33 @@ fn clone_field(
 }
 
 ///|
+/// Values of an object or map, in the same order as `words-of` / the keys.
+fn values_of(env : Env, value : @value.Cell) -> @value.Cell raise EvalError {
+  let _ = env
+  let block = @value.Series::block()
+  match value {
+    @value.Object(frame) =>
+      for index in 0..<frame.length() {
+        if !frame.is_hidden(index) {
+          match frame.get(index) {
+            Some(cell) => block.push_item(cell) |> ignore
+            None => block.push_item(@value.None) |> ignore
+          }
+        }
+      }
+    @value.Map(map) =>
+      for index in 0..<map.length() {
+        match map.value(index) {
+          Some(cell) => block.push_item(cell) |> ignore
+          None => ()
+        }
+      }
+    _ => raise EvalError::Caused("expect-arg", "values-of")
+  }
+  @value.Seq(block, 0)
+}
+
+///|
 /// Words of an object, in creation order. Map keys that are words become words.
 fn words_of(env : Env, value : @value.Cell) -> @value.Cell raise EvalError {
   let block = @value.Series::block()
