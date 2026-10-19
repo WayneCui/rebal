@@ -734,6 +734,7 @@ pub fn Env::new() -> Env {
   install(env, "module!", @value.Type(@value.Module))
   install(env, "error!", @value.Type(@value.Error))
   install(env, "sys", @value.Object(@value.Frame::new()))
+  boot_system(env)
   boot_constants(env)
   boot_default(env)
   boot_series(env)

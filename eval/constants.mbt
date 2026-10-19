@@ -1,6 +1,6 @@
 ///|
-/// The boot constants from base-constants. `system` is not built yet, so
-/// `REBOL`, `sys`, and `lib` stay as they were installed.
+/// The boot constants from base-constants. `REBOL`, `sys`, and `lib` stay
+/// as they were installed.
 fn boot_default(env : Env) -> Unit {
   try eval(env, load(env, default_script())) |> ignore catch {
     error => abort(error.id())
