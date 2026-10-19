@@ -105,4 +105,23 @@ test "local words stay inside the function" {
   assert_true(@eval.run(env, "n") is @value.Integer(2L))
   assert_true(@eval.run(env, "comment [1 + 2]") is @value.Unset)
   assert_true(@eval.run(env, "f: func [] [exit] f") is @value.Unset)
+  assert_true(
+    @eval.run(
+      env, "f: func [a [integer!] \"n\" /b c [string!] /local x [integer!]] [either b [c] [a]] (reduce [(f/b 1 \"x\") = \"x\" (f 4) = 4]) = reduce [true true]",
+    )
+    is @value.Logic(true),
+  )
+  let bad = try {
+    @eval.run(env, "f/b 1 2") |> ignore
+    false
+  } catch {
+    error => error.id() == "cannot"
+  }
+  assert_true(bad)
+  assert_true(
+    @eval.run(
+      env, "g: func [root-ctx] [o: make object! [root-ctx: root-ctx a: 1] reduce [none? o/root-ctx o/a = 1]] (g 5) = reduce [true true]",
+    )
+    is @value.Logic(true),
+  )
 }

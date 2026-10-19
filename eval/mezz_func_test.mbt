@@ -20,8 +20,7 @@ test "closure locals stay inside, clos writes out, has and map build values" {
   )
   assert_true(
     @eval.run(
-      env,
-      "o: context [a: 1 + 2] (reduce [(type? o) = object! o/a = 3]) = reduce [true true]",
+      env, "o: context [a: 1 + 2] (reduce [(type? o) = object! o/a = 3]) = reduce [true true]",
     )
     is @value.Logic(true),
   )

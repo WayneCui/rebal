@@ -33,6 +33,7 @@ fn build_func(
           names.lits,
           names.refines,
           names.refine_args,
+          names.refine_types,
           names.words,
           names.kinds,
           series,
@@ -54,6 +55,7 @@ priv struct FuncSpec {
   locals : Array[Int]
   refines : Array[Int]
   refine_args : Array[Array[Int]]
+  refine_types : Array[Array[Array[@value.Datatype]]]
   words : Array[Int]
   kinds : Array[Int]
 }
@@ -61,6 +63,7 @@ priv struct FuncSpec {
 ///|
 /// Words before a refinement are arguments. `/local` words stay in the frame.
 /// Other refinements take the words that follow them only when the call sets them.
+/// A type block or a string after a word or refinement is part of the spec.
 fn spec_names(env : Env, spec : @value.Cell) -> FuncSpec raise EvalError {
   match spec {
     @value.Seq(series, index) if series.datatype() == @value.Block => {
@@ -71,6 +74,7 @@ fn spec_names(env : Env, spec : @value.Cell) -> FuncSpec raise EvalError {
         locals: [],
         refines: [],
         refine_args: [],
+        refine_types: [],
         words: [],
         kinds: [],
       }
@@ -106,10 +110,13 @@ fn spec_names(env : Env, spec : @value.Cell) -> FuncSpec raise EvalError {
             } else {
               built.refines.push(lexeme.sym())
               built.refine_args.push([])
+              built.refine_types.push([])
               mode = built.refines.length()
             }
-            cursor = cursor + 1
+            cursor = after_note(series, cursor + 1)
           }
+          Some(@value.Seq(text, _)) if text.datatype() == @value.String =>
+            cursor = cursor + 1
           _ => raise EvalError::Cannot("func")
         }
       }
@@ -136,18 +143,55 @@ fn push_param(
     built.args.push(sym)
     built.lits.push(lit)
     built.types.push(arg_types(env, series, next))
-    match series.item(next) {
-      Some(@value.Seq(block, _)) if block.datatype() == @value.Block => next + 1
-      _ => next
-    }
+    after_param(series, cursor)
   } else if lit {
     raise EvalError::Cannot("func")
   } else if mode < 0 {
     built.locals.push(sym)
-    next
+    after_param(series, cursor)
   } else {
     built.refine_args[mode - 1].push(sym)
-    next
+    built.refine_types[mode - 1].push(arg_types(env, series, next))
+    after_param(series, cursor)
+  }
+}
+
+///|
+/// A parameter may be followed by a type block and a description string.
+fn after_param(series : @value.Series, cursor : Int) -> Int {
+  let mut next = cursor + 1
+  if spec_block(series, next) {
+    next = next + 1
+  }
+  if spec_string(series, next) {
+    next = next + 1
+  }
+  next
+}
+
+///|
+/// A refinement may be followed by a description string.
+fn after_note(series : @value.Series, cursor : Int) -> Int {
+  if spec_string(series, cursor) {
+    cursor + 1
+  } else {
+    cursor
+  }
+}
+
+///|
+fn spec_block(series : @value.Series, index : Int) -> Bool {
+  match series.item(index) {
+    Some(@value.Seq(block, _)) => block.datatype() == @value.Block
+    _ => false
+  }
+}
+
+///|
+fn spec_string(series : @value.Series, index : Int) -> Bool {
+  match series.item(index) {
+    Some(@value.Seq(text, _)) => text.datatype() == @value.String
+    _ => false
   }
 }
 
@@ -238,9 +282,12 @@ fn call_user(
     match refine_at(func, sym) {
       Some(at) => {
         write_slot(frame, sym, @value.Logic(true))
+        let mut nth = 0
         for arg in groups[at] {
+          check_type(args[taken], func.refine_types()[at], nth)
           write_slot(frame, arg, args[taken])
           taken = taken + 1
+          nth = nth + 1
         }
       }
       None => raise EvalError::Cannot("func")

@@ -5,6 +5,7 @@ pub struct Func {
   lits : Array[Bool]
   refines : Array[Int]
   refine_args : Array[Array[Int]]
+  refine_types : Array[Array[Array[Datatype]]]
   spec_words : Array[Int]
   spec_kinds : Array[Int]
   body : Series
@@ -22,6 +23,7 @@ pub fn Func::make(
   lits : Array[Bool],
   refines : Array[Int],
   refine_args : Array[Array[Int]],
+  refine_types : Array[Array[Array[Datatype]]],
   spec_words : Array[Int],
   spec_kinds : Array[Int],
   body : Series,
@@ -35,6 +37,7 @@ pub fn Func::make(
     lits,
     refines,
     refine_args,
+    refine_types,
     spec_words,
     spec_kinds,
     body,
@@ -57,6 +60,7 @@ pub fn Func::native(arity : Int, infix : Bool, code : Int) -> Func {
     lits: [],
     refines: [],
     refine_args: [],
+    refine_types: [],
     spec_words: [],
     spec_kinds: [],
     body: Series::block(),
@@ -114,6 +118,12 @@ pub fn Func::refine_args(self : Func) -> Array[Array[Int]] {
 }
 
 ///|
+/// Parallel to `refine_args`. Each argument has the types named after it.
+pub fn Func::refine_types(self : Func) -> Array[Array[Array[Datatype]]] {
+  self.refine_types
+}
+
+///|
 /// Spec words in source order. Kinds are 0 for a word, 1 for a refinement,
 /// and 2 for a lit-word.
 pub fn Func::spec_words(self : Func) -> Array[Int] {
@@ -144,6 +154,7 @@ pub fn Func::as_op(self : Func) -> Func {
     lits: self.lits,
     refines: self.refines,
     refine_args: self.refine_args,
+    refine_types: self.refine_types,
     spec_words: self.spec_words,
     spec_kinds: self.spec_kinds,
     body: self.body,

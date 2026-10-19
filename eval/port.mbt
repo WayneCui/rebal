@@ -21,7 +21,7 @@ fn make_port(env : Env, spec : @value.Cell) -> @value.Cell raise EvalError {
   match spec {
     @value.Object(_) => port_from_object(env, spec)
     @value.Seq(series, _) if series.datatype() == @value.Block =>
-      port_from_object(env, make_object(env, spec))
+      port_from_object(env, make_object(env, None, spec))
     @value.Seq(series, index) if series.datatype() == @value.File =>
       port_from_file(env, series, index, spec)
     @value.Seq(series, index) if series.datatype() == @value.Url =>

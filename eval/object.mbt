@@ -5,7 +5,8 @@ fn make_value(
   spec : @value.Cell,
 ) -> @value.Cell raise EvalError {
   match datatype {
-    @value.Type(@value.Object) => make_object(env, spec)
+    @value.Type(@value.Object) => make_object(env, None, spec)
+    @value.Object(parent) => make_object(env, Some(parent), spec)
     @value.Type(@value.Port) => make_port(env, spec)
     @value.Type(@value.Op) => make_op(spec)
     @value.Type(@value.Percent) => to_percent(spec, true)
@@ -39,15 +40,28 @@ fn make_op(spec : @value.Cell) -> @value.Cell raise EvalError {
 
 ///|
 /// Collects top-level set-words, binds the spec to that frame, then evaluates it.
-fn make_object(env : Env, spec : @value.Cell) -> @value.Cell raise EvalError {
+/// A new word starts as `none`, so a spec can read it before its own assignment.
+/// An object prototype contributes its words first. Blocks and strings are copied.
+/// Maps stay shared, the same way Rebol clones a parent object.
+fn make_object(
+  env : Env,
+  parent : @value.Frame?,
+  spec : @value.Cell,
+) -> @value.Cell raise EvalError {
   match spec {
     @value.Seq(series, index) if series.datatype() == @value.Block => {
-      let frame = @value.Frame::new()
+      let frame = match parent {
+        Some(base) => clone_object(base)
+        None => @value.Frame::new()
+      }
       let mut cursor = index
       while cursor < series.length() {
         match series.item(cursor) {
           Some(@value.Sym(@value.SetWord, lexeme)) =>
-            frame.ensure(lexeme.sym()) |> ignore
+            if frame.find(lexeme.sym()) is None {
+              let slot = frame.ensure(lexeme.sym())
+              frame.set(slot, @value.None) |> ignore
+            }
           _ => ()
         }
         cursor = cursor + 1
@@ -57,6 +71,33 @@ fn make_object(env : Env, spec : @value.Cell) -> @value.Cell raise EvalError {
       @value.Object(frame)
     }
     _ => raise EvalError::Cannot("make")
+  }
+}
+
+///|
+fn clone_object(base : @value.Frame) -> @value.Frame {
+  let frame = @value.Frame::new()
+  for index in 0..<base.length() {
+    match base.sym(index) {
+      Some(sym) => {
+        let slot = frame.ensure(sym)
+        let value = match base.get(index) {
+          Some(cell) => clone_field(cell)
+          None => @value.None
+        }
+        frame.set(slot, value) |> ignore
+      }
+      None => ()
+    }
+  }
+  frame
+}
+
+///|
+fn clone_field(cell : @value.Cell) -> @value.Cell {
+  match cell {
+    @value.Seq(series, index) => @value.Seq(series.copy_deep(index), 0)
+    _ => cell
   }
 }
 
