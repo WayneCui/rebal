@@ -19,4 +19,17 @@ test "offset, last, charset, and remold follow the series helpers" {
   assert_true(
     @eval.run(env, "(remold [1 + 2 4]) = {[3 4]}") is @value.Logic(true),
   )
+  assert_true(
+    @eval.run(env, "(rejoin [\"a\" 1 + 2 \"x\"]) = \"a3x\"")
+    is @value.Logic(true),
+  )
+  assert_true(@eval.run(env, "(rejoin []) = []") is @value.Logic(true))
+  assert_true(
+    @eval.run(env, "(rejoin [none]) = \"none\"") is @value.Logic(true),
+  )
+  assert_true(@eval.run(env, "(rejoin [a: 1]) = \"1\"") is @value.Logic(true))
+  assert_true(
+    @eval.run(env, "(rejoin [\"STATUS: \" 3]) = \"STATUS: 3\"")
+    is @value.Logic(true),
+  )
 }

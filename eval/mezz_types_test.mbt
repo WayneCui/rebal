@@ -18,3 +18,26 @@ test "to-integer and the other to-* words call to" {
   assert_true(@eval.run(env, "(to-percent 1) = 100%") is @value.Logic(true))
   assert_true(@eval.run(env, "(to-pair 3) = 3x3") is @value.Logic(true))
 }
+
+///|
+test "type predicates match the datatype words" {
+  let env = @eval.Env::new()
+  assert_true(
+    @eval.run(
+      env, "(reduce [error? try [nope] not error? 1 object? make object! [] map? make map! [] string? \"a\" block? [] paren? first [(1)] word? 'a file? %a]) = reduce [true true true true true true true true true]",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "(reduce [logic? true integer? 1 not integer? 1.5 function? :print function? func [] [] not function? 1 closure? closure [] [] op? :+ port? open console://]) = reduce [true true true true true true true true true]",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(
+      env, "(reduce [error? try [nope] not error? try [1]]) = reduce [true true]",
+    )
+    is @value.Logic(true),
+  )
+}

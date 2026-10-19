@@ -19,5 +19,27 @@ fn types_script() -> String {
   "to-date: func [value] [to date! :value]\n" +
   "to-bitset: func [value] [to bitset! :value]\n" +
   "to-map: func [value] [to map! :value]\n" +
-  "to-string: func [value] [to string! :value]\n"
+  "to-string: func [value] [to string! :value]\n" +
+  predicates_script()
+}
+
+///|
+/// One predicate per datatype, the way boot generates the type checks.
+/// `function?` covers the any-function! typeset, like Rebol does.
+fn predicates_script() -> String {
+  let names = [
+    "logic", "integer", "decimal", "percent", "pair", "tuple", "money", "time", "date",
+    "char", "word", "set-word", "get-word", "lit-word", "refinement", "string", "file",
+    "email", "url", "tag", "issue", "binary", "block", "paren", "path", "set-path",
+    "datatype", "op", "object", "error", "bitset", "map", "module", "closure", "port",
+    "handle", "event", "vector", "image", "struct", "typeset", "utype",
+  ]
+  let buf = StringBuilder()
+  for name in names {
+    buf.write_string(name + "?: func [value] [" + name + "! = type? :value]\n")
+  }
+  buf.write_string(
+    "function?: func [value] [find any-function! type? :value]\n",
+  )
+  buf.to_string()
 }
