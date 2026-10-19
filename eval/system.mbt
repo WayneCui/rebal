@@ -8,8 +8,11 @@ fn boot_system(env : Env) -> Unit {
   set_option(env, options, "path", startup_dir())
   set_option(env, options, "args", @value.Seq(@value.Series::block(), 0))
   set_option(env, options, "script", @value.None)
+  let script = @value.Frame::new()
+  set_option(env, script, "args", @value.None)
   let system = @value.Frame::new()
   set_option(env, system, "options", @value.Object(options))
+  set_option(env, system, "script", @value.Object(script))
   install(env, "system", @value.Object(system))
 }
 

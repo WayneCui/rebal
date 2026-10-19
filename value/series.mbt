@@ -349,8 +349,48 @@ fn copy_nested(cell : Cell, stack : Array[Series]) -> Cell {
     Sym(_, _) => cell.snapshot()
     Seq(series, index) if nested_series(series) =>
       Seq(copy_deep_at(series, index, stack), 0)
+    // Text series are mutable in place (`uppercase` and friends), so a
+    // deep copy hands out a fresh one instead of sharing the buffer.
+    Seq(series, index) if text_series(series.datatype()) =>
+      Seq(series.copy_from(index), 0)
+    Map(map) => copy_map_deep(map, stack, [])
     _ => cell
   }
+}
+
+///|
+/// A map in a deep copy is rebuilt with deep-copied values. A map that
+/// takes part in a cycle is shared instead of copied.
+fn copy_map_deep(
+  map : MapValue,
+  stack : Array[Series],
+  seen : Array[MapValue],
+) -> Cell {
+  let mut looped = false
+  for other in seen {
+    if other.same(map) {
+      looped = true
+    }
+  }
+  if looped {
+    return Map(map)
+  }
+  seen.push(map)
+  let out = MapValue::make()
+  let mut index = 0
+  while index < map.length() {
+    match map.key(index) {
+      Some(key) =>
+        match map.value(index) {
+          Some(value) => out.put(key, copy_nested(value, stack))
+          None => ()
+        }
+      None => ()
+    }
+    index = index + 1
+  }
+  seen.pop() |> ignore
+  Map(out)
 }
 
 ///|

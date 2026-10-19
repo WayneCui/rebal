@@ -112,3 +112,65 @@ fn text_of_codes(
   }
   @value.Seq(series, 0)
 }
+
+///|
+/// Start offsets where the delimiter matches inside the codes.
+fn split_marks(codes : Array[Int], dcodes : Array[Int]) -> Array[Int] {
+  let marks : Array[Int] = []
+  let dlen = dcodes.length()
+  let mut cursor = 0
+  while cursor + dlen <= codes.length() {
+    let mut matched = true
+    let mut offset = 0
+    while matched && offset < dlen {
+      if codes[cursor + offset] != dcodes[offset] {
+        matched = false
+      }
+      offset = offset + 1
+    }
+    if matched {
+      marks.push(cursor)
+      cursor = cursor + dlen
+    } else {
+      cursor = cursor + 1
+    }
+  }
+  marks
+}
+
+///|
+/// Splits text by a delimiter into a block of parts. Parts keep the
+/// datatype of the input; empty parts between delimiters stay.
+fn perform_split(
+  target : @value.Cell,
+  delim : @value.Cell,
+) -> @value.Cell raise EvalError {
+  match target {
+    @value.Seq(series, index) if @value.text_series(series.datatype()) => {
+      let codes = path_codes(series, index)
+      let dcodes : Array[Int] = match delim {
+        @value.Char(code) => [code]
+        @value.Seq(dseries, dindex) if @value.text_series(dseries.datatype()) =>
+          path_codes(dseries, dindex)
+        _ => raise EvalError::Cannot("split")
+      }
+      if dcodes.length() == 0 {
+        raise EvalError::Cannot("split")
+      }
+      let dlen = dcodes.length()
+      let block = @value.Series::block()
+      let mut start = 0
+      for mark in split_marks(codes, dcodes) {
+        block.push_item(text_of_codes(series.datatype(), codes, start, mark))
+        |> ignore
+        start = mark + dlen
+      }
+      block.push_item(
+        text_of_codes(series.datatype(), codes, start, codes.length()),
+      )
+      |> ignore
+      @value.Seq(block, 0)
+    }
+    _ => raise EvalError::Cannot("split")
+  }
+}

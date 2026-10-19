@@ -66,6 +66,7 @@ fn walk_path(
 
 ///|
 /// A get-word in a path evaluates to the key it names, the way `m/:key` does.
+/// A paren selector is evaluated and its value picks the field or index.
 fn eval_selector(
   env : Env,
   series : @value.Series,
@@ -75,6 +76,8 @@ fn eval_selector(
   match selector {
     @value.Sym(@value.GetWord, lexeme) =>
       fetch(env, series, index, @value.GetWord, lexeme)
+    @value.Seq(nested, nested_index) if nested.datatype() == @value.Paren =>
+      do_series(env, nested, nested_index)
     _ => selector
   }
 }

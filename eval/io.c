@@ -487,6 +487,55 @@ int32_t rebal_change_dir(moonbit_string_t path, int32_t path_len) {
   return failed ? 1 : 0;
 }
 
+static int32_t rebal_env_status = 0;
+
+int32_t rebal_env_found(void) { return rebal_env_status; }
+
+moonbit_string_t rebal_get_env(moonbit_string_t name, int32_t name_len) {
+  rebal_env_status = 0;
+  char *cname = rebal_to_utf8(name, name_len);
+  if (cname == NULL) {
+    rebal_env_status = 2;
+    return moonbit_make_string(0, 0);
+  }
+  const char *value = getenv(cname);
+  free(cname);
+  if (value == NULL) {
+    rebal_env_status = 1;
+    return moonbit_make_string(0, 0);
+  }
+  size_t len = strlen(value);
+  int32_t units = rebal_utf8_units((const unsigned char *)value, len);
+  if (units < 0) {
+    rebal_env_status = 2;
+    return moonbit_make_string(0, 0);
+  }
+  moonbit_string_t text = moonbit_make_string(units, 0);
+  rebal_fill_utf16(text, (const unsigned char *)value, len);
+  return text;
+}
+
+int32_t rebal_set_env(
+  moonbit_string_t name,
+  int32_t name_len,
+  moonbit_string_t value,
+  int32_t value_len
+) {
+  char *cname = rebal_to_utf8(name, name_len);
+  if (cname == NULL) {
+    return 1;
+  }
+  char *cvalue = rebal_to_utf8(value, value_len);
+  if (cvalue == NULL) {
+    free(cname);
+    return 1;
+  }
+  int failed = setenv(cname, cvalue, 1) != 0;
+  free(cname);
+  free(cvalue);
+  return failed ? 1 : 0;
+}
+
 static int32_t rebal_call_result = 0;
 static char *rebal_err_captured = NULL;
 static size_t rebal_err_len = 0;

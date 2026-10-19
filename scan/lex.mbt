@@ -240,6 +240,7 @@ fn Lexer::path_element(self : Lexer) -> Result[@value.Cell, ScanError] {
   match self.peek() {
     Some(char) if is_digit(char) => self.number()
     Some(':') => self.path_get_word()
+    Some('(') => self.nested(@value.Series::paren(), ')', ")")
     Some(_) => self.plain_word(@value.Word)
     None => Err(Invalid("path"))
   }

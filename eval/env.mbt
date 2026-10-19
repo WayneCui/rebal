@@ -524,11 +524,27 @@ let native_collect : Int = 172
 let native_keep : Int = 173
 
 ///|
+let native_get_env : Int = 174
+
+///|
+let native_set_env : Int = 175
+
+///|
+let native_split : Int = 176
+
+///|
+let native_true_q : Int = 177
+
+///|
+let native_false_q : Int = 178
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
   install(env, "false", @value.Logic(false))
   install(env, "none", @value.None)
+  install(env, "newline", text_series("\n"))
   define_native(env, "+", 2, true, native_add)
   define_native(env, "-", 2, true, native_subtract)
   define_native(env, "*", 2, true, native_multiply)
@@ -542,6 +558,11 @@ pub fn Env::new() -> Env {
   define_native(env, "split-path", 1, false, native_split_path)
   define_native(env, "what-dir", 0, false, native_what_dir)
   define_native(env, "change-dir", 1, false, native_change_dir)
+  define_native(env, "get-env", 1, false, native_get_env)
+  define_native(env, "set-env", 2, false, native_set_env)
+  define_native(env, "split", 2, false, native_split)
+  define_native(env, "true?", 1, false, native_true_q)
+  define_native(env, "false?", 1, false, native_false_q)
   define_native(env, "make-dir", 1, false, native_make_dir)
   define_native(env, "clean-path", 1, false, native_clean_path)
   define_native(env, "input", 0, false, native_input)

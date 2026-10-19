@@ -251,13 +251,18 @@ fn call_user(
   args : Array[@value.Cell],
   active : Array[Int],
 ) -> @value.Cell raise EvalError {
-  let (frame, body) = if func.is_closure() {
-    let fresh = func.frame().copy_shape()
-    let copied = func.body().copy_deep(0)
-    @bind.bind(@value.Seq(copied, 0), fresh) |> ignore
-    (fresh, copied)
-  } else {
-    (func.frame(), func.body())
+  // Every call gets its own frame. A shared frame would let a nested or
+  // recursive call of the same function clobber the caller's locals.
+  let frame = func.frame().copy_shape()
+  let body = func.body().copy_deep(0)
+  @bind.bind(@value.Seq(body, 0), frame) |> ignore
+  // A fresh frame starts empty; spec words a call does not fill (locals,
+  // unused refinement values) read as `none`, not as missing words.
+  for sym in func.spec_words() {
+    match frame.find(sym) {
+      Some(slot) => store(frame, slot, @value.None)
+      None => ()
+    }
   }
   let names = func.params()
   let types = func.types()

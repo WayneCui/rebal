@@ -159,12 +159,18 @@ fn eval_atom(
     Some(@value.Seq(nested, nested_index)) if nested.datatype() == @value.Path => {
       // Walk until a function shows up. The words after it are refinements.
       // A path that ends on a function calls it with the following expressions.
+      // A get-path (head is a get-word) only fetches: the function value
+      // itself comes back, like `:word` does, without a call.
+      let fetch_only = match nested.item(nested_index) {
+        Some(@value.Sym(@value.GetWord, _)) => true
+        _ => false
+      }
       let mut current = path_head(env, nested, nested_index)
       let mut cursor = nested_index + 1
       let mut stepped : (@value.Cell, Int)? = None
       while stepped is None {
         match current {
-          @value.Function(func) if !func.is_infix() =>
+          @value.Function(func) if !func.is_infix() && !fetch_only =>
             stepped = Some(
               call(env, series, index + 1, func, path_refines(nested, cursor)),
             )
@@ -224,6 +230,7 @@ fn call(
     func.code() != native_sort &&
     func.code() != native_call &&
     func.code() != native_now &&
+    func.code() != native_append &&
     func.code() != native_clean_path &&
     func.code() != native_make_dir &&
     func.code() != native_confirm &&
@@ -264,6 +271,8 @@ fn call(
     func.arity() + 1
   } else if func.code() == native_compress {
     func.arity() + compress_extra(env, active)
+  } else if func.code() == native_append {
+    func.arity() + append_extra(env, active)
   } else if func.code() == native_decompress {
     func.arity() + decompress_extra(env, active)
   } else if func.code() == native_dehex && named(env, active, "escape") {
@@ -398,6 +407,8 @@ fn call(
     (perform_keep(env, args[0], active), cursor)
   } else if func.code() == native_copy {
     (perform_copy(env, args, active), cursor)
+  } else if func.code() == native_append && active.length() > 0 {
+    (perform_append(env, args, active), cursor)
   } else if func.code() == native_compose {
     (perform_compose(env, args[0], active), cursor)
   } else if func.code() == native_mold {
@@ -585,6 +596,26 @@ fn apply(
     perform_what_dir()
   } else if func.code() == native_change_dir {
     perform_change_dir(args[0])
+  } else if func.code() == native_get_env {
+    perform_get_env(args[0])
+  } else if func.code() == native_set_env {
+    perform_set_env(args[0], args[1])
+  } else if func.code() == native_split {
+    perform_split(args[0], args[1])
+  } else if func.code() == native_true_q {
+    @value.Logic(
+      match args[0] {
+        @value.Logic(false) | @value.None => false
+        _ => true
+      },
+    )
+  } else if func.code() == native_false_q {
+    @value.Logic(
+      match args[0] {
+        @value.Logic(false) | @value.None => true
+        _ => false
+      },
+    )
   } else if func.code() == native_insert {
     from_action(@action.insert(args[0], args[1]))
   } else if func.code() == native_remove {
