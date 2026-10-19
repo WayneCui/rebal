@@ -20,7 +20,10 @@ test "get set and unset address a word" {
   assert_true(@eval.run(env, "value? 'a") is @value.Logic(true))
   assert_true(@eval.run(env, "unset? 'missing") is @value.Logic(true))
   assert_true(
-    @eval.run(env, "o: make object! [a: 4] in o 'a") is @value.Integer(4L),
+    @eval.run(
+      env, "o: make object! [a: 4 run: does [7]] got: do reduce [get in o 'run] (reduce [(get in o 'a) = 4 (in o 'a) = 'a none? in o 'z none? in o 'self got = 7]) = reduce [true true true true true]",
+    )
+    is @value.Logic(true),
   )
   assert_true(
     @eval.run(env, "a: 9 o: make object! [a: 1] b: [a] bind b o first reduce b")

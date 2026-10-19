@@ -132,6 +132,8 @@ fn perform_unset_q(
 }
 
 ///|
+/// `in` returns the word bound into the object, or `none` when the field
+/// is missing. `get` of that word reads the field. A hidden `self` is missing.
 fn perform_in(
   env : Env,
   object : @value.Cell,
@@ -139,7 +141,23 @@ fn perform_in(
 ) -> @value.Cell raise EvalError {
   let _ = env
   match object {
-    @value.Object(frame) => object_field(frame, as_word(word, "in"))
+    @value.Object(frame) => {
+      let lexeme = as_word(word, "in")
+      match frame.find(lexeme.sym()) {
+        Some(slot) =>
+          if frame.is_hidden(slot) {
+            @value.None
+          } else {
+            @value.Sym(
+              @value.Word,
+              @value.Lexeme::make(lexeme.sym(), lexeme.spelling()).with_binding(
+                @value.Bound(frame, slot),
+              ),
+            )
+          }
+        None => @value.None
+      }
+    }
     _ => raise EvalError::Cannot("in")
   }
 }

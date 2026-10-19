@@ -247,6 +247,7 @@ fn call(
     func.code() != native_save &&
     func.code() != native_load &&
     func.code() != native_compose &&
+    func.code() != native_read &&
     func.code() != native_copy &&
     func.code() != native_collect &&
     func.code() != native_keep &&
@@ -331,6 +332,8 @@ fn call(
     (perform_sort(env, args, active), cursor)
   } else if func.code() == native_call {
     (perform_call(env, args, active), cursor)
+  } else if func.code() == native_read {
+    (perform_read(env, args[0], active), cursor)
   } else if func.code() == native_now {
     (perform_now(env, active), cursor)
   } else if func.code() == native_clean_path {
@@ -831,8 +834,6 @@ fn apply(
     perform_open(env, args[0])
   } else if func.code() == native_close {
     perform_close(env, args[0])
-  } else if func.code() == native_read {
-    perform_read(env, args[0])
   } else if func.code() == native_write {
     perform_write(env, args[0], args[1])
   } else if func.code() == native_query {

@@ -7,6 +7,10 @@ test "file ports read, write, and query text" {
     is @value.Logic(true),
   )
   assert_true(
+    @eval.run(env, "(read/string %/tmp/rebal-file-port.txt) = {ab}")
+    is @value.Logic(true),
+  )
+  assert_true(
     @eval.run(
       env, "write %/tmp/rebal-file-port.txt {cd} (read %/tmp/rebal-file-port.txt) = {cd}",
     )

@@ -47,7 +47,19 @@ fn perform_close(env : Env, spec : @value.Cell) -> @value.Cell raise EvalError {
 }
 
 ///|
-fn perform_read(env : Env, spec : @value.Cell) -> @value.Cell raise EvalError {
+/// `/string` asks for text. A file read is already text, so the refinement
+/// only rejects a name this port does not understand.
+fn perform_read(
+  env : Env,
+  spec : @value.Cell,
+  active : Array[Int],
+) -> @value.Cell raise EvalError {
+  for sym in active {
+    let name = env.symbols.canon(sym)
+    if name != "string" {
+      raise EvalError::Cannot("read")
+    }
+  }
   let port = ready_port(env, spec, "read")
   dispatch_port(env, "read", port, None)
 }

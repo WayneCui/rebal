@@ -5,6 +5,7 @@
 #include <netinet/in.h>
 #include <pthread.h>
 #include <stdint.h>
+#include <poll.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -487,8 +488,59 @@ int32_t rebal_change_dir(moonbit_string_t path, int32_t path_len) {
 }
 
 static int32_t rebal_call_result = 0;
+static char *rebal_err_captured = NULL;
+static size_t rebal_err_len = 0;
 
 int32_t rebal_call_code(void) { return rebal_call_result; }
+
+static void rebal_clear_error(void) {
+  free(rebal_err_captured);
+  rebal_err_captured = NULL;
+  rebal_err_len = 0;
+}
+
+moonbit_string_t rebal_call_error(void) {
+  if (rebal_err_captured == NULL || rebal_err_len == 0) {
+    rebal_clear_error();
+    return moonbit_make_string(0, 0);
+  }
+  int32_t units =
+    rebal_utf8_units((unsigned char *)rebal_err_captured, rebal_err_len);
+  if (units < 0) {
+    rebal_clear_error();
+    rebal_call_result = -1;
+    return moonbit_make_string(0, 0);
+  }
+  moonbit_string_t text = moonbit_make_string(units, 0);
+  rebal_fill_utf16(text, (unsigned char *)rebal_err_captured, rebal_err_len);
+  rebal_clear_error();
+  return text;
+}
+
+static void rebal_keep_error(char *buf, size_t len) {
+  rebal_clear_error();
+  rebal_err_captured = buf;
+  rebal_err_len = len;
+}
+
+static void rebal_add_bytes(
+  char **out,
+  size_t *len,
+  size_t *cap,
+  const char *text,
+  size_t add
+);
+
+static void rebal_drain_fd(int *fd, char **buf, size_t *len, size_t *cap) {
+  char tmp[1024];
+  ssize_t got = read(*fd, tmp, sizeof tmp);
+  if (got > 0) {
+    rebal_add_bytes(buf, len, cap, tmp, (size_t)got);
+    return;
+  }
+  close(*fd);
+  *fd = -1;
+}
 
 static void rebal_add_bytes(
   char **out,
@@ -518,10 +570,12 @@ moonbit_string_t rebal_spawn(
   int32_t input_len
 ) {
   rebal_call_result = -1;
+  rebal_clear_error();
   int wait_flag = (flags & 1) != 0;
   int shell = (flags & 2) != 0;
   int capture = (flags & 4) != 0;
-  if (capture) {
+  int capture_err = (flags & 8) != 0;
+  if (capture || capture_err) {
     wait_flag = 1;
   }
   char *body = rebal_to_utf8(packed, packed_len);
@@ -555,6 +609,7 @@ moonbit_string_t rebal_spawn(
   }
   int in_pipe[2] = { -1, -1 };
   int out_pipe[2] = { -1, -1 };
+  int err_pipe[2] = { -1, -1 };
   if (in_body != NULL && pipe(in_pipe) != 0) {
     free(body);
     free(in_body);
@@ -564,6 +619,19 @@ moonbit_string_t rebal_spawn(
     if (in_pipe[0] >= 0) {
       close(in_pipe[0]);
       close(in_pipe[1]);
+    }
+    free(body);
+    free(in_body);
+    return moonbit_make_string(0, 0);
+  }
+  if (capture_err && pipe(err_pipe) != 0) {
+    if (in_pipe[0] >= 0) {
+      close(in_pipe[0]);
+      close(in_pipe[1]);
+    }
+    if (out_pipe[0] >= 0) {
+      close(out_pipe[0]);
+      close(out_pipe[1]);
     }
     free(body);
     free(in_body);
@@ -579,6 +647,10 @@ moonbit_string_t rebal_spawn(
       close(out_pipe[0]);
       close(out_pipe[1]);
     }
+    if (err_pipe[0] >= 0) {
+      close(err_pipe[0]);
+      close(err_pipe[1]);
+    }
     free(body);
     free(in_body);
     return moonbit_make_string(0, 0);
@@ -593,6 +665,11 @@ moonbit_string_t rebal_spawn(
       dup2(out_pipe[1], 1);
       close(out_pipe[0]);
       close(out_pipe[1]);
+    }
+    if (err_pipe[1] >= 0) {
+      dup2(err_pipe[1], 2);
+      close(err_pipe[0]);
+      close(err_pipe[1]);
     }
     execvp(argv_store[0], argv_store);
     _exit(127);
@@ -616,15 +693,53 @@ moonbit_string_t rebal_spawn(
   char *captured = NULL;
   size_t captured_len = 0;
   size_t captured_cap = 0;
+  char *err_buf = NULL;
+  size_t err_len = 0;
+  size_t err_cap = 0;
+  int out_fd = -1;
+  int err_fd = -1;
   if (out_pipe[0] >= 0) {
     close(out_pipe[1]);
-    char tmp[1024];
-    ssize_t got = 0;
-    while ((got = read(out_pipe[0], tmp, sizeof tmp)) > 0) {
-      rebal_add_bytes(&captured, &captured_len, &captured_cap, tmp, (size_t)got);
-    }
-    close(out_pipe[0]);
+    out_fd = out_pipe[0];
   }
+  if (err_pipe[0] >= 0) {
+    close(err_pipe[1]);
+    err_fd = err_pipe[0];
+  }
+  while (out_fd >= 0 || err_fd >= 0) {
+    struct pollfd fds[2];
+    int count = 0;
+    int out_at = -1;
+    int err_at = -1;
+    if (out_fd >= 0) {
+      fds[count].fd = out_fd;
+      fds[count].events = POLLIN;
+      out_at = count;
+      count += 1;
+    }
+    if (err_fd >= 0) {
+      fds[count].fd = err_fd;
+      fds[count].events = POLLIN;
+      err_at = count;
+      count += 1;
+    }
+    int ready = poll(fds, (nfds_t)count, -1);
+    if (ready < 0) {
+      if (errno == EINTR) {
+        continue;
+      }
+      break;
+    }
+    if (out_at >= 0 &&
+        (fds[out_at].revents & (POLLIN | POLLHUP | POLLERR)) != 0) {
+      rebal_drain_fd(&out_fd, &captured, &captured_len, &captured_cap);
+    }
+    if (err_at >= 0 &&
+        (fds[err_at].revents & (POLLIN | POLLHUP | POLLERR)) != 0) {
+      rebal_drain_fd(&err_fd, &err_buf, &err_len, &err_cap);
+    }
+  }
+  rebal_keep_error(err_buf, err_len);
   if (wait_flag) {
     int status = 0;
     if (waitpid(pid, &status, 0) < 0) {

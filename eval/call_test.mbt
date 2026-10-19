@@ -20,6 +20,12 @@ test "call waits for an exit code and captures output" {
     is @value.Logic(true),
   )
   assert_true(
+    @eval.run(
+      env, "out: \"\" err: \"\" code: call/wait/shell/output/error {echo hi; echo bad 1>&2; exit 3} out err (reduce [code = 3 out = \"hi^/\" err = \"bad^/\"]) = reduce [true true true]",
+    )
+    is @value.Logic(true),
+  )
+  assert_true(
     @eval.run(env, "pid: call %/usr/bin/true (type? pid) = integer! pid > 0")
     is @value.Logic(true),
   )

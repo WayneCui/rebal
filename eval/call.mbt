@@ -12,11 +12,14 @@ extern "C" fn c_spawn(
 extern "C" fn c_call_code() -> Int = "rebal_call_code"
 
 ///|
+extern "C" fn c_call_error() -> String = "rebal_call_error"
+
+///|
 fn call_extra(env : Env, active : Array[Int]) -> Int raise EvalError {
   let mut extra = 0
   for sym in active {
     let name = env.symbols.canon(sym)
-    if name == "input" || name == "output" {
+    if name == "input" || name == "output" || name == "error" {
       extra = extra + 1
     } else if name == "wait" || name == "shell" {
       ()
@@ -30,7 +33,9 @@ fn call_extra(env : Env, active : Array[Int]) -> Int raise EvalError {
 ///|
 /// A string or file is one argument. A block is the argument list.
 /// `/wait` returns the exit code. Without it, the result is the process id.
-/// `/output` appends stdout onto a string and waits. `/shell` uses `/bin/sh -c`.
+/// `/output` appends stdout onto a string and waits. `/error` appends stderr
+/// the same way. Refinement arguments follow the order written at the call.
+/// `/shell` uses `/bin/sh -c`.
 fn perform_call(
   env : Env,
   args : Array[@value.Cell],
@@ -40,21 +45,21 @@ fn perform_call(
   let wait = named(env, active, "wait")
   let command = command_args(args[0], shell)
   let mut slot = 1
-  let input = if named(env, active, "input") {
-    let text = input_text(args[slot])
-    slot = slot + 1
-    text
-  } else {
-    ""
-  }
-  let output = if named(env, active, "output") {
-    match args[slot] {
-      @value.Seq(series, _) if series.datatype() == @value.String =>
-        Some(series)
-      _ => raise EvalError::Cannot("call")
+  let mut input = ""
+  let mut output : @value.Series? = None
+  let mut error : @value.Series? = None
+  for sym in active {
+    let name = env.symbols.canon(sym)
+    if name == "input" {
+      input = input_text(args[slot])
+      slot = slot + 1
+    } else if name == "output" {
+      output = Some(call_buffer(args[slot]))
+      slot = slot + 1
+    } else if name == "error" {
+      error = Some(call_buffer(args[slot]))
+      slot = slot + 1
     }
-  } else {
-    None
   }
   let mut flags = 0
   if wait {
@@ -66,19 +71,39 @@ fn perform_call(
   if output is Some(_) {
     flags = flags + 4
   }
+  if error is Some(_) {
+    flags = flags + 8
+  }
   let text = c_spawn(command, command.length(), flags, input, input.length())
+  let err_text = c_call_error()
   let code = c_call_code()
   if code < 0 {
     raise EvalError::Cannot("call")
   }
   match output {
-    Some(series) =>
-      for char in text {
-        series.push_code(char.to_int()) |> ignore
-      }
+    Some(series) => append_text(series, text)
+    None => ()
+  }
+  match error {
+    Some(series) => append_text(series, err_text)
     None => ()
   }
   @value.Integer(code.to_int64())
+}
+
+///|
+fn call_buffer(cell : @value.Cell) -> @value.Series raise EvalError {
+  match cell {
+    @value.Seq(series, _) if series.datatype() == @value.String => series
+    _ => raise EvalError::Cannot("call")
+  }
+}
+
+///|
+fn append_text(series : @value.Series, text : String) -> Unit {
+  for char in text {
+    series.push_code(char.to_int()) |> ignore
+  }
 }
 
 ///|
