@@ -338,16 +338,54 @@ fn perform_do(env : Env, cell : @value.Cell) -> @value.Cell raise EvalError {
     @value.Seq(series, index) if series.datatype() == @value.String =>
       do_text(env, text_from(series, index))
     @value.Seq(series, index) if series.datatype() == @value.File =>
-      eval(
-        env,
-        load_bytes(
-          env,
-          drop_bom(read_binary(text_from(series, index))),
-          false,
-          false,
-        ),
-      )
+      do_file(env, text_from(series, index))
     _ => cell
+  }
+}
+
+///|
+/// Load the file first. A path with a slash then runs in that file's
+/// directory, and the previous directory is restored afterwards.
+fn do_file(env : Env, path : String) -> @value.Cell raise EvalError {
+  let loaded = load_code(env, drop_bom(read_binary(path)))
+  match file_parent(path) {
+    None => eval(env, loaded)
+    Some(dir) => {
+      let saved = perform_what_dir()
+      if c_change_dir(dir, dir.length()) != 0 {
+        raise EvalError::Cannot("access")
+      }
+      errdefer restore_dir(saved)
+      let result = eval(env, loaded)
+      let _ = perform_change_dir(saved)
+      result
+    }
+  }
+}
+
+///|
+fn file_parent(path : String) -> String? {
+  let mut at = -1
+  let mut index = 0
+  for char in path {
+    if char == '/' {
+      at = index
+    }
+    index = index + 1
+  }
+  if at < 0 {
+    None
+  } else {
+    Some(path[0:at + 1].to_owned())
+  }
+}
+
+///|
+fn restore_dir(saved : @value.Cell) -> Unit {
+  try {
+    let _ = perform_change_dir(saved)
+  } catch {
+    _ => ()
   }
 }
 

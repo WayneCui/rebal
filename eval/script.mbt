@@ -10,6 +10,24 @@ fn load_bytes(
   header : Bool,
   all : Bool,
 ) -> @value.Cell raise EvalError {
+  load_script_body(env, bytes, header, all, true)
+}
+
+///|
+/// The script body as code. A header is dropped, and a single value stays
+/// inside the block so `do` still evaluates it.
+fn load_code(env : Env, bytes : Array[Int]) -> @value.Cell raise EvalError {
+  load_script_body(env, bytes, false, false, false)
+}
+
+///|
+fn load_script_body(
+  env : Env,
+  bytes : Array[Int],
+  header : Bool,
+  all : Bool,
+  collapse : Bool,
+) -> @value.Cell raise EvalError {
   if all {
     load(env, script_text(bytes))
   } else {
@@ -24,9 +42,16 @@ fn load_bytes(
           script_verify(env, source, limited)
           load(env, script_text(limited))
         }
-        script_finish(env, body, Some(source), header)
+        script_finish(env, body, Some(source), header, collapse)
       }
-      None => script_finish(env, load(env, script_text(bytes)), None, header)
+      None =>
+        script_finish(
+          env,
+          load(env, script_text(bytes)),
+          None,
+          header,
+          collapse,
+        )
     }
   }
 }
@@ -37,9 +62,14 @@ fn script_finish(
   body : @value.Cell,
   source : String?,
   header : Bool,
+  collapse : Bool,
 ) -> @value.Cell raise EvalError {
   if !header {
-    singular(body)
+    if collapse {
+      singular(body)
+    } else {
+      body
+    }
   } else {
     let block = @value.Series::block()
     match source {
