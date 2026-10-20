@@ -260,7 +260,8 @@ fn call(
     func.code() != native_collect &&
     func.code() != native_keep &&
     func.code() != native_mold &&
-    func.code() != native_quit {
+    func.code() != native_quit &&
+    func.code() != native_remove {
     raise EvalError::Cannot("func")
   }
   let args : Array[@value.Cell] = []
@@ -270,6 +271,8 @@ fn call(
   } else if func.code() == native_find && named(env, active, "part") {
     func.arity() + 1
   } else if func.code() == native_sort && named(env, active, "skip") {
+    func.arity() + 1
+  } else if func.code() == native_remove && named(env, active, "part") {
     func.arity() + 1
   } else if func.code() == native_quit && named(env, active, "return") {
     func.arity() + 1
@@ -355,6 +358,8 @@ fn call(
       }
     }
     raise EvalError::Quit
+  } else if func.code() == native_remove {
+    (perform_remove(env, args, active), cursor)
   } else if func.code() == native_find {
     (perform_find(env, args, active), cursor)
   } else if func.code() == native_sort {
@@ -606,6 +611,10 @@ fn apply(
     from_action(@action.length(args[0]))
   } else if func.code() == native_first {
     from_action(@action.first(args[0]))
+  } else if func.code() == native_second {
+    from_action(@action.pick(args[0], @value.Integer(2L)))
+  } else if func.code() == native_third {
+    from_action(@action.pick(args[0], @value.Integer(3L)))
   } else if func.code() == native_last {
     from_action(@action.last(args[0]))
   } else if func.code() == native_suffix_q {
@@ -700,6 +709,8 @@ fn apply(
     perform_while(env, args[0], args[1])
   } else if func.code() == native_until {
     perform_until(env, args[0])
+  } else if func.code() == native_forever {
+    perform_forever(env, args[0])
   } else if func.code() == native_loop {
     perform_loop(env, args[0], args[1])
   } else if func.code() == native_break {

@@ -123,6 +123,36 @@ pub fn remove(cell : @value.Cell) -> @value.Cell? {
 }
 
 ///|
+/// Drop `count` items/chars/bytes starting at the series index.
+pub fn remove_part(cell : @value.Cell, count : Int) -> @value.Cell? {
+  match view(cell) {
+    Some((series, index)) => {
+      let mut left = if count < 0 { 0 } else { count }
+      while left > 0 {
+        let datatype = series.datatype()
+        let removed = if @value.text_series(datatype) {
+          series.remove_code(index) is Some(_)
+        } else {
+          match datatype {
+            @value.Binary => series.remove_byte(index) is Some(_)
+            @value.Block | @value.Paren | @value.Path | @value.SetPath =>
+              series.remove_item(index) is Some(_)
+            _ => false
+          }
+        }
+        if removed {
+          left = left - 1
+        } else {
+          left = 0
+        }
+      }
+      Some(@value.Seq(series, index))
+    }
+    None => None
+  }
+}
+
+///|
 pub fn find(cell : @value.Cell, value : @value.Cell) -> @value.Cell {
   find_with(cell, value, false, false, false, false, false, None)
 }

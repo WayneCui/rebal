@@ -61,6 +61,5 @@ fn constants_script() -> String {
   "abs: :absolute\n" +
   "empty?: :tail?\n" +
   "keys-of: :words-of\n" +
-  "---: :comment\n" +
-  "forever: func [body [block!]] [while [true] body]\n"
+  "---: :comment\n"
 }

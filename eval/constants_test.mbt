@@ -49,6 +49,10 @@ test "boot installs the base constants and their aliases" {
     @eval.run(env, "n: 0 forever [n: n + 1 if n = 3 [break]] n = 3")
     is @value.Logic(true),
   )
+  // return must leave the enclosing function, not stop at forever itself
+  assert_true(
+    @eval.run(env, "f: func [] [forever [return 7] 0] f") is @value.Integer(7L),
+  )
   let stopped = try {
     @eval.run(env, "q") |> ignore
     false

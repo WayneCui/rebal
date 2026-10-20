@@ -34,6 +34,25 @@ fn eval_body(
 }
 
 ///|
+/// Like `while [true] body`, but as a native so `return` leaves the caller
+/// instead of being caught by a mezzanine wrapper function.
+fn perform_forever(env : Env, body : @value.Cell) -> @value.Cell raise EvalError {
+  let mut kept = @value.Cell::None
+  let mut running = true
+  while running {
+    match eval_body(env, body, "forever") {
+      Stop => {
+        kept = @value.Cell::None
+        running = false
+      }
+      Skip => ()
+      Done(value) => kept = value
+    }
+  }
+  kept
+}
+
+///|
 /// Repeats while the condition block is neither `false` nor `none`.
 /// Stopping before the body has run yields `none`. Otherwise the last body value stays.
 fn perform_while(

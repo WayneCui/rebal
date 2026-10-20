@@ -551,6 +551,15 @@ let native_map_each : Int = 181
 let native_repeat : Int = 182
 
 ///|
+let native_second : Int = 183
+
+///|
+let native_third : Int = 184
+
+///|
+let native_forever : Int = 185
+
+///|
 pub fn Env::new() -> Env {
   let env = Env::{ symbols: @value.Symbols::new(), user: @value.Frame::new(), }
   install(env, "true", @value.Logic(true))
@@ -565,6 +574,8 @@ pub fn Env::new() -> Env {
   define_native(env, "pick", 2, false, native_pick)
   define_native(env, "length?", 1, false, native_length)
   define_native(env, "first", 1, false, native_first)
+  define_native(env, "second", 1, false, native_second)
+  define_native(env, "third", 1, false, native_third)
   define_native(env, "last", 1, false, native_last)
   define_native(env, "suffix?", 1, false, native_suffix_q)
   define_native(env, "split-path", 1, false, native_split_path)
@@ -631,6 +642,7 @@ pub fn Env::new() -> Env {
   define_native(env, "return", 1, false, native_return)
   define_native(env, "while", 2, false, native_while)
   define_native(env, "until", 1, false, native_until)
+  define_native(env, "forever", 1, false, native_forever)
   define_native(env, "loop", 2, false, native_loop)
   define_native(env, "break", 0, false, native_break)
   define_native(env, "foreach", 3, false, native_foreach)

@@ -16,7 +16,28 @@ pub fn insert(
 
 ///|
 pub fn remove(series : @value.Cell) -> Result[@value.Cell, ActionError] {
-  changed(series, "remove", fn(cell) { @series.remove(cell) })
+  match series {
+    @value.None => Ok(@value.None)
+    _ => changed(series, "remove", fn(cell) { @series.remove(cell) })
+  }
+}
+
+///|
+/// Remove `count` values from the current position. Returns the series
+/// still at that index, like a single `remove` does.
+pub fn remove_part(
+  series : @value.Cell,
+  count : Int,
+) -> Result[@value.Cell, ActionError] {
+  match series {
+    @value.None => Ok(@value.None)
+    _ =>
+      if count <= 0 {
+        Ok(series)
+      } else {
+        changed(series, "remove", fn(cell) { @series.remove_part(cell, count) })
+      }
+  }
 }
 
 ///|
