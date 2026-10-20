@@ -267,6 +267,7 @@ fn perform_to(
     @value.Type(@value.Bitset) => to_bitset(spec)
     @value.Type(@value.Map) => to_map(spec)
     @value.Type(@value.String) => to_string(spec)
+    @value.Type(@value.Binary) => to_binary_value(spec)
     @value.Type(@value.Word) => to_word(env, spec)
     @value.Type(@value.File) => to_file(spec)
     @value.Type(@value.Logic) => to_logic(spec)

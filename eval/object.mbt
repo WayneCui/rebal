@@ -19,6 +19,7 @@ fn make_value(
     @value.Type(@value.Date) => to_date(spec)
     @value.Type(@value.Bitset) => to_bitset(spec)
     @value.Type(@value.Map) => to_map(spec)
+    @value.Type(@value.Binary) => make_binary_value(spec)
     @value.Type(@value.Vector) => make_vector(spec)
     @value.Type(@value.Image) => make_image(spec)
     @value.Type(@value.Struct) => make_struct(spec)

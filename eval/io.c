@@ -295,6 +295,75 @@ int32_t rebal_write_text(
   return failed ? 1 : 0;
 }
 
+// `write/append` shares the writing path with "wb" openers above, only the
+// open mode differs, so the tail of the file is kept.
+int32_t rebal_append_text(
+  moonbit_string_t path,
+  int32_t path_len,
+  moonbit_string_t text,
+  int32_t text_len
+) {
+  char *cpath = rebal_to_utf8(path, path_len);
+  char *body = rebal_to_utf8(text, text_len);
+  if (cpath == NULL || body == NULL) {
+    free(cpath);
+    free(body);
+    return 1;
+  }
+  FILE *file = fopen(cpath, "ab");
+  free(cpath);
+  if (file == NULL) {
+    free(body);
+    return 1;
+  }
+  size_t len = 0;
+  while (body[len] != 0) {
+    len++;
+  }
+  size_t wrote = fwrite(body, 1, len, file);
+  free(body);
+  int failed = fclose(file) != 0 || wrote != len;
+  return failed ? 1 : 0;
+}
+
+int32_t rebal_append_bytes(
+  moonbit_string_t path,
+  int32_t path_len,
+  moonbit_string_t data,
+  int32_t data_len
+) {
+  char *cpath = rebal_to_utf8(path, path_len);
+  if (cpath == NULL) {
+    return 1;
+  }
+  if (data_len < 0) {
+    data_len = 0;
+  }
+  unsigned char *body = (unsigned char *)malloc((size_t)data_len + 1);
+  if (body == NULL) {
+    free(cpath);
+    return 1;
+  }
+  for (int32_t i = 0; i < data_len; i++) {
+    if (data[i] > 255) {
+      free(cpath);
+      free(body);
+      return 1;
+    }
+    body[i] = (unsigned char)data[i];
+  }
+  FILE *file = fopen(cpath, "ab");
+  free(cpath);
+  if (file == NULL) {
+    free(body);
+    return 1;
+  }
+  size_t wrote = fwrite(body, 1, (size_t)data_len, file);
+  free(body);
+  int failed = fclose(file) != 0 || wrote != (size_t)data_len;
+  return failed ? 1 : 0;
+}
+
 static int32_t rebal_line_code = 0;
 
 int32_t rebal_line_status(void) { return rebal_line_code; }

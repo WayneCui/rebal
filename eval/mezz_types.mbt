@@ -20,6 +20,7 @@ fn types_script() -> String {
   "to-bitset: func [value] [to bitset! :value]\n" +
   "to-map: func [value] [to map! :value]\n" +
   "to-string: func [value] [to string! :value]\n" +
+  "to-binary: func [value] [to binary! :value]\n" +
   "to-word: func [value] [to word! :value]\n" +
   "to-file: func [value] [to file! :value]\n" +
   "to-logic: func [value] [to logic! :value]\n" +

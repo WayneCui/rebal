@@ -26,5 +26,7 @@ fn files_script() -> String {
   "size?: func [target [file!]] [\n" +
   "info: query target\n" +
   "info/size\n" +
-  "]\n"
+  "]\n" +
+  "to-rebol-file: func [path [file! string!]] [to-file path]\n" +
+  "to-local-file: func [path [file! string!]] [to-string to-file path]\n"
 }

@@ -18,6 +18,13 @@ test "dirize adds a slash and undirize removes one, without changing the source"
     is @value.Logic(true),
   )
   assert_true(@eval.run(env, "(type? copy %foo) = file!") is @value.Logic(true))
+  assert_true(
+    @eval.run(env, "(to-rebol-file \"a/b\") = %a/b") is @value.Logic(true),
+  )
+  assert_true(
+    @eval.run(env, "(to-local-file %out/x/a.svg) = \"out/x/a.svg\"")
+    is @value.Logic(true),
+  )
 }
 
 ///|

@@ -72,13 +72,39 @@ fn perform_read(
 }
 
 ///|
+/// `write` refinements: `/binary` keeps the data as raw bytes (a POSIX host
+/// already stores plain text writes as UTF-8 without conversion, so it only
+/// rules the data shapes), `/append` adds to the file instead of replacing
+/// it. The refinements apply to file writes; other schemes take the plain
+/// write.
 fn perform_write(
   env : Env,
-  spec : @value.Cell,
-  value : @value.Cell,
+  args : Array[@value.Cell],
+  active : Array[Int],
 ) -> @value.Cell raise EvalError {
-  let port = ready_port(env, spec, "write")
-  dispatch_port(env, "write", port, Some(value))
+  let mut append = false
+  for sym in active {
+    let name = env.symbols.canon(sym)
+    if name == "binary" {
+      ()
+    } else if name == "append" {
+      append = true
+    } else {
+      raise EvalError::Cannot("write")
+    }
+  }
+  let port = ready_port(env, args[0], "write")
+  let file_scheme = match port {
+    @value.Port(value) => value.name == "file"
+    _ => false
+  }
+  if file_scheme {
+    write_text_port(env, port, args[1], append)
+  } else if append {
+    raise EvalError::Cannot("write")
+  } else {
+    dispatch_port(env, "write", port, Some(args[1]))
+  }
 }
 
 ///|
@@ -293,7 +319,7 @@ fn file_actor(
       }
     "write" =>
       match extra {
-        Some(value) => write_text_port(env, port, value)
+        Some(value) => write_text_port(env, port, value, false)
         None => raise EvalError::Cannot("write")
       }
     "query" => query_text_port(env, port)
@@ -320,17 +346,42 @@ fn read_binary_port(
 }
 
 ///|
+/// A string writes as UTF-8; a binary writes its raw bytes. Anything else
+/// is molded first, the way r3 auto-converts non-binary data. `/append`
+/// adds to the file instead of replacing it.
 fn write_text_port(
   env : Env,
   port : @value.Cell,
   value : @value.Cell,
+  append : Bool,
 ) -> @value.Cell raise EvalError {
-  let text = match value {
-    @value.Seq(series, index) if series.datatype() == @value.String =>
-      text_from(series, index)
-    _ => @mold.mold_text(value)
+  let path = port_path(env, port)
+  match value {
+    @value.Seq(series, index) if series.datatype() == @value.String => {
+      let text = text_from(series, index)
+      if append {
+        append_file(path, text)
+      } else {
+        write_file(path, text)
+      }
+    }
+    @value.Seq(series, index) if series.datatype() == @value.Binary => {
+      let bytes = bytes_from(series, index)
+      if append {
+        append_binary(path, bytes)
+      } else {
+        write_binary(path, bytes)
+      }
+    }
+    _ => {
+      let text = @mold.mold_text(value)
+      if append {
+        append_file(path, text)
+      } else {
+        write_file(path, text)
+      }
+    }
   }
-  write_file(port_path(env, port), text)
   port
 }
 

@@ -15,6 +15,15 @@ extern "C" fn c_write_text(
 ) -> Int = "rebal_write_text"
 
 ///|
+#borrow(path, text)
+extern "C" fn c_append_text(
+  path : String,
+  path_len : Int,
+  text : String,
+  text_len : Int,
+) -> Int = "rebal_append_text"
+
+///|
 #borrow(path)
 extern "C" fn c_read_bytes(path : String, path_len : Int) -> String = "rebal_read_bytes"
 
@@ -26,6 +35,15 @@ extern "C" fn c_write_bytes(
   data : String,
   data_len : Int,
 ) -> Int = "rebal_write_bytes"
+
+///|
+#borrow(path, data)
+extern "C" fn c_append_bytes(
+  path : String,
+  path_len : Int,
+  data : String,
+  data_len : Int,
+) -> Int = "rebal_append_bytes"
 
 ///|
 fn read_binary(path : String) -> Array[Int] raise EvalError {
@@ -47,6 +65,19 @@ pub fn write_binary(path : String, bytes : Array[Int]) -> Unit raise EvalError {
 }
 
 ///|
+/// `write/append` on raw bytes: the file keeps its tail and the bytes follow.
+pub fn append_binary(
+  path : String,
+  bytes : Array[Int],
+) -> Unit raise EvalError {
+  if c_append_bytes(path, path.length(), latin_text(bytes), bytes.length()) == 0 {
+    ()
+  } else {
+    raise EvalError::Cannot("access")
+  }
+}
+
+///|
 fn read_file(path : String) -> String raise EvalError {
   let text = c_read_text(path, path.length())
   if c_io_status() == 0 {
@@ -59,6 +90,16 @@ fn read_file(path : String) -> String raise EvalError {
 ///|
 pub fn write_file(path : String, text : String) -> Unit raise EvalError {
   if c_write_text(path, path.length(), text, text.length()) == 0 {
+    ()
+  } else {
+    raise EvalError::Cannot("access")
+  }
+}
+
+///|
+/// `write/append` on text: UTF-8 bytes follow the file's current tail.
+pub fn append_file(path : String, text : String) -> Unit raise EvalError {
+  if c_append_text(path, path.length(), text, text.length()) == 0 {
     ()
   } else {
     raise EvalError::Cannot("access")
