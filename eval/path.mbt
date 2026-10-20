@@ -314,6 +314,20 @@ fn write_selector(
           }
         _ => raise EvalError::InvalidPath("object")
       }
+    @value.Port(port) =>
+      match selector {
+        @value.Sym(_, lexeme) => {
+          let name = lexeme.spelling().to_lower()
+          if name == "awake" {
+            port.set_awake(value)
+          } else if name == "data" {
+            port.set_data(value)
+          } else {
+            raise EvalError::InvalidPath(lexeme.spelling())
+          }
+        }
+        _ => raise EvalError::InvalidPath("port")
+      }
     @value.Seq(series, index) => write_series(series, index, selector, value)
     @value.Map(map) => map.put(selector, value)
     _ => raise EvalError::InvalidPath("path")

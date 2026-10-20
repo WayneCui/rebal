@@ -1,6 +1,7 @@
 #include <arpa/inet.h>
 #include <dirent.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <moonbit.h>
 #include <netinet/in.h>
 #include <pthread.h>
@@ -916,6 +917,14 @@ void rebal_read_clock(int32_t utc, int32_t precise) {
   rebal_yearday = parts.tm_yday + 1;
 }
 
+int64_t rebal_now_ms(void) {
+  struct timespec ts;
+  if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
+    return 0;
+  }
+  return (int64_t)ts.tv_sec * 1000LL + (int64_t)ts.tv_nsec / 1000000LL;
+}
+
 int32_t rebal_sleep(double seconds) {
   if (seconds < 0.0) {
     return 1;
@@ -1489,4 +1498,340 @@ int32_t rebal_http_serve(void) {
   }
   pthread_detach(thread);
   return (int32_t)ntohs(addr.sin_port);
+}
+
+/* ---- TCP listen / accept / poll (async ports) ---- */
+
+static int32_t rebal_tcp_listen_status = 0;
+static int32_t rebal_tcp_bound_port = 0;
+
+int32_t rebal_tcp_listen_code(void) { return rebal_tcp_listen_status; }
+
+int32_t rebal_tcp_bound_port_get(void) { return rebal_tcp_bound_port; }
+
+static int rebal_tcp_set_nonblock(int fd) {
+  int flags = fcntl(fd, F_GETFL, 0);
+  if (flags < 0) {
+    return -1;
+  }
+  return fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+}
+
+///|
+/// Bind and listen. Empty host (len 0) means INADDR_ANY. Port 0 picks an
+/// ephemeral port; call rebal_tcp_bound_port_get afterwards.
+int32_t rebal_tcp_listen(moonbit_string_t host, int32_t host_len, int32_t port) {
+  rebal_tcp_listen_status = 1;
+  rebal_tcp_bound_port = 0;
+  if (port < 0 || port > 65535) {
+    return -1;
+  }
+  int fd = rebal_tcp_socket();
+  if (fd < 0) {
+    return -1;
+  }
+  struct sockaddr_in addr;
+  memset(&addr, 0, sizeof(addr));
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons((uint16_t)port);
+  if (host_len <= 0) {
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+  } else {
+    char *name = rebal_to_utf8(host, host_len);
+    if (name == NULL || inet_pton(AF_INET, name, &addr.sin_addr) != 1) {
+      free(name);
+      close(fd);
+      return -1;
+    }
+    free(name);
+  }
+  if (bind(fd, (struct sockaddr *)&addr, sizeof(addr)) != 0 ||
+      listen(fd, 128) != 0 || rebal_tcp_set_nonblock(fd) != 0) {
+    close(fd);
+    return -1;
+  }
+  socklen_t len = sizeof(addr);
+  if (getsockname(fd, (struct sockaddr *)&addr, &len) != 0) {
+    close(fd);
+    return -1;
+  }
+  rebal_tcp_bound_port = (int32_t)ntohs(addr.sin_port);
+  rebal_tcp_listen_status = 0;
+  return fd;
+}
+
+///|
+/// Accept one connection without blocking. Returns the new fd, -1 if none
+/// is ready, or -2 on error.
+int32_t rebal_tcp_accept(int32_t listen_fd) {
+  rebal_tcp_status = 1;
+  if (listen_fd < 0) {
+    return -2;
+  }
+  struct sockaddr_in peer;
+  socklen_t peer_len = sizeof(peer);
+  int conn = accept(listen_fd, (struct sockaddr *)&peer, &peer_len);
+  if (conn < 0) {
+    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+      rebal_tcp_status = 0;
+      return -1;
+    }
+    return -2;
+  }
+  if (rebal_tcp_set_nonblock(conn) != 0) {
+    close(conn);
+    return -2;
+  }
+  rebal_tcp_status = 0;
+  return conn;
+}
+
+#define REBAL_POLL_MAX 64
+static struct pollfd rebal_poll_fds[REBAL_POLL_MAX];
+static int32_t rebal_poll_tags[REBAL_POLL_MAX];
+static int32_t rebal_poll_count = 0;
+static int32_t rebal_poll_ready_n = 0;
+static int32_t rebal_poll_ready_fd[REBAL_POLL_MAX];
+static int32_t rebal_poll_ready_tag[REBAL_POLL_MAX];
+
+void rebal_poll_clear(void) {
+  rebal_poll_count = 0;
+  rebal_poll_ready_n = 0;
+}
+
+///|
+/// tag: 1 = accept interest, 2 = read interest.
+int32_t rebal_poll_add(int32_t fd, int32_t tag) {
+  if (fd < 0 || rebal_poll_count >= REBAL_POLL_MAX) {
+    return 1;
+  }
+  rebal_poll_fds[rebal_poll_count].fd = fd;
+  rebal_poll_fds[rebal_poll_count].events = POLLIN;
+  rebal_poll_fds[rebal_poll_count].revents = 0;
+  rebal_poll_tags[rebal_poll_count] = tag;
+  rebal_poll_count += 1;
+  return 0;
+}
+
+///|
+/// Wait up to timeout_ms. Returns the number of ready entries (0 on timeout).
+int32_t rebal_poll_wait(int32_t timeout_ms) {
+  rebal_poll_ready_n = 0;
+  if (rebal_poll_count == 0) {
+    if (timeout_ms > 0) {
+      usleep((useconds_t)timeout_ms * 1000U);
+    }
+    return 0;
+  }
+  int n = poll(rebal_poll_fds, (nfds_t)rebal_poll_count, timeout_ms);
+  if (n <= 0) {
+    return 0;
+  }
+  for (int32_t i = 0; i < rebal_poll_count; i++) {
+    if (rebal_poll_fds[i].revents & (POLLIN | POLLHUP | POLLERR)) {
+      rebal_poll_ready_fd[rebal_poll_ready_n] = rebal_poll_fds[i].fd;
+      rebal_poll_ready_tag[rebal_poll_ready_n] = rebal_poll_tags[i];
+      rebal_poll_ready_n += 1;
+    }
+  }
+  return rebal_poll_ready_n;
+}
+
+int32_t rebal_poll_ready_count(void) { return rebal_poll_ready_n; }
+
+int32_t rebal_poll_ready_fd_at(int32_t index) {
+  if (index < 0 || index >= rebal_poll_ready_n) {
+    return -1;
+  }
+  return rebal_poll_ready_fd[index];
+}
+
+int32_t rebal_poll_ready_tag_at(int32_t index) {
+  if (index < 0 || index >= rebal_poll_ready_n) {
+    return 0;
+  }
+  return rebal_poll_ready_tag[index];
+}
+
+///|
+/// Non-blocking recv into a latin-1 MoonBit string (one code unit per byte).
+/// Empty string with status 0 and eof flag via rebal_tcp_code: 0=ok, 1=err, 2=eof, 3=eagain.
+moonbit_string_t rebal_tcp_recv_bytes(int32_t fd) {
+  rebal_tcp_status = 1;
+  if (fd < 0) {
+    return moonbit_make_string(0, 0);
+  }
+  unsigned char buf[8192];
+  ssize_t n = recv(fd, buf, sizeof(buf), 0);
+  if (n < 0) {
+    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+      rebal_tcp_status = 3;
+      return moonbit_make_string(0, 0);
+    }
+    return moonbit_make_string(0, 0);
+  }
+  if (n == 0) {
+    rebal_tcp_status = 2;
+    return moonbit_make_string(0, 0);
+  }
+  moonbit_string_t text = moonbit_make_string((int32_t)n, 0);
+  for (ssize_t i = 0; i < n; i++) {
+    text[i] = buf[i];
+  }
+  rebal_tcp_status = 0;
+  return text;
+}
+
+///|
+/// Send raw bytes carried in a latin-1 MoonBit string.
+int32_t rebal_tcp_send_bytes(
+  int32_t fd,
+  moonbit_string_t data,
+  int32_t data_len
+) {
+  rebal_tcp_status = 1;
+  if (fd < 0 || data_len < 0) {
+    return 1;
+  }
+  size_t sent = 0;
+  while (sent < (size_t)data_len) {
+    char chunk[1024];
+    size_t left = (size_t)data_len - sent;
+    size_t n = left > sizeof(chunk) ? sizeof(chunk) : left;
+    for (size_t i = 0; i < n; i++) {
+      chunk[i] = (char)(data[sent + i] & 0xff);
+    }
+    ssize_t w = send(fd, chunk, n, 0);
+    if (w < 0) {
+      if (errno == EINTR) {
+        continue;
+      }
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        continue;
+      }
+      return 1;
+    }
+    sent += (size_t)w;
+  }
+  rebal_tcp_status = 0;
+  return 0;
+}
+
+/* ---- TCP probe client (tests listen/accept/awake) ---- */
+
+static char rebal_probe_got[4096];
+static int32_t rebal_probe_got_len = 0;
+static int32_t rebal_probe_status = 1;
+
+struct rebal_probe_job {
+  int32_t port;
+  char *data;
+  int32_t data_len;
+};
+
+static void *rebal_probe_main(void *arg) {
+  struct rebal_probe_job *job = (struct rebal_probe_job *)arg;
+  usleep(20000);
+  int fd = rebal_tcp_socket();
+  if (fd < 0) {
+    free(job->data);
+    free(job);
+    rebal_probe_status = 1;
+    return NULL;
+  }
+  struct sockaddr_in addr;
+  memset(&addr, 0, sizeof(addr));
+  addr.sin_family = AF_INET;
+  addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+  addr.sin_port = htons((uint16_t)job->port);
+  if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) != 0) {
+    close(fd);
+    free(job->data);
+    free(job);
+    rebal_probe_status = 1;
+    return NULL;
+  }
+  size_t sent = 0;
+  while (sent < (size_t)job->data_len) {
+    ssize_t n = send(fd, job->data + sent, (size_t)job->data_len - sent, 0);
+    if (n < 0) {
+      if (errno == EINTR) {
+        continue;
+      }
+      close(fd);
+      free(job->data);
+      free(job);
+      rebal_probe_status = 1;
+      return NULL;
+    }
+    sent += (size_t)n;
+  }
+  rebal_probe_got_len = 0;
+  while (rebal_probe_got_len < (int32_t)sizeof(rebal_probe_got)) {
+    ssize_t n = recv(
+      fd,
+      rebal_probe_got + rebal_probe_got_len,
+      sizeof(rebal_probe_got) - (size_t)rebal_probe_got_len,
+      0
+    );
+    if (n < 0) {
+      if (errno == EINTR) {
+        continue;
+      }
+      break;
+    }
+    if (n == 0) {
+      break;
+    }
+    rebal_probe_got_len += (int32_t)n;
+  }
+  close(fd);
+  free(job->data);
+  free(job);
+  rebal_probe_status = 0;
+  return NULL;
+}
+
+///|
+/// Spawn a client that connects to 127.0.0.1:port, sends `data`, and stores
+/// the reply for `rebal_tcp_probe_result`.
+int32_t rebal_tcp_probe(int32_t port, moonbit_string_t data, int32_t data_len) {
+  rebal_probe_status = 1;
+  rebal_probe_got_len = 0;
+  if (port < 1 || port > 65535 || data_len < 0) {
+    return 1;
+  }
+  struct rebal_probe_job *job = malloc(sizeof(*job));
+  if (job == NULL) {
+    return 1;
+  }
+  job->port = port;
+  job->data_len = data_len;
+  job->data = malloc((size_t)data_len + 1U);
+  if (job->data == NULL) {
+    free(job);
+    return 1;
+  }
+  for (int32_t i = 0; i < data_len; i++) {
+    job->data[i] = (char)(data[i] & 0xff);
+  }
+  job->data[data_len] = 0;
+  pthread_t thread;
+  if (pthread_create(&thread, NULL, rebal_probe_main, job) != 0) {
+    free(job->data);
+    free(job);
+    return 1;
+  }
+  pthread_detach(thread);
+  return 0;
+}
+
+int32_t rebal_tcp_probe_code(void) { return rebal_probe_status; }
+
+moonbit_string_t rebal_tcp_probe_result(void) {
+  moonbit_string_t text = moonbit_make_string(rebal_probe_got_len, 0);
+  for (int32_t i = 0; i < rebal_probe_got_len; i++) {
+    text[i] = (uint16_t)(unsigned char)rebal_probe_got[i];
+  }
+  return text;
 }

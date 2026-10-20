@@ -613,7 +613,10 @@ fn apply(
   } else if func.code() == native_length {
     from_action(@action.length(args[0]))
   } else if func.code() == native_first {
-    from_action(@action.first(args[0]))
+    match args[0] {
+      @value.Port(_) => tcp_first(args[0])
+      _ => from_action(@action.first(args[0]))
+    }
   } else if func.code() == native_second {
     from_action(@action.pick(args[0], @value.Integer(2L)))
   } else if func.code() == native_third {
@@ -911,7 +914,7 @@ fn apply(
     let field = if args.length() > 1 { Some(args[1]) } else { None }
     perform_query(env, args[0], field)
   } else if func.code() == native_wait {
-    perform_wait(args[0])
+    perform_wait(env, args[0])
   } else if func.code() == native_browse {
     perform_browse(args[0])
   } else if func.code() == native_wildcard {

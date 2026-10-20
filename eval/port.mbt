@@ -4,14 +4,20 @@ fn port_field(
   selector : @value.Cell,
 ) -> @value.Cell raise EvalError {
   match selector {
-    @value.Sym(_, lexeme) =>
-      if lexeme.spelling().to_lower() == "spec" {
+    @value.Sym(_, lexeme) => {
+      let name = lexeme.spelling().to_lower()
+      if name == "spec" {
         @value.Object(value.spec)
-      } else if lexeme.spelling().to_lower() == "scheme" {
+      } else if name == "scheme" {
         @value.Object(value.scheme)
+      } else if name == "awake" {
+        value.awake()
+      } else if name == "data" {
+        value.data()
       } else {
         raise EvalError::InvalidPath(lexeme.spelling())
       }
+    }
     _ => raise EvalError::InvalidPath("port")
   }
 }
