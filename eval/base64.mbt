@@ -1,21 +1,71 @@
 ///|
-/// Turns a string or a binary into base-85, base-64, base-36, base-16, or base-2 text.
+/// Turns a string or a binary into base-85, base-64, base-36, base-16, or
+/// base-2 text. The default base is 64; `/base` names another one.
 /// `/part` limits how many characters or bytes are encoded.
 fn perform_enbase(
   env : Env,
   args : Array[@value.Cell],
   active : Array[Int],
 ) -> @value.Cell raise EvalError {
-  let (part, url) = base_flags(env, args, active, "enbase")
+  let (part, url, base) = enbase_flags(env, args, active)
   let bytes = ranged_payload(args[0], part, "enbase")
-  match coding_base(args[1]) {
-    Some(85) => text_series(encode_base85(bytes))
-    Some(64) => text_series(encode_base64(bytes, url))
-    Some(36) => text_series(encode_base36(bytes))
-    Some(16) => text_series(encode_base16(bytes))
-    Some(2) => text_series(encode_base2(bytes))
+  match base {
+    85 => text_series(encode_base85(bytes))
+    64 => text_series(encode_base64(bytes, url))
+    36 => text_series(encode_base36(bytes))
+    16 => text_series(encode_base16(bytes))
+    2 => text_series(encode_base2(bytes))
     _ => raise EvalError::Cannot("enbase")
   }
+}
+
+///|
+/// How many value arguments the active `enbase` refinements contribute:
+/// one each for `/base` and `/part`, none for `/url` and `/flat`.
+fn enbase_extra(env : Env, active : Array[Int]) -> Int raise EvalError {
+  let mut extra = 0
+  for sym in active {
+    let name = env.symbols.canon(sym)
+    if name == "base" || name == "part" {
+      extra = extra + 1
+    } else if name != "url" && name != "flat" {
+      raise EvalError::Cannot("enbase")
+    }
+  }
+  extra
+}
+
+///|
+/// `enbase` refinement reading: `/base` (64 by default), `/part`, `/url`.
+fn enbase_flags(
+  env : Env,
+  args : Array[@value.Cell],
+  active : Array[Int],
+) -> (Int?, Bool, Int) raise EvalError {
+  let mut part : Int? = None
+  let mut url = false
+  let mut base = 64
+  let mut cursor = 1
+  for sym in active {
+    let name = env.symbols.canon(sym)
+    if name == "base" {
+      match coding_base(args[cursor]) {
+        Some(size) => base = size
+        None => raise EvalError::Cannot("enbase")
+      }
+      cursor = cursor + 1
+    } else if name == "part" {
+      part = Some(part_count(args[0], args[cursor], "enbase"))
+      cursor = cursor + 1
+    } else if name == "url" {
+      url = true
+    } else if name == "flat" {
+      ()
+    } else {
+      raise EvalError::Cannot("enbase")
+    }
+  }
+  (part, url, base)
 }
 
 ///|

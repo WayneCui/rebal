@@ -63,6 +63,18 @@ fn splice_one(series : @value.Series, index : Int, value : @value.Cell) -> Int? 
       } else {
         None
       }
+    (@value.Binary, @value.Integer(n)) =>
+      if n >= 0L && n <= 255L && series.insert_byte(index, n.to_byte()) {
+        Some(1)
+      } else {
+        None
+      }
+    (@value.Binary, @value.Char(code)) =>
+      if code >= 0 && code <= 255 && series.insert_byte(index, code.to_byte()) {
+        Some(1)
+      } else {
+        None
+      }
     (@value.Block | @value.Paren | @value.Path | @value.SetPath, _) =>
       if series.insert_item(index, value.snapshot()) {
         Some(1)

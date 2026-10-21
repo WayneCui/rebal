@@ -1,15 +1,15 @@
 ///|
 /// CRC-24, CRC-32, Adler-32, MD5, SHA-1, SHA-256, SHA-384, SHA-512, or SHA-3.
 /// The CRCs are integers. The hashes are raw digests.
-/// `/with` is HMAC. `/part` limits the input.
+/// `/method` names the algorithm (CRC-24 without it). `/with` is HMAC.
+/// `/part` limits the input.
 fn perform_checksum(
   env : Env,
   args : Array[@value.Cell],
   active : Array[Int],
 ) -> @value.Cell raise EvalError {
-  let word = as_word(args[1], "checksum")
+  let (key, part, word) = checksum_options(env, args, active)
   let name = env.symbols.canon(word.sym())
-  let (key, part) = checksum_options(env, args, active)
   let bytes = ranged_payload(args[0], part, "checksum")
   match key {
     Some(raw) => binary_cell(hmac(raw, bytes, name))
@@ -33,17 +33,23 @@ fn perform_checksum(
 }
 
 ///|
+/// Refinement reading shared by every checksum form. `/method` carries the
+/// algorithm word and defaults to CRC-24.
 fn checksum_options(
   env : Env,
   args : Array[@value.Cell],
   active : Array[Int],
-) -> (Array[Int]?, Int?) raise EvalError {
+) -> (Array[Int]?, Int?, @value.Lexeme) raise EvalError {
   let mut key : Array[Int]? = None
   let mut part : Int? = None
-  let mut cursor = 2
+  let mut word : @value.Lexeme? = None
+  let mut cursor = 1
   for sym in active {
     let name = env.symbols.canon(sym)
-    if name == "with" {
+    if name == "method" {
+      word = Some(as_word(args[cursor], "checksum"))
+      cursor = cursor + 1
+    } else if name == "with" {
       key = Some(payload_bytes(args[cursor], "checksum"))
       cursor = cursor + 1
     } else if name == "part" {
@@ -53,7 +59,14 @@ fn checksum_options(
       raise EvalError::Cannot("checksum")
     }
   }
-  (key, part)
+  match word {
+    Some(lexeme) => (key, part, lexeme)
+    None => {
+      let spelling = "crc24"
+      let sym = env.symbols.intern(spelling)
+      (key, part, @value.Lexeme::make(sym, spelling))
+    }
+  }
 }
 
 ///|

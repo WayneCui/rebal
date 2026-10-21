@@ -311,9 +311,47 @@ fn walk_foreach(
     @value.Seq(series, index) if series.datatype() == @value.String &&
       slots.length() == 1 =>
       foreach_chars(env, frame, slots[0], series, index, body)
+    @value.Seq(series, index) if series.datatype() == @value.Binary &&
+      slots.length() == 1 =>
+      foreach_bytes(env, frame, slots[0], series, index, body)
     @value.Map(map) => foreach_entries(env, frame, slots, map, body)
     _ => raise EvalError::Cannot("foreach")
   }
+}
+
+///|
+/// A binary walks by byte: each pass sets the word to one integer.
+fn foreach_bytes(
+  env : Env,
+  frame : @value.Frame,
+  slot : Int,
+  series : @value.Series,
+  index : Int,
+  body : @value.Cell,
+) -> @value.Cell raise EvalError {
+  let mut cursor = if index < 0 { 0 } else { index }
+  let mut kept = @value.Cell::None
+  let mut running = true
+  while running && cursor < series.length() {
+    match series.byte_at(cursor) {
+      Some(byte) => {
+        store(frame, slot, @value.Integer(byte.to_int64()))
+        match eval_body(env, body, "foreach") {
+          Stop => {
+            kept = @value.Cell::None
+            running = false
+          }
+          Skip => cursor = cursor + 1
+          Done(value) => {
+            kept = value
+            cursor = cursor + 1
+          }
+        }
+      }
+      None => cursor = cursor + 1
+    }
+  }
+  kept
 }
 
 ///|

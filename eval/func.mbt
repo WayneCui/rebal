@@ -404,17 +404,24 @@ fn perform_do(env : Env, cell : @value.Cell) -> @value.Cell raise EvalError {
 ///|
 /// Load the file first. A path with a slash then runs in that file's
 /// directory, and the previous directory is restored afterwards.
+/// The script header takes effect: `needs:` modules are imported, and
+/// `type: 'module` scripts are built as modules.
 fn do_file(env : Env, path : String) -> @value.Cell raise EvalError {
-  let loaded = load_code(env, drop_bom(read_binary(path)))
+  let bytes = drop_bom(read_binary(path))
+  let loaded = load_code(env, bytes)
+  let header = match script_split(bytes) {
+    Some((source, _)) => Some(source)
+    None => None
+  }
   match file_parent(path) {
-    None => eval(env, loaded)
+    None => run_script(env, loaded, header, "")
     Some(dir) => {
       let saved = perform_what_dir()
       if c_change_dir(dir, dir.length()) != 0 {
         raise EvalError::Cannot("access")
       }
       errdefer restore_dir(saved)
-      let result = eval(env, loaded)
+      let result = run_script(env, loaded, header, dir)
       let _ = perform_change_dir(saved)
       result
     }

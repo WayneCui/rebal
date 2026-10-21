@@ -1205,6 +1205,12 @@ fn match_one(
         } else if source.datatype() == @value.String &&
           input.datatype() == @value.String {
           match_text(input, pos, source, source_index)
+        } else if source.datatype() == @value.String &&
+          input.datatype() == @value.Binary {
+          match_text_bytes(input, pos, source, source_index)
+        } else if source.datatype() == @value.Binary &&
+          input.datatype() == @value.Binary {
+          match_binaries(input, pos, source, source_index)
         } else {
           match_value(input, pos, rule)
         }
@@ -1260,6 +1266,12 @@ fn find_target(
       @value.Char(_) | @value.Bitset(_) => scan_here(input, pos, target, thru)
       @value.Seq(source, _) if source.datatype() == @value.String =>
         scan_here(input, pos, target, thru)
+      _ => raise EvalError::Cannot("parse")
+    }
+  } else if input.datatype() == @value.Binary {
+    match target {
+      @value.Integer(_) => scan_here(input, pos, target, thru)
+      @value.Seq(_, _) => scan_here(input, pos, target, thru)
       _ => raise EvalError::Cannot("parse")
     }
   } else if is_block(input) {
@@ -1374,7 +1386,21 @@ fn block_targets(
 
 ///|
 fn hit_at(input : @value.Series, pos : Int, target : @value.Cell) -> Int? {
-  if input.datatype() == @value.String {
+  if input.datatype() == @value.Binary {
+    match target {
+      @value.Integer(n) =>
+        if input.byte_at(pos) is Some(byte) && byte.to_int64() == n {
+          Some(pos + 1)
+        } else {
+          None
+        }
+      @value.Seq(source, source_index) if source.datatype() == @value.String =>
+        match_text_bytes(input, pos, source, source_index)
+      @value.Seq(source, source_index) if source.datatype() == @value.Binary =>
+        match_binaries(input, pos, source, source_index)
+      _ => None
+    }
+  } else if input.datatype() == @value.String {
     match target {
       @value.Char(code) =>
         if input.code(pos) == Some(code) {
@@ -1493,6 +1519,100 @@ fn match_text(
     }
     if ok {
       Some(pos + len)
+    } else {
+      None
+    }
+  }
+}
+
+///|
+/// A string rule against a binary input matches the rule's UTF-8 bytes.
+fn match_text_bytes(
+  input : @value.Series,
+  pos : Int,
+  source : @value.Series,
+  source_index : Int,
+) -> Int? {
+  let bytes : Array[Int] = []
+  let mut cursor = if source_index < 0 { 0 } else { source_index }
+  while cursor < source.length() {
+    match source.code(cursor) {
+      Some(code) => {
+        let unit = utf8_units(code)
+        for byte in unit {
+          bytes.push(byte)
+        }
+      }
+      None => ()
+    }
+    cursor = cursor + 1
+  }
+  match_bytes(input, pos, bytes)
+}
+
+///|
+/// One code point as its UTF-8 bytes.
+fn utf8_units(code : Int) -> Array[Int] {
+  let bytes : Array[Int] = []
+  if code < 0x80 {
+    bytes.push(code)
+  } else if code < 0x800 {
+    bytes.push(0xC0 + code / 64)
+    bytes.push(0x80 + code % 64)
+  } else if code < 0x10000 {
+    bytes.push(0xE0 + code / 4096)
+    bytes.push(0x80 + code / 64 % 64)
+    bytes.push(0x80 + code % 64)
+  } else {
+    bytes.push(0xF0 + code / 262144)
+    bytes.push(0x80 + code / 4096 % 64)
+    bytes.push(0x80 + code / 64 % 64)
+    bytes.push(0x80 + code % 64)
+  }
+  bytes
+}
+
+///|
+/// A binary rule against a binary input.
+fn match_binaries(
+  input : @value.Series,
+  pos : Int,
+  source : @value.Series,
+  source_index : Int,
+) -> Int? {
+  let len = source.length() - source_index
+  if pos + len > input.length() {
+    None
+  } else {
+    let mut ok = true
+    for offset in 0..<len {
+      if input.byte_at(pos + offset) != source.byte_at(source_index + offset) {
+        ok = false
+      }
+    }
+    if ok {
+      Some(pos + len)
+    } else {
+      None
+    }
+  }
+}
+
+///|
+/// Raw bytes against a binary input.
+fn match_bytes(input : @value.Series, pos : Int, bytes : Array[Int]) -> Int? {
+  if pos + bytes.length() > input.length() {
+    None
+  } else {
+    let mut ok = true
+    for offset in 0..<bytes.length() {
+      match input.byte_at(pos + offset) {
+        Some(byte) => if byte.to_int() != bytes[offset] { ok = false }
+        None => ok = false
+      }
+    }
+    if ok {
+      Some(pos + bytes.length())
     } else {
       None
     }
@@ -1669,7 +1789,16 @@ fn write_capture(
 fn copy_span(input : @value.Series, begin : Int, end : Int) -> @value.Cell {
   let from = begin
   let until = if end > begin { end } else { begin }
-  if input.datatype() == @value.String {
+  if input.datatype() == @value.Binary {
+    let series = @value.Series::binary()
+    for index in from..<until {
+      match input.byte_at(index) {
+        Some(byte) => series.push_byte(byte) |> ignore
+        None => ()
+      }
+    }
+    @value.Seq(series, 0)
+  } else if input.datatype() == @value.String {
     let series = @value.Series::text()
     for index in from..<until {
       match input.code(index) {

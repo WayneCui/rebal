@@ -1,7 +1,8 @@
 ///|
 /// The series helpers that do not need append-into-string, object update,
 /// or the format dialect. replace, reword, move, extract, and format stay out.
-/// rejoin appends the formed items one by one, which matches append-into-string.
+/// rejoin appends the formed items one by one, which matches append-into-string;
+/// a binary first item keeps the result binary and appends the raw items.
 fn boot_series_helpers(env : Env) -> Unit {
   try eval(env, load(env, series_helpers_script())) |> ignore catch {
     error => abort(error.id())
@@ -18,10 +19,15 @@ fn series_helpers_script() -> String {
   "single?: :last?\n" +
   "charset: func [chars] [make bitset! chars]\n" +
   "remold: func [value] [mold reduce :value]\n" +
+  "++: func ['word [word!]] [set word 1 + get word none]\n" +
   "rejoin: func [block [block!] /local out] [\n" +
   "if empty? block: reduce block [return block]\n" +
   "out: either series? block/1 [copy block/1] [form block/1]\n" +
+  "either binary? out [\n" +
+  "foreach item next block [append out item]\n" +
+  "][\n" +
   "foreach item next block [append out form item]\n" +
+  "]\n" +
   "out\n" +
   "]\n"
 }

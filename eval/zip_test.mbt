@@ -13,19 +13,19 @@ test "compress and decompress store a zip of named files" {
   )
   assert_true(
     @eval.run(
-      env, "(decompress (compress [%hi.txt {hi}] 'zip) 'zip) = reduce [%hi.txt reduce [none checksum {hi} 'crc32 #{6869}]]",
+      env, "(decompress (compress [%hi.txt {hi}] 'zip) 'zip) = reduce [%hi.txt reduce [none checksum/method {hi} 'crc32 #{6869}]]",
     )
     is @value.Logic(true),
   )
   assert_true(
     @eval.run(
-      env, "(decompress (compress [%a.txt {A} %b.txt {B}] 'zip) 'zip) = reduce [%a.txt reduce [none checksum {A} 'crc32 #{41}] %b.txt reduce [none checksum {B} 'crc32 #{42}]]",
+      env, "(decompress (compress [%a.txt {A} %b.txt {B}] 'zip) 'zip) = reduce [%a.txt reduce [none checksum/method {A} 'crc32 #{41}] %b.txt reduce [none checksum/method {B} 'crc32 #{42}]]",
     )
     is @value.Logic(true),
   )
   assert_true(
     @eval.run(
-      env, "(decompress (compress [%š.txt {á}] 'zip) 'zip) = reduce [%š.txt reduce [none checksum {á} 'crc32 #{C3A1}]]",
+      env, "(decompress (compress [%š.txt {á}] 'zip) 'zip) = reduce [%š.txt reduce [none checksum/method {á} 'crc32 #{C3A1}]]",
     )
     is @value.Logic(true),
   )

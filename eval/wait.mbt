@@ -146,7 +146,8 @@ fn wait_ports(
           sleep_for(left_ms.to_double() / 1000.0)
           running = false
         }
-        None => sleep_for(0.05)
+        // Nothing waitable and no deadline: the wait is over at once.
+        None => running = false
       }
     } else {
       let n = c_poll_wait(left_ms)

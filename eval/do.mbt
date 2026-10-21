@@ -293,8 +293,8 @@ fn call(
     func.arity() + enhex_extra(env, active)
   } else if func.code() == native_checksum {
     func.arity() + checksum_extra(env, active)
-  } else if func.code() == native_enbase && named(env, active, "part") {
-    func.arity() + 1
+  } else if func.code() == native_enbase {
+    func.arity() + enbase_extra(env, active)
   } else if func.code() == native_debase && named(env, active, "part") {
     func.arity() + 1
   } else if func.code() == native_call {
@@ -525,6 +525,9 @@ fn decode_extra(env : Env, active : Array[Int]) -> Int {
 ///|
 fn checksum_extra(env : Env, active : Array[Int]) -> Int {
   let mut extra = 0
+  if named(env, active, "method") {
+    extra = extra + 1
+  }
   if named(env, active, "with") {
     extra = extra + 1
   }
@@ -734,9 +737,20 @@ fn apply(
   } else if func.code() == native_not {
     @action.logic_not(args[0])
   } else if func.code() == native_and {
-    @action.logic_and(args[0], args[1])
+    bitwise_or_logic(args[0], args[1], fn(a, b) { a & b }, fn(l, r) { @action.logic_and(l, r) })
   } else if func.code() == native_or {
-    @action.logic_or(args[0], args[1])
+    bitwise_or_logic(args[0], args[1], fn(a, b) { a | b }, fn(l, r) { @action.logic_or(l, r) })
+  } else if func.code() == native_xor {
+    bitwise_or_logic(
+      args[0],
+      args[1],
+      fn(a, b) { a ^ b },
+      perform_logic_xor,
+    )
+  } else if func.code() == native_amp {
+    bitwise_or_logic(args[0], args[1], fn(a, b) { a & b }, fn(l, r) { @action.logic_and(l, r) })
+  } else if func.code() == native_mod {
+    floored_mod(args[0], args[1])
   } else if func.code() == native_any {
     perform_any(env, args[0])
   } else if func.code() == native_all {

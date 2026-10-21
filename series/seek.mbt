@@ -201,9 +201,23 @@ fn same_text(
     let mut ok = len > 0
     for i in 0..<len {
       if ok {
-        ok = series.code(at + i) == source.code(source_index + i)
+        ok = fold_code(series.code(at + i)) == fold_code(source.code(source_index + i))
       }
     }
     ok
+  }
+}
+
+///|
+/// String matching folds case, the way r3's find compares text.
+fn fold_code(code : Int?) -> Int? {
+  match code {
+    Some(value) =>
+      if value >= 'A'.to_int() && value <= 'Z'.to_int() {
+        Some(value + 32)
+      } else {
+        Some(value)
+      }
+    None => None
   }
 }

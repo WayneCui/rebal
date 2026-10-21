@@ -33,7 +33,7 @@ test "decode pkix reads an RFC 7468 certificate" {
     @eval.run(
       env,
       source +
-      "(checksum bin 'sha256) = #{91648283064E3E597FB5E720A2C07E478AB9B80FBAB0508FEC043834CD516986}",
+      "(checksum/method bin 'sha256) = #{91648283064E3E597FB5E720A2C07E478AB9B80FBAB0508FEC043834CD516986}",
     )
     is @value.Logic(true),
   )

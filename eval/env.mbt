@@ -539,6 +539,15 @@ let native_true_q : Int = 177
 let native_false_q : Int = 178
 
 ///|
+let native_xor : Int = 186
+
+///|
+let native_amp : Int = 187
+
+///|
+let native_mod : Int = 188
+
+///|
 let native_values_of : Int = 179
 
 ///|
@@ -592,9 +601,9 @@ pub fn Env::new() -> Env {
   define_native(env, "ask", 1, false, native_ask)
   define_native(env, "confirm", 1, false, native_confirm)
   define_native(env, "wildcard", 2, false, native_wildcard)
-  define_native(env, "enbase", 2, false, native_enbase)
+  define_native(env, "enbase", 1, false, native_enbase)
   define_native(env, "debase", 2, false, native_debase)
-  define_native(env, "checksum", 2, false, native_checksum)
+  define_native(env, "checksum", 1, false, native_checksum)
   define_native(env, "compress", 2, false, native_compress)
   define_native(env, "decompress", 2, false, native_decompress)
   define_native(env, "encloak", 2, false, native_encloak)
@@ -652,6 +661,9 @@ pub fn Env::new() -> Env {
   define_native(env, "not", 1, false, native_not)
   define_native(env, "and", 2, true, native_and)
   define_native(env, "or", 2, true, native_or)
+  define_native(env, "xor", 2, true, native_xor)
+  define_native(env, "&", 2, true, native_amp)
+  define_native(env, "mod", 2, false, native_mod)
   define_native(env, "any", 1, false, native_any)
   define_native(env, "all", 1, false, native_all)
   define_native(env, "case", 1, false, native_case)

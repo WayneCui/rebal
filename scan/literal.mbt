@@ -477,6 +477,14 @@ fn Lexer::braced(self : Lexer) -> Result[@value.Cell, ScanError] {
   while depth > 0 {
     match self.bump() {
       None => depth = 0
+      Some('^') =>
+        match self.caret() {
+          Ok(code) => series.push_code(code) |> ignore
+          Err(error) => {
+            result = Err(error)
+            depth = 0
+          }
+        }
       Some('{') => {
         depth = depth + 1
         series.push_code('{'.to_int()) |> ignore
@@ -556,6 +564,7 @@ fn Lexer::caret(self : Lexer) -> Result[Int, ScanError] {
     Some('"') => Ok('"'.to_int())
     Some('^') => Ok('^'.to_int())
     Some('}') => Ok('}'.to_int())
+    Some('{') => Ok('{'.to_int())
     _ => Err(Invalid("char"))
   }
 }

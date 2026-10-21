@@ -17,7 +17,8 @@ fn encode_text(value : @value.Cell) -> @value.Cell raise EvalError {
 }
 
 ///|
-/// `to string!` joins a block without spaces. A binary is decoded from its BOM.
+/// `to string!` joins a block without spaces. A binary prefers its BOM or
+/// UTF-8; when that fails, each byte becomes one character (Oldes / R3).
 /// Line endings stay as they are. `none` cannot be converted.
 fn to_string(value : @value.Cell) -> @value.Cell raise EvalError {
   text_series(string_text(value))
@@ -62,13 +63,25 @@ fn string_joined(
 }
 
 ///|
-fn string_utf8(
-  value : @value.Cell,
-  bytes : Array[Int],
-) -> String raise EvalError {
-  decode_text(bytes) catch {
-    _ => raise EvalError::Caused("invalid-utf", @mold.mold_text(value))
+fn string_utf8(_value : @value.Cell, bytes : Array[Int]) -> String {
+  try {
+    decode_text(bytes)
+  } catch {
+    _ => latin1_text(bytes)
   }
+}
+
+///|
+/// One code unit per byte. Used when a binary is not valid UTF-8 / BOM text.
+fn latin1_text(bytes : Array[Int]) -> String {
+  let buf = StringBuilder()
+  for byte in bytes {
+    match (byte & 0xFF).to_char() {
+      Some(char) => buf.write_char(char)
+      None => ()
+    }
+  }
+  buf.to_string()
 }
 
 ///|
